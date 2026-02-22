@@ -150,10 +150,11 @@ if (!agentName) {
 
 async function loadAgent() {
   try {
-    const [agentData, historyData, state] = await Promise.all([
+    const [agentData, historyData, state, discoveriesData] = await Promise.all([
       fetch(`/api/agent/${encodeURIComponent(agentName)}`).then(r => r.json()),
       fetch(`/api/agent/${encodeURIComponent(agentName)}/history?limit=50`).then(r => r.json()),
-      fetch('/api/state').then(r => r.json())
+      fetch('/api/state').then(r => r.json()),
+      fetch(`/api/discoveries/agent/${encodeURIComponent(agentName)}`).then(r => r.json())
     ]);
 
     if (agentData.error) {
@@ -161,7 +162,7 @@ async function loadAgent() {
       return;
     }
 
-    renderAgent(agentData, historyData, state);
+    renderAgent(agentData, historyData, state, discoveriesData);
     startCountdown();
   } catch (e) {
     document.getElementById('content').innerHTML = `<div class="loading">Error loading agent: ${e.message}</div>`;
@@ -170,7 +171,7 @@ async function loadAgent() {
 
 function ec(e) { return e >= 70 ? 'e-hi' : e >= 40 ? 'e-md' : 'e-lo'; }
 
-function renderAgent(agent, history, state) {
+function renderAgent(agent, history, state, discoveries) {
   document.title = `${agent.displayName} — CLASHD27`;
 
   // Find prev/next agents in leaderboard
@@ -254,6 +255,14 @@ function renderAgent(agent, history, state) {
           ${renderRelationships(agent.relationships)}
         </div>
       </div>
+
+      <div class="card" style="grid-column: 1 / -1;">
+        <h2>💡 Discoveries (${discoveries.total || 0})</h2>
+        <div class="discoveries">
+          ${renderDiscoveries(discoveries.discoveries || [])}
+        </div>
+        ${discoveries.total > 0 ? `<div style="font-family:'Space Mono',monospace;font-size:11px;color:#666;margin-top:12px;">Discovery rate: ${Math.round((discoveries.total / Math.max(agent.totalBonds, 1)) * 100)}% of bonds lead to discoveries</div>` : ''}
+      </div>
     </div>
 
     <div class="nav-bar">
@@ -326,6 +335,31 @@ function renderRelationships(relationships) {
       </div>
     </div>
   `).join('');
+}
+
+function renderDiscoveries(discoveries) {
+  if (!discoveries || discoveries.length === 0) {
+    return '<div style="color:#666;font-size:12px;padding:20px;text-align:center;">No discoveries yet — keep exploring!</div>';
+  }
+
+  return discoveries.slice(0, 10).map(d => `
+    <div style="background:#1a1a1a;border-left:3px solid ${d.novelty === 'high' ? '#ffd700' : 'var(--orange)'};padding:14px;margin-bottom:10px;border-radius:0 4px 4px 0;">
+      <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--orange);margin-bottom:8px;">
+        💡 ${d.agentDomains ? d.agentDomains.join(' × ') : 'Cross-domain'}
+      </div>
+      <div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:8px;">${escapeHtml(d.connection || '')}</div>
+      ${d.evidence ? `<div style="font-size:11px;color:#888;border-top:1px solid #333;padding-top:8px;margin-top:8px;"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}</div>` : ''}
+      ${d.hypothesis ? `<div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);background:rgba(255,69,0,0.1);padding:6px 10px;border-radius:3px;margin-top:8px;">💡 ${escapeHtml(d.hypothesis)}</div>` : ''}
+      <div style="font-family:'Space Mono',monospace;font-size:9px;color:#555;margin-top:8px;">tick ${d.tick} · ${d.novelty || 'medium'} novelty</div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Countdown timer

@@ -415,6 +415,77 @@
     color: #999;
     line-height: 1.6;
   }
+  /* DISCOVERIES PANEL */
+  .discoveries-panel {
+    margin-top: 16px;
+    background: #0a0a0a;
+    border: 2px solid var(--orange);
+    border-radius: 4px;
+    padding: 20px;
+  }
+  .discoveries-header {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--orange);
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .discovery-item {
+    background: #151515;
+    border-left: 3px solid var(--orange);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    border-radius: 0 4px 4px 0;
+  }
+  .discovery-item.high-novelty {
+    border-left-color: #ffd700;
+    box-shadow: 0 0 15px rgba(255,215,0,0.1);
+  }
+  .discovery-domains {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--orange);
+    margin-bottom: 8px;
+  }
+  .discovery-connection {
+    font-size: 14px;
+    color: #ccc;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .discovery-evidence {
+    font-size: 12px;
+    color: #888;
+    border-top: 1px solid #333;
+    padding-top: 8px;
+    margin-top: 8px;
+  }
+  .discovery-hypothesis {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--orange);
+    background: rgba(255,69,0,0.1);
+    padding: 8px 12px;
+    border-radius: 3px;
+    margin-top: 8px;
+  }
+  .discovery-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #555;
+    margin-top: 8px;
+  }
+  .discoveries-empty {
+    color: #555;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+    padding: 30px;
+  }
+
   .research-empty {
     color: #555;
     font-family: 'Space Mono', monospace;
@@ -468,6 +539,13 @@
     <div class="card" style="margin-top:16px;">
       <h2>🔗 Recent Bonds</h2>
       <div id="recent-bonds"><div style="color:#bbb;font-size:12px;font-family:monospace">Waiting for first bonds...</div></div>
+    </div>
+
+    <div class="discoveries-panel" id="discoveries-panel">
+      <div class="discoveries-header">💡 DISCOVERIES</div>
+      <div id="discoveries-feed">
+        <div class="discoveries-empty">Loading discoveries...</div>
+      </div>
     </div>
 
     <div class="research-section" id="research-section" style="display:none;">
@@ -764,6 +842,31 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Discoveries functions
+async function loadDiscoveries() {
+  try {
+    const data = await fetch(`/api/discoveries?pack=${packId}&limit=5`).then(r => r.json());
+    const feed = document.getElementById('discoveries-feed');
+
+    if (!data.discoveries || data.discoveries.length === 0) {
+      feed.innerHTML = '<div class="discoveries-empty">No discoveries yet. Agents are exploring...</div>';
+      return;
+    }
+
+    feed.innerHTML = data.discoveries.map(d => `
+      <div class="discovery-item ${d.novelty === 'high' ? 'high-novelty' : ''}">
+        <div class="discovery-domains">💡 ${d.agentDomains ? d.agentDomains.join(' × ') : 'Cross-domain'}</div>
+        <div class="discovery-connection">${escapeHtml(d.connection || '')}</div>
+        ${d.evidence ? `<div class="discovery-evidence"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}${d.source ? ` — <em>${escapeHtml(d.source)}</em>` : ''}</div>` : ''}
+        ${d.hypothesis ? `<div class="discovery-hypothesis">💡 ${escapeHtml(d.hypothesis)}</div>` : ''}
+        <div class="discovery-meta">tick ${d.tick} · ${d.novelty || 'medium'} novelty · ${d.agents ? d.agents.map(a => `<a href="/agent.html?id=${encodeURIComponent(a)}" style="color:#666">${a}</a>`).join(', ') : ''}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load discoveries:', e);
+  }
+}
+
 // Research briefing functions
 async function loadResearch() {
   try {
@@ -820,7 +923,9 @@ function updateCountdown() {
 loadPack().then(() => {
   refresh();
   loadResearch();
+  loadDiscoveries();
   setInterval(refresh, 15000);
+  setInterval(loadDiscoveries, 30000);
   updateCountdown();
   setInterval(updateCountdown, 1000);
 });

@@ -343,6 +343,85 @@ app.get('/api/insights/:cell', (req, res) => {
   });
 });
 
+// --- API: Discoveries ---
+const DISCOVERIES_FILE = path.join(__dirname, '..', 'data', 'discoveries.json');
+
+function readDiscoveries() {
+  try {
+    if (fs.existsSync(DISCOVERIES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DISCOVERIES_FILE, 'utf8'));
+      return data.discoveries || [];
+    }
+  } catch (e) {
+    console.error('[DISCOVERIES] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/discoveries', (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  const pack = req.query.pack || null;
+  let discoveries = readDiscoveries();
+
+  // Filter by pack if specified
+  if (pack) {
+    discoveries = discoveries.filter(d => d.pack === pack);
+  }
+
+  res.json({
+    discoveries: discoveries.slice(-limit).reverse(),
+    total: discoveries.length
+  });
+});
+
+app.get('/api/discoveries/high-novelty', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const discoveries = readDiscoveries().filter(d => d.novelty === 'high');
+  res.json({
+    discoveries: discoveries.slice(-limit).reverse(),
+    total: discoveries.length
+  });
+});
+
+app.get('/api/discoveries/stats', (req, res) => {
+  const discoveries = readDiscoveries();
+
+  // Count per pack
+  const byPack = {};
+  // Count per cell
+  const byCell = {};
+  // Count by novelty
+  const byNovelty = { high: 0, medium: 0, low: 0 };
+
+  for (const d of discoveries) {
+    byPack[d.pack] = (byPack[d.pack] || 0) + 1;
+    byCell[d.cell] = (byCell[d.cell] || 0) + 1;
+    if (d.novelty) byNovelty[d.novelty] = (byNovelty[d.novelty] || 0) + 1;
+  }
+
+  res.json({
+    total: discoveries.length,
+    highNovelty: byNovelty.high,
+    byPack,
+    byCell,
+    byNovelty
+  });
+});
+
+app.get('/api/discoveries/agent/:name', (req, res) => {
+  const name = req.params.name;
+  const limit = parseInt(req.query.limit) || 50;
+  const discoveries = readDiscoveries().filter(d =>
+    d.agents && d.agents.includes(name)
+  );
+  res.json({
+    agent: name,
+    discoveries: discoveries.slice(-limit).reverse(),
+    total: discoveries.length,
+    discoveryRate: discoveries.length > 0 ? discoveries.length : 0
+  });
+});
+
 // --- API: Post Weigher Proxy ---
 app.post('/api/weigh', async (req, res) => {
   try {
