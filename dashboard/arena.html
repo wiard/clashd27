@@ -334,6 +334,101 @@
   .rate-btn:hover { border-color: #888; color: #ccc; }
   .rate-btn.voted { border-color: var(--orange); color: var(--orange); }
   .rate-sep { color: #444; font-family: 'Space Mono', monospace; font-size: 11px; }
+
+  /* DEEP-DIVE PANEL */
+  .dd-panel {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(255,215,0,0.04);
+    border: 1px solid #333;
+    border-radius: 4px;
+  }
+  .dd-verdict {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .dd-verdict.high-value-gap { background: #ffd700; color: #000; }
+  .dd-verdict.confirmed-direction { background: var(--orange); color: #000; }
+  .dd-verdict.already-explored { background: #444; color: #999; }
+  .dd-verdict.low-feasibility { background: #cc2222; color: #fff; }
+  .dd-scores {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .dd-score-item {
+    flex: 1;
+    min-width: 80px;
+  }
+  .dd-score-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+  .dd-score-bar {
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .dd-score-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+  .dd-score-fill.high { background: #22aa22; }
+  .dd-score-fill.mid { background: #cc8800; }
+  .dd-score-fill.low { background: #cc2222; }
+  .dd-score-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: #888;
+    text-align: right;
+    margin-top: 1px;
+  }
+  .dd-closest {
+    font-size: 12px;
+    color: #888;
+    margin-top: 8px;
+    border-top: 1px solid #2a2a2a;
+    padding-top: 8px;
+  }
+  .dd-closest strong { color: #aaa; font-size: 10px; font-family: 'Space Mono', monospace; letter-spacing: 1px; }
+  .dd-labs {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .dd-lab {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    background: #1a1a2a;
+    border: 1px solid #333;
+    padding: 3px 8px;
+    border-radius: 2px;
+    color: #aaa;
+  }
+  .dd-experiment {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--orange);
+    background: rgba(255,69,0,0.1);
+    padding: 8px 12px;
+    border-radius: 3px;
+    margin-top: 8px;
+  }
+
   .findings-empty {
     color: #555;
     font-family: 'Space Mono', monospace;
@@ -942,6 +1037,58 @@ async function refresh(){
 let currentFindingsFilter = 'all';
 let allFindings = [];
 let topRatedFindings = [];
+let deepDiveCache = {}; // keyed by discovery_id
+
+async function loadDeepDives() {
+  try {
+    const data = await fetch('/api/deep-dives?limit=100').then(r => r.json());
+    deepDiveCache = {};
+    for (const d of (data.dives || [])) {
+      deepDiveCache[d.discovery_id] = d;
+    }
+  } catch (e) {
+    console.error('Failed to load deep-dives:', e);
+  }
+}
+
+function renderDeepDive(dd) {
+  if (!dd) return '';
+  const vClass = dd.verdict.toLowerCase().replace(/\s+/g, '-');
+  const s = dd.scores || {};
+  const scoreFillClass = (val) => val >= 65 ? 'high' : val >= 35 ? 'mid' : 'low';
+
+  const scoreBar = (label, val) => `
+    <div class="dd-score-item">
+      <div class="dd-score-label">${label}</div>
+      <div class="dd-score-bar"><div class="dd-score-fill ${scoreFillClass(val)}" style="width:${val}%"></div></div>
+      <div class="dd-score-num">${val}</div>
+    </div>`;
+
+  const closest = dd.existence?.closest_work
+    ? `<div class="dd-closest"><strong>CLOSEST WORK:</strong> ${escapeHtml(dd.existence.closest_work)}</div>` : '';
+
+  const labs = (dd.actionability?.active_labs || []);
+  const labsHtml = labs.length
+    ? `<div class="dd-labs">${labs.map(l => `<span class="dd-lab">${escapeHtml(l.name)} — ${escapeHtml(l.institution)}</span>`).join('')}</div>` : '';
+
+  const experiment = dd.actionability?.proposed_experiment
+    ? `<div class="dd-experiment">🧪 ${escapeHtml(dd.actionability.proposed_experiment)}</div>` : '';
+
+  return `
+    <div class="dd-panel">
+      <span class="dd-verdict ${vClass}">🔭 ${dd.verdict}</span>
+      <span class="dd-score-num" style="margin-left:8px;color:var(--orange);font-weight:700;">${s.total}/100</span>
+      <div class="dd-scores">
+        ${scoreBar('NOVELTY', s.novelty || 0)}
+        ${scoreBar('FEASIBILITY', s.feasibility || 0)}
+        ${scoreBar('IMPACT', s.impact || 0)}
+        ${scoreBar('MOMENTUM', s.momentum || 0)}
+      </div>
+      ${closest}
+      ${labsHtml}
+      ${experiment}
+    </div>`;
+}
 
 // Rating helpers
 function getVoted() {
@@ -1074,6 +1221,15 @@ function renderFindings() {
     const kws = f.keywords || [];
     const kwHtml = kws.length ? `<div class="finding-keywords">${kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('')}</div>` : '';
 
+    // Deep-dive data (discoveries only)
+    const dd = (f.type === 'discovery' && f.id) ? deepDiveCache[f.id] : null;
+    const ddHtml = renderDeepDive(dd);
+
+    // If deep-dive has an experiment, use it instead of the finding's own
+    if (dd && dd.actionability?.proposed_experiment) {
+      hypothesis = ''; // deep-dive panel renders the experiment
+    }
+
     // Ratings
     const r = f.ratings || { up: 0, down: 0 };
     const v = voted[f.id];
@@ -1098,6 +1254,7 @@ function renderFindings() {
         ${source}
         ${badges}
         ${hypothesis}
+        ${ddHtml}
         ${kwHtml}
         ${ratingHtml}
       </div>
@@ -1193,8 +1350,10 @@ loadPack().then(() => {
   refresh();
   loadResearch();
   loadDiscoveries();
+  loadDeepDives();
   setInterval(refresh, 15000);
   setInterval(loadDiscoveries, 30000);
+  setInterval(loadDeepDives, 30000);
   updateCountdown();
   setInterval(updateCountdown, 1000);
 });

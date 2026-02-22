@@ -8,11 +8,15 @@ const { State, ENERGY, loadPack, getActivePack, getCellLabel } = require('./lib/
 const { cellLabel, cellLabelShort, getLayerName, getLayerForCell, isCrossLayer } = require('./lib/cube');
 const insightGen = require('./lib/generate-insight');
 const researcher = require('./lib/researcher');
+const { deepDive, readDeepDives } = require('./lib/deep-dive');
 
 const TICK_INTERVAL = parseInt(process.env.TICK_INTERVAL || '300') * 1000; // 2 minutes
 
 const state = new State();
 let clockTimer = null;
+
+// Deep-dive queue: discoveries waiting for evaluation
+let deepDiveQueue = [];
 
 /**
  * Get an agent's accumulated keywords from state (last 5 sets)
@@ -136,6 +140,20 @@ async function tick() {
   // Process any pending insight/discovery queue (legacy)
   insightGen.processQueue(result.tick);
 
+  // === DEEP DIVE (max 1 per tick) ===
+  if (deepDiveQueue.length > 0) {
+    const discovery = deepDiveQueue.shift();
+    console.log(`[ENGINE] Deep-diving ${discovery.id} (${deepDiveQueue.length} remaining in queue)`);
+    try {
+      const result = await deepDive(discovery);
+      if (result) {
+        console.log(`[ENGINE] Deep-dive complete: ${result.verdict} (${result.scores.total}/100)`);
+      }
+    } catch (err) {
+      console.error(`[ENGINE] Deep-dive error: ${err.message}`);
+    }
+  }
+
   // === ACTIVE RESEARCH ===
   // Only research if agents are on the active cell and pack is loaded
   if (agentsHere.length > 0 && pack) {
@@ -217,6 +235,12 @@ async function tick() {
             layer0Agent.bondsWithFindings = (layer0Agent.bondsWithFindings || 0) + 1;
             layer2Agent.bondsWithFindings = (layer2Agent.bondsWithFindings || 0) + 1;
             console.log(`  💡 DISCOVERY: ${layer0Label} x ${layer2Label} | impact=${discovery.impact} | feasibility=${discovery.feasibility}`);
+
+            // Queue for deep-dive if high impact or high novelty
+            if (discovery.impact === 'high' || discovery.novelty === 'high') {
+              deepDiveQueue.push(discovery);
+              console.log(`  🔭 Queued ${discovery.id} for deep-dive (queue: ${deepDiveQueue.length})`);
+            }
           }
         } catch (err) {
           console.error(`  [RESEARCHER] Discovery investigation error: ${err.message}`);

@@ -7,14 +7,16 @@ require('dotenv').config();
 const {
   Client, GatewayIntentBits, EmbedBuilder, ChannelType, PermissionFlagsBits,
 } = require('discord.js');
-const { State, ENERGY } = require('./lib/state');
+const { State, ENERGY, getActivePack, getCellLabel } = require('./lib/state');
 const {
   renderCube, cellLabel, cellLabelShort, getNeighbors,
-  getNeighborsByType, getNeighborType, getLayerName, neighborSummary,
+  getNeighborsByType, getNeighborType, getLayerName, getLayerForCell, isCrossLayer, neighborSummary,
   NEIGHBOR_TYPE, NEIGHBOR_INFO,
 } = require('./lib/cube');
+const { investigateCell, investigateBond, investigateDiscovery } = require('./lib/researcher');
+const { deepDive, readDeepDives } = require('./lib/deep-dive');
 
-const TICK_INTERVAL = parseInt(process.env.TICK_INTERVAL || '120') * 1000; // 2 minutes for testing
+const TICK_INTERVAL = parseInt(process.env.TICK_INTERVAL || '300') * 1000; // 5 minutes (rate limits)
 const CHANNEL_PREFIX = 'cel-';
 
 const client = new Client({
@@ -24,6 +26,34 @@ const client = new Client({
 const state = new State();
 let clockTimer = null;
 const channels = {};
+
+// Research state
+let deepDiveQueue = [];
+
+function getAgentKeywords(agent) {
+  return agent.keywords || [];
+}
+
+function updateAgentKeywords(agent, newKeywords) {
+  if (!agent.lastCellKeywords) agent.lastCellKeywords = [];
+  agent.lastCellKeywords.push(newKeywords);
+  if (agent.lastCellKeywords.length > 5) {
+    agent.lastCellKeywords = agent.lastCellKeywords.slice(-5);
+  }
+  const all = new Set();
+  for (const kwSet of agent.lastCellKeywords) {
+    for (const kw of kwSet) all.add(kw);
+  }
+  agent.keywords = [...all].slice(0, 25);
+}
+
+function ensureResearchFields(agent) {
+  if (agent.keywords === undefined) agent.keywords = [];
+  if (agent.lastCellKeywords === undefined) agent.lastCellKeywords = [];
+  if (agent.findingsCount === undefined) agent.findingsCount = 0;
+  if (agent.bondsWithFindings === undefined) agent.bondsWithFindings = 0;
+  if (agent.discoveriesCount === undefined) agent.discoveriesCount = 0;
+}
 
 async function cacheChannels(guild) {
   const allChannels = await guild.channels.fetch();
@@ -144,6 +174,146 @@ async function tick() {
   if (isCycleEnd) {
     await sendToChannel('residue', { embeds: [cycleEmbed(state.getCycleSummary())] });
     await sendToChannel('leaderboard', { embeds: [leaderboardEmbed()] });
+  }
+
+  // === DEEP DIVE (max 1 per tick, runs before research so it counts as the API call) ===
+  if (deepDiveQueue.length > 0) {
+    const ddDiscovery = deepDiveQueue.shift();
+    console.log(`[DEEP-DIVE] Starting deep dive on ${ddDiscovery.id} (${deepDiveQueue.length} remaining)`);
+    try {
+      const ddResult = await deepDive(ddDiscovery);
+      if (ddResult) {
+        console.log(`[DEEP-DIVE] ${ddDiscovery.id} complete: ${ddResult.verdict} (${ddResult.scores.total}/100)`);
+      }
+    } catch (err) {
+      console.error(`[DEEP-DIVE] Error: ${err.message}`);
+    }
+    // Deep dive uses multiple API calls internally — skip research this tick
+    state.save();
+    return;
+  }
+
+  // Move all alive agents to active cell
+  for (const [, agent] of state.agents) {
+    if (agent.alive && agent.currentCell !== activeCell) {
+      agent.currentCell = activeCell;
+    }
+  }
+  state.save();
+  // === ACTIVE RESEARCH (max 1 API call per tick) ===
+  const agentsHere = []; for (const [, a] of state.agents) { if (a.alive && a.currentCell === activeCell) agentsHere.push(a); }
+  const pack = getActivePack();
+  const packLabel = getCellLabel(activeCell);
+  const cubeLabel = cellLabelShort(activeCell);
+  const label = packLabel !== `Cell ${activeCell}` ? packLabel : cubeLabel;
+  const packName = pack ? pack.name : 'Research';
+
+  if (agentsHere.length > 0 && pack) {
+    for (const agent of agentsHere) {
+      ensureResearchFields(agent);
+    }
+
+    let apiUsed = false;
+
+    // If 2+ agents with different homeCells → investigateBond() or investigateDiscovery()
+    if (agentsHere.length >= 2) {
+      const agent1 = agentsHere[0];
+      const agent2 = agentsHere[1];
+      if (agent1.homeCell !== agent2.homeCell) {
+        const a1Label = getCellLabel(agent1.homeCell);
+        const a2Label = getCellLabel(agent2.homeCell);
+        const crossLayer = isCrossLayer(agent1.homeCell, agent2.homeCell);
+
+        if (crossLayer) {
+          // Cross-layer: discovery investigation
+          const layer0Agent = getLayerForCell(agent1.homeCell) === 0 ? agent1 : (getLayerForCell(agent2.homeCell) === 0 ? agent2 : agent1);
+          const layer2Agent = layer0Agent === agent1 ? agent2 : agent1;
+          const layer0Label = getCellLabel(layer0Agent.homeCell);
+          const layer2Label = getCellLabel(layer2Agent.homeCell);
+
+          try {
+            const discovery = await investigateDiscovery({
+              tick: tickNum,
+              cell: activeCell,
+              cellLabel: label,
+              agent1Name: layer0Agent.displayName,
+              agent2Name: layer2Agent.displayName,
+              layer0Cell: layer0Label,
+              layer2Cell: layer2Label,
+              packName,
+              dataKeywords: getAgentKeywords(layer0Agent),
+              hypothesisKeywords: getAgentKeywords(layer2Agent)
+            });
+
+            if (discovery) {
+              layer0Agent.discoveriesCount = (layer0Agent.discoveriesCount || 0) + 1;
+              layer2Agent.discoveriesCount = (layer2Agent.discoveriesCount || 0) + 1;
+              layer0Agent.bondsWithFindings = (layer0Agent.bondsWithFindings || 0) + 1;
+              layer2Agent.bondsWithFindings = (layer2Agent.bondsWithFindings || 0) + 1;
+              console.log(`[RESEARCH] ${discovery.id} | DISCOVERY | ${layer0Label} x ${layer2Label}`);
+
+              // If discovery with impact=high → queue for deepDive() on next tick
+              if (discovery.impact === 'high') {
+                deepDiveQueue.push(discovery);
+                console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
+              }
+            }
+            apiUsed = true;
+          } catch (err) {
+            console.error(`[RESEARCH] Discovery investigation error: ${err.message}`);
+          }
+        } else {
+          // Same-layer: bond investigation
+          try {
+            const bondFinding = await investigateBond({
+              tick: tickNum,
+              cell: activeCell,
+              cellLabel: label,
+              agent1Name: agent1.displayName,
+              agent2Name: agent2.displayName,
+              cell1Label: a1Label,
+              cell2Label: a2Label,
+              packName,
+              cell1Keywords: getAgentKeywords(agent1),
+              cell2Keywords: getAgentKeywords(agent2)
+            });
+
+            if (bondFinding) {
+              agent1.bondsWithFindings = (agent1.bondsWithFindings || 0) + 1;
+              agent2.bondsWithFindings = (agent2.bondsWithFindings || 0) + 1;
+              console.log(`[RESEARCH] ${bondFinding.id} | BOND | ${a1Label} x ${a2Label}`);
+            }
+            apiUsed = true;
+          } catch (err) {
+            console.error(`[RESEARCH] Bond investigation error: ${err.message}`);
+          }
+        }
+      }
+    }
+
+    // Pick lead agent on active cell → investigateCell (only if no bond/discovery this tick)
+    if (!apiUsed) {
+      const leadAgent = agentsHere[0];
+      try {
+        const cellFinding = await investigateCell({
+          tick: tickNum,
+          agentName: leadAgent.displayName,
+          cell: activeCell,
+          cellLabel: label,
+          packName
+        });
+
+        if (cellFinding && cellFinding.keywords) {
+          updateAgentKeywords(leadAgent, cellFinding.keywords);
+          leadAgent.findingsCount = (leadAgent.findingsCount || 0) + 1;
+          console.log(`[RESEARCH] ${cellFinding.id} | CELL | ${label}`);
+        }
+      } catch (err) {
+        console.error(`[RESEARCH] Cell investigation error: ${err.message}`);
+      }
+    }
+
+    state.save();
   }
 }
 

@@ -565,6 +565,38 @@ app.get('/api/agent/:name/keywords', (req, res) => {
   });
 });
 
+// --- API: Deep Dives ---
+const DEEP_DIVES_FILE = path.join(__dirname, '..', 'data', 'deep-dives.json');
+
+function readDeepDives() {
+  try {
+    if (fs.existsSync(DEEP_DIVES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DEEP_DIVES_FILE, 'utf8'));
+      return data.dives || [];
+    }
+  } catch (e) {
+    console.error('[DEEP-DIVES] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/deep-dives', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const dives = readDeepDives();
+  res.json({
+    dives: dives.slice(-limit).reverse(),
+    total: dives.length
+  });
+});
+
+app.get('/api/deep-dives/:id', (req, res) => {
+  const id = req.params.id;
+  const dives = readDeepDives();
+  const dive = dives.find(d => d.discovery_id === id);
+  if (!dive) return res.status(404).json({ error: 'Deep-dive not found' });
+  res.json(dive);
+});
+
 // --- API: Post Weigher Proxy ---
 app.post('/api/weigh', async (req, res) => {
   try {
