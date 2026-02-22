@@ -412,14 +412,14 @@
 <script>
 async function refreshStats() {
   try {
-    const [state, discStats] = await Promise.all([
+    const [state, findingsStats] = await Promise.all([
       fetch('/api/state').then(r => r.json()),
-      fetch('/api/discoveries/stats').then(r => r.json())
+      fetch('/api/findings/stats').then(r => r.json())
     ]);
     document.getElementById('live-ticks').innerHTML = `<span class="stat-val">${state.tick.toLocaleString()}</span> ticks`;
     document.getElementById('live-bonds').innerHTML = `<span class="stat-val">${state.totalBonds.toLocaleString()}</span> bonds`;
-    document.getElementById('live-discoveries').innerHTML = `<span class="stat-val">${discStats.total}</span> discoveries`;
-    document.getElementById('live-high').innerHTML = `<span class="stat-val">${discStats.highNovelty || 0}</span> high-novelty`;
+    document.getElementById('live-discoveries').innerHTML = `<span class="stat-val">${findingsStats.byType?.discovery || 0}</span> discoveries`;
+    document.getElementById('live-high').innerHTML = `<span class="stat-val">${findingsStats.total || 0}</span> findings`;
   } catch (e) {
     console.error('Stats fetch failed:', e);
   }
@@ -427,26 +427,35 @@ async function refreshStats() {
 
 async function loadDiscoveries() {
   try {
-    const data = await fetch('/api/discoveries?limit=5').then(r => r.json());
+    const data = await fetch('/api/findings?type=discovery&limit=5').then(r => r.json());
     const feed = document.getElementById('discovery-feed');
 
-    if (!data.discoveries || data.discoveries.length === 0) {
+    if (!data.findings || data.findings.length === 0) {
       feed.innerHTML = '<div class="discoveries-empty">No discoveries yet. Agents are exploring...</div>';
       return;
     }
 
-    feed.innerHTML = data.discoveries.map(d => `
-      <div class="discovery-card ${d.novelty === 'high' ? 'high-novelty' : ''}">
+    feed.innerHTML = data.findings.map(d => {
+      const domains = d.cellLabels ? d.cellLabels.join(' × ') : 'Cross-domain';
+      const fCls = d.feasibility === 'high' ? 'color:#22aa22' : d.feasibility === 'low' ? 'color:#cc2222' : 'color:#cc8800';
+      const iCls = d.impact === 'high' ? 'color:#ffd700' : d.impact === 'low' ? 'color:#999' : 'color:var(--orange)';
+      return `
+      <div class="discovery-card ${d.impact === 'high' ? 'high-novelty' : ''}">
         <div class="discovery-domains">
           <span class="icon">💡</span>
-          ${d.agentDomains ? d.agentDomains.join(' × ') : 'Unknown domains'}
+          ${escapeHtml(domains)}
         </div>
-        <div class="discovery-connection">${escapeHtml(d.connection || '')}</div>
-        ${d.evidence ? `<div class="discovery-evidence"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}${d.source ? ` — <em>${escapeHtml(d.source)}</em>` : ''}</div>` : ''}
-        ${d.hypothesis ? `<div class="discovery-hypothesis">💡 ${escapeHtml(d.hypothesis)}</div>` : ''}
-        <div class="discovery-meta">tick ${d.tick} · ${d.pack} · ${d.novelty || 'medium'} novelty</div>
+        <div class="discovery-connection">${escapeHtml(d.discovery || '')}</div>
+        ${d.source ? `<div class="discovery-evidence"><strong>Source:</strong> ${escapeHtml(d.source)}</div>` : ''}
+        ${d.proposed_experiment ? `<div class="discovery-hypothesis">🧪 ${escapeHtml(d.proposed_experiment)}</div>` : ''}
+        <div class="discovery-meta">
+          tick ${d.tick} · ${d.pack || ''} ·
+          <span style="${fCls}">feasibility: ${d.feasibility || 'medium'}</span> ·
+          <span style="${iCls}">impact: ${d.impact || 'medium'}</span>
+        </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   } catch (e) {
     console.error('Discoveries fetch failed:', e);
   }

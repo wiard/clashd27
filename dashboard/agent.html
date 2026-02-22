@@ -150,11 +150,13 @@ if (!agentName) {
 
 async function loadAgent() {
   try {
-    const [agentData, historyData, state, discoveriesData] = await Promise.all([
+    const [agentData, historyData, state, discoveriesData, findingsData, kwData] = await Promise.all([
       fetch(`/api/agent/${encodeURIComponent(agentName)}`).then(r => r.json()),
       fetch(`/api/agent/${encodeURIComponent(agentName)}/history?limit=50`).then(r => r.json()),
       fetch('/api/state').then(r => r.json()),
-      fetch(`/api/discoveries/agent/${encodeURIComponent(agentName)}`).then(r => r.json())
+      fetch(`/api/discoveries/agent/${encodeURIComponent(agentName)}`).then(r => r.json()),
+      fetch(`/api/agent/${encodeURIComponent(agentName)}/findings?limit=50`).then(r => r.json()),
+      fetch(`/api/agent/${encodeURIComponent(agentName)}/keywords`).then(r => r.json())
     ]);
 
     if (agentData.error) {
@@ -162,7 +164,7 @@ async function loadAgent() {
       return;
     }
 
-    renderAgent(agentData, historyData, state, discoveriesData);
+    renderAgent(agentData, historyData, state, discoveriesData, findingsData, kwData);
     startCountdown();
   } catch (e) {
     document.getElementById('content').innerHTML = `<div class="loading">Error loading agent: ${e.message}</div>`;
@@ -171,7 +173,7 @@ async function loadAgent() {
 
 function ec(e) { return e >= 70 ? 'e-hi' : e >= 40 ? 'e-md' : 'e-lo'; }
 
-function renderAgent(agent, history, state, discoveries) {
+function renderAgent(agent, history, state, discoveries, findings, kwData) {
   document.title = `${agent.displayName} — CLASHD27`;
 
   // Find prev/next agents in leaderboard
@@ -179,6 +181,10 @@ function renderAgent(agent, history, state, discoveries) {
   const currentIndex = leaderboard.findIndex(a => a.displayName === agent.displayName);
   const prevAgent = currentIndex > 0 ? leaderboard[currentIndex - 1] : null;
   const nextAgent = currentIndex < leaderboard.length - 1 ? leaderboard[currentIndex + 1] : null;
+
+  const keywords = kwData.keywords || agent.keywords || [];
+  const agentFindings = (findings && findings.findings) || [];
+  const discoveryRate = agent.totalBonds > 0 ? Math.round(((kwData.discoveriesCount || 0) / agent.totalBonds) * 100) : 0;
 
   document.getElementById('content').innerHTML = `
     <div class="agent-header">
@@ -195,6 +201,7 @@ function renderAgent(agent, history, state, discoveries) {
             <span>Streak <strong>${agent.survivalStreak}</strong></span>
             <span>Bonds <strong>${agent.totalBonds}</strong></span>
           </div>
+          ${keywords.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:12px;">${keywords.map(k => `<span style="font-family:'Space Mono',monospace;font-size:10px;background:#222;color:#888;padding:2px 6px;border-radius:2px;border:1px solid #444;">${escapeHtml(k)}</span>`).join('')}</div>` : ''}
         </div>
         <div class="energy-big">
           <div class="energy-value">${agent.energy}%</div>
@@ -216,29 +223,36 @@ function renderAgent(agent, history, state, discoveries) {
         <h2>Agent Stats</h2>
         <div class="stat-grid">
           <div class="stat-item">
+            <div class="stat-value">${kwData.findingsCount || 0}</div>
+            <div class="stat-label">FINDINGS</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${kwData.discoveriesCount || 0}</div>
+            <div class="stat-label">DISCOVERIES</div>
+          </div>
+          <div class="stat-item">
             <div class="stat-value">${agent.stats.uniqueCellsVisited}</div>
             <div class="stat-label">CELLS VISITED</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${agent.stats.favoriteCell}</div>
-            <div class="stat-label">FAVORITE CELL${agent.stats.favoriteCellLabel ? ` (${agent.stats.favoriteCellLabel})` : ''}</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">L${agent.stats.favoriteLayer}</div>
-            <div class="stat-label">FAVORITE LAYER</div>
           </div>
           <div class="stat-item">
             <div class="stat-value">${agent.stats.crossLayerBondPct}%</div>
             <div class="stat-label">CROSS-LAYER BONDS</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">${agent.stats.insightsGenerated}</div>
-            <div class="stat-label">INSIGHTS GENERATED</div>
+            <div class="stat-value">${discoveryRate}%</div>
+            <div class="stat-label">DISCOVERY RATE</div>
           </div>
           <div class="stat-item">
             <div class="stat-value">${agent.deaths || 0}</div>
             <div class="stat-label">DEATHS</div>
           </div>
+        </div>
+      </div>
+
+      <div class="card" style="grid-column: 1 / -1;">
+        <h2>Research Findings (${agentFindings.length})</h2>
+        <div class="timeline" style="max-height:500px;">
+          ${renderAgentFindings(agentFindings)}
         </div>
       </div>
 
@@ -254,14 +268,6 @@ function renderAgent(agent, history, state, discoveries) {
         <div class="relationships">
           ${renderRelationships(agent.relationships)}
         </div>
-      </div>
-
-      <div class="card" style="grid-column: 1 / -1;">
-        <h2>💡 Discoveries (${discoveries.total || 0})</h2>
-        <div class="discoveries">
-          ${renderDiscoveries(discoveries.discoveries || [])}
-        </div>
-        ${discoveries.total > 0 ? `<div style="font-family:'Space Mono',monospace;font-size:11px;color:#666;margin-top:12px;">Discovery rate: ${Math.round((discoveries.total / Math.max(agent.totalBonds, 1)) * 100)}% of bonds lead to discoveries</div>` : ''}
       </div>
     </div>
 
@@ -337,22 +343,38 @@ function renderRelationships(relationships) {
   `).join('');
 }
 
-function renderDiscoveries(discoveries) {
-  if (!discoveries || discoveries.length === 0) {
-    return '<div style="color:#666;font-size:12px;padding:20px;text-align:center;">No discoveries yet — keep exploring!</div>';
+function renderAgentFindings(findings) {
+  if (!findings || findings.length === 0) {
+    return '<div style="color:#666;font-size:12px;padding:20px;text-align:center;">No findings yet — agent is exploring...</div>';
   }
 
-  return discoveries.slice(0, 10).map(d => `
-    <div style="background:#1a1a1a;border-left:3px solid ${d.novelty === 'high' ? '#ffd700' : 'var(--orange)'};padding:14px;margin-bottom:10px;border-radius:0 4px 4px 0;">
-      <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--orange);margin-bottom:8px;">
-        💡 ${d.agentDomains ? d.agentDomains.join(' × ') : 'Cross-domain'}
+  return findings.map(f => {
+    const icon = f.type === 'discovery' ? '💡' : f.type === 'bond' ? '🔗' : '🔬';
+    const borderColor = f.type === 'discovery' ? '#ffd700' : f.type === 'bond' ? 'var(--orange)' : 'var(--green)';
+    const content = f.finding || f.connection || f.discovery || '';
+    const kws = (f.keywords || []).slice(0, 6);
+    const kwTags = kws.length ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;">${kws.map(k => `<span style="font-family:'Space Mono',monospace;font-size:8px;background:#222;color:#777;padding:1px 4px;border-radius:2px;border:1px solid #333;">${escapeHtml(k)}</span>`).join('')}</div>` : '';
+    const cellInfo = f.cellLabels ? f.cellLabels.join(' × ') : (f.cellLabel || 'Cell ' + f.cell);
+
+    let badges = '';
+    if (f.type === 'bond' && f.strength) {
+      badges = `<span style="font-family:'Space Mono',monospace;font-size:9px;color:${f.strength === 'strong' ? '#22aa22' : '#cc8800'};margin-left:8px;">${f.strength}</span>`;
+    }
+    if (f.type === 'discovery') {
+      badges = `<span style="font-family:'Space Mono',monospace;font-size:9px;color:${f.impact === 'high' ? '#ffd700' : '#cc8800'};margin-left:8px;">impact: ${f.impact || 'medium'}</span>`;
+    }
+
+    return `
+      <div class="timeline-item" style="border-left-color:${borderColor};">
+        <div class="timeline-tick">${icon} ${f.type.toUpperCase()} · tick ${f.tick} · ${escapeHtml(cellInfo)}${badges}</div>
+        <div class="timeline-event" style="font-size:13px;line-height:1.6;">${escapeHtml(content)}</div>
+        ${f.source ? `<div style="font-size:10px;color:#555;margin-top:4px;font-style:italic;">${escapeHtml(f.source)}</div>` : ''}
+        ${f.hypothesis ? `<div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);margin-top:6px;">💡 ${escapeHtml(f.hypothesis)}</div>` : ''}
+        ${f.proposed_experiment ? `<div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);margin-top:6px;">🧪 ${escapeHtml(f.proposed_experiment)}</div>` : ''}
+        ${kwTags}
       </div>
-      <div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:8px;">${escapeHtml(d.connection || '')}</div>
-      ${d.evidence ? `<div style="font-size:11px;color:#888;border-top:1px solid #333;padding-top:8px;margin-top:8px;"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}</div>` : ''}
-      ${d.hypothesis ? `<div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);background:rgba(255,69,0,0.1);padding:6px 10px;border-radius:3px;margin-top:8px;">💡 ${escapeHtml(d.hypothesis)}</div>` : ''}
-      <div style="font-family:'Space Mono',monospace;font-size:9px;color:#555;margin-top:8px;">tick ${d.tick} · ${d.novelty || 'medium'} novelty</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function escapeHtml(text) {

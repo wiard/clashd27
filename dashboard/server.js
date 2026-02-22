@@ -422,6 +422,93 @@ app.get('/api/discoveries/agent/:name', (req, res) => {
   });
 });
 
+// --- API: Findings (Active Research Output) ---
+const FINDINGS_FILE = path.join(__dirname, '..', 'data', 'findings.json');
+
+function readFindings() {
+  try {
+    if (fs.existsSync(FINDINGS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(FINDINGS_FILE, 'utf8'));
+      return data.findings || [];
+    }
+  } catch (e) {
+    console.error('[FINDINGS] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/findings', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const type = req.query.type || null;
+  const novelty = req.query.novelty || null;
+
+  let findings = readFindings();
+
+  if (type) findings = findings.filter(f => f.type === type);
+  if (novelty) findings = findings.filter(f => f.novelty === novelty);
+
+  res.json({
+    findings: findings.slice(-limit).reverse(),
+    total: findings.length
+  });
+});
+
+app.get('/api/findings/stats', (req, res) => {
+  const findings = readFindings();
+  const byType = { cell: 0, bond: 0, discovery: 0 };
+  const byNovelty = { high: 0, medium: 0, low: 0 };
+
+  for (const f of findings) {
+    if (byType[f.type] !== undefined) byType[f.type]++;
+    if (f.novelty && byNovelty[f.novelty] !== undefined) byNovelty[f.novelty]++;
+  }
+
+  res.json({ total: findings.length, byType, byNovelty });
+});
+
+app.get('/api/findings/cell/:id', (req, res) => {
+  const cellId = parseInt(req.params.id);
+  const limit = parseInt(req.query.limit) || 20;
+  const findings = readFindings().filter(f => f.cell === cellId);
+  res.json({
+    cell: cellId,
+    findings: findings.slice(-limit).reverse(),
+    total: findings.length
+  });
+});
+
+app.get('/api/agent/:name/findings', (req, res) => {
+  const name = req.params.name;
+  const limit = parseInt(req.query.limit) || 50;
+  const findings = readFindings().filter(f =>
+    f.agent === name || (f.agents && f.agents.includes(name))
+  );
+  res.json({
+    agent: name,
+    findings: findings.slice(-limit).reverse(),
+    total: findings.length
+  });
+});
+
+app.get('/api/agent/:name/keywords', (req, res) => {
+  const name = req.params.name;
+  const state = readState();
+  if (!state) return res.status(500).json({ error: 'State not found' });
+
+  const agents = Object.values(state.agents || {});
+  const agent = agents.find(a => a.displayName === name);
+  if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+  res.json({
+    agent: name,
+    keywords: agent.keywords || [],
+    findingsCount: agent.findingsCount || 0,
+    bondsWithFindings: agent.bondsWithFindings || 0,
+    discoveriesCount: agent.discoveriesCount || 0,
+    lastCells: agent.lastCells || []
+  });
+});
+
 // --- API: Post Weigher Proxy ---
 app.post('/api/weigh', async (req, res) => {
   try {

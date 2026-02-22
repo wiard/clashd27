@@ -142,15 +142,15 @@
 
   .refresh-bar { font-family: 'Space Mono', monospace; font-size: 11px; color: #999; text-align: center; padding: 12px; background: var(--light); border-top: 1px solid var(--mid); }
 
-  /* INSIGHTS FEED */
-  .insights-section {
+  /* FINDINGS FEED */
+  .findings-section {
     background: #0a0a0a;
     border-top: 4px solid var(--orange);
     padding: 24px 20px;
   }
-  @media (min-width: 900px) { .insights-section { padding: 32px 40px; } }
-  .insights-inner { max-width: 900px; margin: 0 auto; }
-  .insights-header {
+  @media (min-width: 900px) { .findings-section { padding: 32px 40px; } }
+  .findings-inner { max-width: 900px; margin: 0 auto; }
+  .findings-header {
     font-family: 'Space Mono', monospace;
     font-size: 12px;
     color: var(--orange);
@@ -161,21 +161,39 @@
     align-items: center;
     gap: 8px;
   }
-  .insights-header .pulse {
+  .findings-header .pulse {
     width: 8px;
     height: 8px;
     background: var(--orange);
     border-radius: 50%;
     animation: pulse 2s infinite;
   }
-  .insights-stats {
+  .findings-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+  .findings-tab {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border: 1px solid #333;
+    border-radius: 3px;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .findings-tab.active { background: var(--orange); color: #000; border-color: var(--orange); font-weight: 700; }
+  .findings-tab:hover:not(.active) { border-color: var(--orange); color: var(--orange); }
+  .findings-stats {
     font-family: 'Space Mono', monospace;
     font-size: 11px;
     color: #666;
     margin-bottom: 16px;
     letter-spacing: 1px;
   }
-  .insights-stats .stat-num { color: var(--orange); font-weight: 700; }
+  .findings-stats .stat-num { color: var(--orange); font-weight: 700; }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
@@ -184,34 +202,38 @@
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .insights-feed {
+  .findings-feed {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: 600px;
+    max-height: 700px;
     overflow-y: auto;
     scroll-behavior: smooth;
   }
-  .insight-item {
+  .finding-item {
     background: #151515;
     border-left: 3px solid #333;
     padding: 14px 16px;
     border-radius: 0 4px 4px 0;
     animation: fadeIn 0.4s ease-out;
   }
-  .insight-item.discovery {
-    border-left-color: var(--orange);
-    background: linear-gradient(90deg, rgba(255,69,0,0.15) 0%, rgba(255,69,0,0.05) 50%, #151515 100%);
-    box-shadow: 0 0 20px rgba(255,69,0,0.1);
+  .finding-item.discovery {
+    border-left-color: #ffd700;
+    background: linear-gradient(90deg, rgba(255,215,0,0.12) 0%, rgba(255,215,0,0.03) 50%, #151515 100%);
+    box-shadow: 0 0 20px rgba(255,215,0,0.08);
   }
-  .insight-item.bond {
+  .finding-item.bond {
     border-left-color: var(--orange);
     background: linear-gradient(90deg, rgba(255,69,0,0.08) 0%, #151515 100%);
   }
-  .insight-item.cell {
+  .finding-item.bond.high-novelty {
+    border-left-color: #ffd700;
+    box-shadow: 0 0 15px rgba(255,215,0,0.08);
+  }
+  .finding-item.cell {
     border-left-color: var(--mod);
   }
-  .insight-meta {
+  .finding-meta {
     font-family: 'Space Mono', monospace;
     font-size: 10px;
     color: #666;
@@ -221,30 +243,99 @@
     gap: 8px;
     align-items: center;
   }
-  .insight-type {
+  .finding-type {
     font-weight: 700;
     padding: 2px 6px;
     border-radius: 2px;
     font-size: 9px;
   }
-  .insight-type.discovery { background: var(--orange); color: #000; }
-  .insight-type.bond { background: var(--orange); color: #000; }
-  .insight-type.cell { background: var(--mod); color: #fff; }
-  .insight-agents { color: #999; }
-  .insight-cell { color: #888; }
-  .insight-tick { color: #555; margin-left: auto; }
-  .insight-content {
+  .finding-type.discovery { background: #ffd700; color: #000; }
+  .finding-type.bond { background: var(--orange); color: #000; }
+  .finding-type.cell { background: var(--mod); color: #fff; }
+  .finding-agents { color: #999; }
+  .finding-cell { color: #888; }
+  .finding-tick { color: #555; margin-left: auto; }
+  .finding-content {
     font-size: 14px;
     line-height: 1.7;
     color: #ccc;
+    margin-bottom: 8px;
   }
-  .insight-item.discovery .insight-content { color: #fff; }
-  .insights-empty {
+  .finding-item.discovery .finding-content { color: #fff; }
+  .finding-source {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #666;
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+  .finding-hypothesis {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--orange);
+    background: rgba(255,69,0,0.1);
+    padding: 8px 12px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+  }
+  .finding-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    border: 1px solid;
+  }
+  .badge-strong { background: rgba(34,170,34,0.15); color: #22aa22; border-color: #22aa22; }
+  .badge-moderate { background: rgba(204,136,0,0.15); color: #cc8800; border-color: #cc8800; }
+  .badge-weak { background: rgba(204,34,34,0.15); color: #cc2222; border-color: #cc2222; }
+  .badge-high { background: rgba(255,215,0,0.2); color: #ffd700; border-color: #ffd700; }
+  .badge-medium { background: rgba(255,69,0,0.15); color: var(--orange); border-color: var(--orange); }
+  .badge-low { background: rgba(102,102,102,0.15); color: #999; border-color: #666; }
+  .finding-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .keyword-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    background: #222;
+    color: #888;
+    padding: 2px 6px;
+    border-radius: 2px;
+    border: 1px solid #333;
+  }
+  .findings-empty {
     color: #555;
     font-family: 'Space Mono', monospace;
     font-size: 12px;
     text-align: center;
     padding: 40px;
+  }
+
+  /* AGENT KEYWORDS IN LEADERBOARD */
+  .agent-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 4px;
+  }
+  .agent-kw {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    background: #1a1a1a;
+    color: #777;
+    padding: 1px 4px;
+    border-radius: 2px;
+    border: 1px solid #333;
   }
 
   /* CELL POPUP */
@@ -556,17 +647,22 @@
       </div>
     </div>
 
-    <div class="insights-section" style="margin-top:16px; border-radius: 4px;">
-      <div class="insights-inner">
-        <div class="insights-header">
+    <div class="findings-section" style="margin-top:16px; border-radius: 4px;">
+      <div class="findings-inner">
+        <div class="findings-header">
           <span class="pulse"></span>
-          LIVE RESEARCH FEED
+          LIVE RESEARCH FINDINGS
         </div>
-        <div class="insights-stats" id="insights-stats">
-          <span class="stat-num">—</span> insights generated · <span class="stat-num">—</span> discoveries · <span class="stat-num">—</span> bonds
+        <div class="findings-tabs">
+          <button class="findings-tab active" onclick="setFindingsFilter('all')">ALL</button>
+          <button class="findings-tab" onclick="setFindingsFilter('bond')">BONDS</button>
+          <button class="findings-tab" onclick="setFindingsFilter('discovery')">DISCOVERIES</button>
         </div>
-        <div class="insights-feed" id="insights-feed">
-          <div class="insights-empty">Waiting for research insights...</div>
+        <div class="findings-stats" id="findings-stats">
+          <span class="stat-num">—</span> findings · <span class="stat-num">—</span> discoveries · <span class="stat-num">—</span> bonds
+        </div>
+        <div class="findings-feed" id="findings-feed">
+          <div class="findings-empty">Agents are investigating... first findings incoming.</div>
         </div>
       </div>
     </div>
@@ -585,7 +681,7 @@
       </div>
     </div>
     <div class="cell-popup-section">
-      <h4>Recent Insights</h4>
+      <h4>Recent Findings</h4>
       <div id="cell-popup-insights">
         <span style="color:#666;font-size:12px;">No insights yet</span>
       </div>
@@ -709,28 +805,49 @@ async function openCellPopup(cellId) {
   document.getElementById('cell-popup-insights').innerHTML = '<span style="color:#666;font-size:12px;">Loading...</span>';
 
   try {
-    const [cellData, insightsData] = await Promise.all([
+    const [cellData, findingsData] = await Promise.all([
       fetch(`/api/cell/${cellId}`).then(r => r.json()),
-      fetch(`/api/insights/${cellId}?limit=5`).then(r => r.json())
+      fetch(`/api/findings/cell/${cellId}?limit=5`).then(r => r.json())
     ]);
 
     document.getElementById('cell-popup-title').textContent = `Cell ${cellId} — ${cellData.label || 'Unknown'}`;
     document.getElementById('cell-popup-desc').textContent = cellData.description || 'No description available.';
 
+    // Show agents with their keywords
     const agents = cellData.occupants || [];
-    document.getElementById('cell-popup-agents').innerHTML = agents.length
-      ? agents.map(a => `<span class="cell-popup-agent" style="cursor:pointer" onclick="window.location='/agent.html?id=${encodeURIComponent(a)}'">${a}</span>`).join('')
-      : '<span style="color:#666;font-size:12px;">No agents currently here</span>';
+    if (agents.length) {
+      const agentHtmlPromises = agents.map(async a => {
+        try {
+          const kwData = await fetch(`/api/agent/${encodeURIComponent(a)}/keywords`).then(r => r.json());
+          const kws = (kwData.keywords || []).slice(0, 4);
+          const kwTags = kws.length ? `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px;">${kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('')}</div>` : '';
+          return `<div class="cell-popup-agent" style="cursor:pointer;display:flex;flex-direction:column;" onclick="window.location='/agent.html?id=${encodeURIComponent(a)}'"><span>${a}</span>${kwTags}</div>`;
+        } catch (e) {
+          return `<span class="cell-popup-agent" style="cursor:pointer" onclick="window.location='/agent.html?id=${encodeURIComponent(a)}'">${a}</span>`;
+        }
+      });
+      const agentHtml = await Promise.all(agentHtmlPromises);
+      document.getElementById('cell-popup-agents').innerHTML = agentHtml.join('');
+    } else {
+      document.getElementById('cell-popup-agents').innerHTML = '<span style="color:#666;font-size:12px;">No agents currently here</span>';
+    }
 
-    const insights = insightsData.insights || [];
-    document.getElementById('cell-popup-insights').innerHTML = insights.length
-      ? insights.map(i => `
+    const findings = findingsData.findings || [];
+    document.getElementById('cell-popup-insights').innerHTML = findings.length
+      ? findings.map(f => {
+          const icon = f.type === 'discovery' ? '💡' : f.type === 'bond' ? '🔗' : '🔬';
+          const agents = f.agents || (f.agent ? [f.agent] : []);
+          const content = f.finding || f.connection || f.discovery || '';
+          const source = f.source ? `<div style="font-size:10px;color:#555;margin-top:4px;font-style:italic;">${escapeHtml(f.source)}</div>` : '';
+          return `
           <div class="cell-popup-insight">
-            <div class="cell-popup-insight-meta">${i.type === 'DISCOVERY' ? '💡' : i.type === 'BOND_INSIGHT' ? '🔗' : '🔬'} ${i.agentName} · tick ${i.tick}</div>
-            <div class="cell-popup-insight-content">${escapeHtml(i.content.slice(0, 200))}${i.content.length > 200 ? '...' : ''}</div>
+            <div class="cell-popup-insight-meta">${icon} ${agents.join(', ')} · tick ${f.tick}</div>
+            <div class="cell-popup-insight-content">${escapeHtml(content.slice(0, 250))}${content.length > 250 ? '...' : ''}</div>
+            ${source}
           </div>
-        `).join('')
-      : '<span style="color:#666;font-size:12px;">No insights generated on this cell yet</span>';
+        `;
+        }).join('')
+      : '<span style="color:#666;font-size:12px;">No findings on this cell yet</span>';
   } catch (e) {
     document.getElementById('cell-popup-desc').textContent = 'Failed to load cell data.';
   }
@@ -770,67 +887,126 @@ async function refresh(){
     renderLayer('layer0',0,d.activeCell,d.cellOccupancy,pack);
     renderLayer('layer1',9,d.activeCell,d.cellOccupancy,pack);
     renderLayer('layer2',18,d.activeCell,d.cellOccupancy,pack);
-    document.getElementById('leaderboard').innerHTML=d.leaderboard.slice(0,6).map((a,i)=>`
+    document.getElementById('leaderboard').innerHTML=d.leaderboard.slice(0,6).map((a,i)=>{
+      const kws = (a.keywords || []).slice(0, 5);
+      const kwHtml = kws.length ? `<div class="agent-keywords">${kws.map(k => `<span class="agent-kw">${escapeHtml(k)}</span>`).join('')}</div>` : '';
+      return `
       <div class="agent-row">
         <div class="agent-rank">${i+1}.</div>
         <div class="agent-info">
           <div class="agent-name" onclick="window.location='/agent.html?id=${encodeURIComponent(a.displayName)}'">${a.displayName}${!a.alive?'<span class="dead-tag">DEAD</span>':''}</div>
-          <div class="agent-stats">cell ${a.currentCell} · ${a.totalBonds} bonds · streak ${a.survivalStreak}</div>
+          <div class="agent-stats">cell ${a.currentCell} · ${a.totalBonds} bonds · ${a.findingsCount || 0} findings</div>
+          ${kwHtml}
           <div class="energy-bar"><div class="energy-fill ${ec(a.energy)}" style="width:${a.energy}%"></div></div>
         </div>
         <div class="agent-pct">${a.energy}%</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     const bonds=d.recentBonds;
     document.getElementById('recent-bonds').innerHTML=bonds.length
       ?bonds.slice(0,8).map(b=>`<div class="bond-row">🔗 <strong>${b.agent1}</strong> ↔ <strong>${b.agent2}</strong>${b.crossLayer?' 🌈':''}<div class="bond-time">cell ${b.cell} · tick ${b.tick}</div></div>`).join('')
       :'<div style="color:#bbb;font-size:11px;font-family:monospace">No bonds yet — agents converging...</div>';
     document.getElementById('refresh-bar').textContent=`Last updated: ${new Date().toLocaleTimeString()} · tick ${d.tick} · auto-refresh every 15s`;
 
-    // Fetch and render insights
+    // Fetch and render findings
     try {
-      const insightsData = await fetch('/api/insights?limit=20').then(r => r.json());
-      renderInsights(insightsData.insights || [], insightsData.total || 0);
+      await loadFindings();
     } catch (e) {
-      console.error('Failed to fetch insights:', e);
+      console.error('Failed to fetch findings:', e);
     }
   }catch(e){document.getElementById('refresh-bar').textContent='Connection error — retrying...';}
 }
 
-function renderInsights(insights, total) {
-  const feed = document.getElementById('insights-feed');
-  const statsEl = document.getElementById('insights-stats');
+let currentFindingsFilter = 'all';
+let allFindings = [];
 
-  // Count by type
-  const discoveries = insights.filter(i => i.type === 'DISCOVERY').length;
-  const bonds = insights.filter(i => i.type === 'BOND_INSIGHT').length;
-  const cells = insights.filter(i => i.type === 'CELL_INSIGHT').length;
+function setFindingsFilter(filter) {
+  currentFindingsFilter = filter;
+  document.querySelectorAll('.findings-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderFindings();
+}
 
-  statsEl.innerHTML = `<span class="stat-num">${total}</span> insights generated · <span class="stat-num">${discoveries}</span> discoveries · <span class="stat-num">${bonds}</span> bonds`;
+async function loadFindings() {
+  try {
+    const data = await fetch('/api/findings?limit=30').then(r => r.json());
+    allFindings = data.findings || [];
+    const statsData = await fetch('/api/findings/stats').then(r => r.json());
+    const statsEl = document.getElementById('findings-stats');
+    statsEl.innerHTML = `<span class="stat-num">${statsData.total}</span> findings · <span class="stat-num">${statsData.byType?.discovery || 0}</span> discoveries · <span class="stat-num">${statsData.byType?.bond || 0}</span> bonds`;
+    renderFindings();
+  } catch (e) {
+    console.error('Failed to load findings:', e);
+  }
+}
 
-  if (!insights || insights.length === 0) {
-    feed.innerHTML = '<div class="insights-empty">Waiting for research insights...</div>';
+function renderFindings() {
+  const feed = document.getElementById('findings-feed');
+  let filtered = allFindings;
+  if (currentFindingsFilter !== 'all') {
+    filtered = allFindings.filter(f => f.type === currentFindingsFilter);
+  }
+
+  if (filtered.length === 0) {
+    feed.innerHTML = '<div class="findings-empty">No findings yet. Agents are investigating...</div>';
     return;
   }
 
-  feed.innerHTML = insights.map(i => {
-    const typeClass = i.type === 'DISCOVERY' ? 'discovery' : i.type === 'BOND_INSIGHT' ? 'bond' : 'cell';
-    const typeLabel = i.type === 'DISCOVERY' ? 'DISCOVERY' : i.type === 'BOND_INSIGHT' ? 'BOND' : 'CELL';
-    const typeIcon = i.type === 'DISCOVERY' ? '💡' : i.type === 'BOND_INSIGHT' ? '🔗' : '🔬';
+  feed.innerHTML = filtered.map(f => {
+    const typeClass = f.type;
+    const typeIcon = f.type === 'discovery' ? '💡' : f.type === 'bond' ? '🔗' : '🔬';
+    const typeLabel = f.type.toUpperCase();
+    const isHighNovelty = f.novelty === 'high';
 
-    // Make agent names clickable
-    const agentNames = (i.agentName || '').split(', ').map(name =>
+    // Agent names
+    const agents = f.agents || (f.agent ? [f.agent] : []);
+    const agentLinks = agents.map(name =>
       `<a href="/agent.html?id=${encodeURIComponent(name)}" style="color:#999;text-decoration:none;" onmouseover="this.style.color='var(--orange)'" onmouseout="this.style.color='#999'">${escapeHtml(name)}</a>`
     ).join(', ');
 
+    // Main content
+    const content = f.finding || f.connection || f.discovery || '';
+
+    // Source line
+    const source = f.source ? `<div class="finding-source">${escapeHtml(f.source)}${f.date ? ` (${escapeHtml(f.date)})` : ''}</div>` : '';
+
+    // Badges
+    let badges = '';
+    if (f.type === 'bond') {
+      const sCls = f.strength === 'strong' ? 'badge-strong' : f.strength === 'weak' ? 'badge-weak' : 'badge-moderate';
+      const nCls = f.novelty === 'high' ? 'badge-high' : f.novelty === 'low' ? 'badge-low' : 'badge-medium';
+      badges = `<div class="finding-badges"><span class="badge ${sCls}">${(f.strength || 'moderate').toUpperCase()}</span><span class="badge ${nCls}">${(f.novelty || 'medium').toUpperCase()} NOVELTY</span></div>`;
+    } else if (f.type === 'discovery') {
+      const fCls = f.feasibility === 'high' ? 'badge-strong' : f.feasibility === 'low' ? 'badge-weak' : 'badge-moderate';
+      const iCls = f.impact === 'high' ? 'badge-high' : f.impact === 'low' ? 'badge-low' : 'badge-medium';
+      badges = `<div class="finding-badges"><span class="badge ${fCls}">FEASIBILITY: ${(f.feasibility || 'medium').toUpperCase()}</span><span class="badge ${iCls}">IMPACT: ${(f.impact || 'medium').toUpperCase()}</span></div>`;
+    }
+
+    // Hypothesis / experiment
+    let hypothesis = '';
+    if (f.hypothesis) hypothesis = `<div class="finding-hypothesis">💡 ${escapeHtml(f.hypothesis)}</div>`;
+    if (f.proposed_experiment) hypothesis = `<div class="finding-hypothesis">🧪 ${escapeHtml(f.proposed_experiment)}</div>`;
+
+    // Cell labels
+    const cellInfo = f.cellLabels ? f.cellLabels.join(' × ') : (f.cellLabel || '');
+
+    // Keywords
+    const kws = f.keywords || [];
+    const kwHtml = kws.length ? `<div class="finding-keywords">${kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('')}</div>` : '';
+
     return `
-      <div class="insight-item ${typeClass}">
-        <div class="insight-meta">
-          <span class="insight-type ${typeClass}">${typeIcon} ${typeLabel}</span>
-          <span class="insight-agents">${agentNames}</span>
-          <span class="insight-cell">→ ${i.cellLabel}</span>
-          <span class="insight-tick">tick ${i.tick}</span>
+      <div class="finding-item ${typeClass} ${isHighNovelty ? 'high-novelty' : ''}">
+        <div class="finding-meta">
+          <span class="finding-type ${typeClass}">${typeIcon} ${typeLabel}</span>
+          <span class="finding-agents">${agentLinks}</span>
+          <span class="finding-cell">→ ${escapeHtml(cellInfo)}</span>
+          <span class="finding-tick">tick ${f.tick}</span>
         </div>
-        <div class="insight-content">${escapeHtml(i.content)}</div>
+        <div class="finding-content">${escapeHtml(content)}</div>
+        ${source}
+        ${badges}
+        ${hypothesis}
+        ${kwHtml}
       </div>
     `;
   }).join('');
