@@ -452,6 +452,7 @@ async function loadDiscoveries() {
           tick ${d.tick} · ${d.pack || ''} ·
           <span style="${fCls}">feasibility: ${d.feasibility || 'medium'}</span> ·
           <span style="${iCls}">impact: ${d.impact || 'medium'}</span>
+          ${d.verificationTotal ? ` · <span style="color:#22aa22">${d.verificationCount}/${d.verificationTotal} claims verified</span> · <span style="color:${d.diveScoreDelta >= 0 ? '#22aa22' : '#cc2222'}">score ${d.diveScore} (${d.diveScoreDelta >= 0 ? '+' : ''}${d.diveScoreDelta})</span>` : ''}
         </div>
       </div>
     `;

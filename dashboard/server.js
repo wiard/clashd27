@@ -363,6 +363,41 @@ app.get('/api/discoveries', (req, res) => {
   const pack = req.query.pack || null;
   let discoveries = readDiscoveries();
 
+  // Also include discovery-type findings (gap packets from researcher.js)
+  const findings = readFindings();
+  const discoveryFindings = findings.filter(f => f.type === 'discovery' || f.type === 'draft');
+  const existingIds = new Set(discoveries.map(d => d.id));
+  for (const f of discoveryFindings) {
+    if (!existingIds.has(f.id)) {
+      discoveries.push({
+        id: f.id,
+        tick: f.tick,
+        cell: f.cell,
+        cellLabel: f.cellLabel,
+        agents: f.agents,
+        agentDomains: f.cellLabels,
+        connection: f.discovery || f.hypothesis || '',
+        hypothesis: f.hypothesis || '',
+        evidence: '',
+        source: f.source || '',
+        novelty: f.novelty || 'medium',
+        pack: f.pack,
+        type: f.type,
+        timestamp: f.timestamp,
+        abc_chain: f.abc_chain,
+        bridge: f.bridge,
+        supporting_sources: f.supporting_sources,
+        limiting_sources: f.limiting_sources,
+        kill_test: f.kill_test,
+        cheapest_validation: f.cheapest_validation,
+        clinical_relevance: f.clinical_relevance,
+        verdict: f.verdict,
+        feasibility: f.feasibility,
+        impact: f.impact
+      });
+    }
+  }
+
   // Filter by pack if specified
   if (pack) {
     discoveries = discoveries.filter(d => d.pack === pack);
@@ -383,6 +418,13 @@ app.get('/api/discoveries', (req, res) => {
       d.diveScoreDelta = verifications.reduce((sum, v) => sum + (v.verified ? 5 : -10), 0);
     }
     return d;
+  });
+
+  // Sort by timestamp
+  enriched.sort((a, b) => {
+    const ta = a.timestamp || '';
+    const tb = b.timestamp || '';
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
   });
 
   res.json({
@@ -546,7 +588,7 @@ app.get('/api/findings/rated', (req, res) => {
 
 app.get('/api/findings/stats', (req, res) => {
   const findings = readFindings();
-  const byType = { cell: 0, bond: 0, discovery: 0 };
+  const byType = { cell: 0, bond: 0, discovery: 0, draft: 0 };
   const byNovelty = { high: 0, medium: 0, low: 0 };
 
   for (const f of findings) {

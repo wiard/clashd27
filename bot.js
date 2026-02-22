@@ -385,20 +385,25 @@ async function tick() {
             });
 
             if (discovery) {
-              layer0Agent.discoveriesCount = (layer0Agent.discoveriesCount || 0) + 1;
-              layer2Agent.discoveriesCount = (layer2Agent.discoveriesCount || 0) + 1;
+              // Only count full discoveries, not drafts
+              if (discovery.type === 'discovery') {
+                layer0Agent.discoveriesCount = (layer0Agent.discoveriesCount || 0) + 1;
+                layer2Agent.discoveriesCount = (layer2Agent.discoveriesCount || 0) + 1;
+              }
               layer0Agent.bondsWithFindings = (layer0Agent.bondsWithFindings || 0) + 1;
               layer2Agent.bondsWithFindings = (layer2Agent.bondsWithFindings || 0) + 1;
-              console.log(`[RESEARCH] ${discovery.id} | DISCOVERY | ${layer0Label} x ${layer2Label}`);
+              console.log(`[RESEARCH] ${discovery.id} | ${(discovery.type || 'discovery').toUpperCase()} | ${layer0Label} x ${layer2Label} | verdict=${discovery.verdict || 'none'}`);
 
               // Queue follow-up questions from this discovery
-              const queued = queueFollowUps(discovery);
-              if (queued.length > 0) {
-                console.log(`[FOLLOW-UP] Queued ${queued.length} follow-ups from ${discovery.id}: ${queued.map(q => q.id).join(', ')}`);
+              if (discovery.type === 'discovery') {
+                const queued = queueFollowUps(discovery);
+                if (queued.length > 0) {
+                  console.log(`[FOLLOW-UP] Queued ${queued.length} follow-ups from ${discovery.id}: ${queued.map(q => q.id).join(', ')}`);
+                }
               }
 
-              // If discovery with impact=high → queue for deepDive() on next tick
-              if (discovery.impact === 'high') {
+              // Queue for deep dive if HIGH-VALUE GAP verdict or high impact discovery
+              if (discovery.type === 'discovery' && (discovery.verdict === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
                 deepDiveQueue.push(discovery);
                 console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
               }

@@ -701,6 +701,174 @@
     padding: 20px;
   }
 
+  /* GAP PACKET DISPLAY */
+  .gap-packet {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .gap-hypothesis {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.6;
+    padding: 8px 0;
+  }
+  .abc-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .abc-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    border-left: 3px solid #444;
+  }
+  .abc-link.strong { border-left-color: #22aa22; }
+  .abc-link.moderate { border-left-color: #cc8800; }
+  .abc-link.weak { border-left-color: #cc2222; }
+  .abc-link-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--orange);
+    white-space: nowrap;
+    min-width: 44px;
+    font-weight: 700;
+  }
+  .abc-link-body {
+    flex: 1;
+  }
+  .abc-link-claim {
+    font-size: 12px;
+    color: #ccc;
+    line-height: 1.5;
+  }
+  .abc-link-source {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: #666;
+    font-style: italic;
+    margin-top: 2px;
+  }
+  .abc-link-strength {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .abc-link-strength.strong { background: rgba(34,170,34,0.2); color: #22aa22; }
+  .abc-link-strength.moderate { background: rgba(204,136,0,0.2); color: #cc8800; }
+  .abc-link-strength.weak { background: rgba(204,34,34,0.2); color: #cc2222; }
+  .bridge-box {
+    padding: 8px 12px;
+    background: rgba(255,215,0,0.06);
+    border: 1px dashed #555;
+    border-radius: 4px;
+  }
+  .bridge-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+  .bridge-badge.untested { background: #cc8800; color: #000; }
+  .bridge-badge.preliminary { background: #2244cc; color: #fff; }
+  .bridge-badge.speculative { background: #cc2222; color: #fff; }
+  .bridge-claim {
+    font-size: 12px;
+    color: #ccc;
+    line-height: 1.5;
+  }
+  .bridge-evidence {
+    font-size: 10px;
+    color: #888;
+    margin-top: 4px;
+  }
+  .kill-test-box {
+    padding: 8px 12px;
+    border: 1px solid #cc2222;
+    border-radius: 4px;
+    background: rgba(204,34,34,0.06);
+  }
+  .kill-test-box .box-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: #cc2222;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .kill-test-box .box-content {
+    font-size: 12px;
+    color: #ccc;
+    line-height: 1.5;
+  }
+  .validation-box {
+    padding: 8px 12px;
+    border: 1px solid #22aa22;
+    border-radius: 4px;
+    background: rgba(34,170,34,0.06);
+  }
+  .validation-box .box-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: #22aa22;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .validation-box .box-content {
+    font-size: 12px;
+    color: #ccc;
+    line-height: 1.5;
+  }
+  .limiting-sources {
+    padding: 6px 10px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    border-left: 2px solid #cc8800;
+  }
+  .limiting-sources .ls-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: #cc8800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .limiting-sources .ls-item {
+    font-size: 11px;
+    color: #999;
+    line-height: 1.5;
+  }
+  .gap-verdict-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+  }
+  .gap-verdict-badge.high-value-gap { background: #ffd700; color: #000; }
+  .gap-verdict-badge.confirmed-direction { background: var(--orange); color: #000; }
+  .gap-verdict-badge.needs-work { background: #cc8800; color: #000; }
+  .gap-verdict-badge.draft { background: #555; color: #ccc; }
+
   /* VERIFICATION BADGES */
   .verif-panel {
     margin-top: 10px;
@@ -1100,6 +1268,76 @@ async function loadDeepDives() {
   }
 }
 
+function renderGapPacket(f) {
+  if (!f || !f.abc_chain || !f.abc_chain.length) return '';
+
+  // ABC chain
+  const chainHtml = f.abc_chain.map(l => {
+    const strength = l.evidence_strength || 'weak';
+    return `
+      <div class="abc-link ${strength}">
+        <span class="abc-link-label">${escapeHtml(l.link || '')}</span>
+        <div class="abc-link-body">
+          <div class="abc-link-claim">${escapeHtml(l.claim || '')}</div>
+          <div class="abc-link-source">${escapeHtml(l.source || '')}</div>
+        </div>
+        <span class="abc-link-strength ${strength}">${strength.toUpperCase()}</span>
+      </div>`;
+  }).join('');
+
+  // Bridge
+  const bridge = f.bridge || {};
+  const bridgeStatus = (bridge.status || 'speculative').toLowerCase();
+  const bridgeHtml = bridge.claim ? `
+    <div class="bridge-box">
+      <span class="bridge-badge ${bridgeStatus}">${bridgeStatus.toUpperCase()}</span>
+      <div class="bridge-claim">${escapeHtml(bridge.claim)}</div>
+      ${bridge.required_evidence ? `<div class="bridge-evidence">Required: ${escapeHtml(bridge.required_evidence)}</div>` : ''}
+    </div>` : '';
+
+  // Kill test
+  const killHtml = f.kill_test ? `
+    <div class="kill-test-box">
+      <div class="box-label">Kill Test</div>
+      <div class="box-content">${escapeHtml(f.kill_test)}</div>
+    </div>` : '';
+
+  // Cheapest validation
+  const cv = f.cheapest_validation || {};
+  const validationHtml = cv.method ? `
+    <div class="validation-box">
+      <div class="box-label">Cheapest Validation</div>
+      <div class="box-content">${escapeHtml(cv.method)}${cv.estimated_time ? ` (${escapeHtml(cv.estimated_time)})` : ''}</div>
+      ${cv.required_data && cv.required_data.length ? `<div style="font-size:10px;color:#888;margin-top:3px;">Data: ${cv.required_data.map(d => escapeHtml(d)).join(', ')}</div>` : ''}
+      ${cv.statistical_approach ? `<div style="font-size:10px;color:#888;margin-top:2px;">Analysis: ${escapeHtml(cv.statistical_approach)}</div>` : ''}
+    </div>` : '';
+
+  // Limiting sources
+  const limitingHtml = (f.limiting_sources && f.limiting_sources.length) ? `
+    <div class="limiting-sources">
+      <div class="ls-label">Limiting Sources / Confounds</div>
+      ${f.limiting_sources.map(s => `<div class="ls-item">${escapeHtml(s)}</div>`).join('')}
+    </div>` : '';
+
+  // Verdict badge
+  const verdictClass = (f.verdict || '').toLowerCase().replace(/\s+/g, '-') || 'confirmed-direction';
+  const verdictHtml = f.verdict ? `<span class="gap-verdict-badge ${verdictClass}">${f.verdict}</span>` : '';
+
+  // Clinical relevance
+  const clinicalHtml = f.clinical_relevance ? `<div style="font-size:11px;color:#888;border-top:1px solid #2a2a2a;padding-top:6px;margin-top:4px;"><strong style="color:#aaa;">Clinical relevance:</strong> ${escapeHtml(f.clinical_relevance)}</div>` : '';
+
+  return `
+    <div class="gap-packet">
+      ${verdictHtml}
+      <div class="abc-chain">${chainHtml}</div>
+      ${bridgeHtml}
+      ${killHtml}
+      ${validationHtml}
+      ${limitingHtml}
+      ${clinicalHtml}
+    </div>`;
+}
+
 function renderDeepDive(dd) {
   if (!dd) return '';
   const vClass = dd.verdict.toLowerCase().replace(/\s+/g, '-');
@@ -1289,7 +1527,8 @@ function renderFindings() {
       `<a href="/agent.html?id=${encodeURIComponent(name)}" style="color:#999;text-decoration:none;" onmouseover="this.style.color='var(--orange)'" onmouseout="this.style.color='#999'">${escapeHtml(name)}</a>`
     ).join(', ');
 
-    // Main content
+    // Main content — discoveries with gap packets get structured display
+    const isGapPacket = (f.type === 'discovery' || f.type === 'draft') && f.abc_chain && f.abc_chain.length > 0;
     const content = f.finding || f.connection || f.discovery || '';
 
     // Source line
@@ -1301,19 +1540,25 @@ function renderFindings() {
       const sCls = f.strength === 'strong' ? 'badge-strong' : f.strength === 'weak' ? 'badge-weak' : 'badge-moderate';
       const nCls = f.novelty === 'high' ? 'badge-high' : f.novelty === 'low' ? 'badge-low' : 'badge-medium';
       badges = `<div class="finding-badges"><span class="badge ${sCls}">${(f.strength || 'moderate').toUpperCase()}</span><span class="badge ${nCls}">${(f.novelty || 'medium').toUpperCase()} NOVELTY</span></div>`;
-    } else if (f.type === 'discovery') {
+    } else if (f.type === 'discovery' || f.type === 'draft') {
       const fCls = f.feasibility === 'high' ? 'badge-strong' : f.feasibility === 'low' ? 'badge-weak' : 'badge-moderate';
       const iCls = f.impact === 'high' ? 'badge-high' : f.impact === 'low' ? 'badge-low' : 'badge-medium';
-      badges = `<div class="finding-badges"><span class="badge ${fCls}">FEASIBILITY: ${(f.feasibility || 'medium').toUpperCase()}</span><span class="badge ${iCls}">IMPACT: ${(f.impact || 'medium').toUpperCase()}</span></div>`;
+      const nCls = f.novelty === 'high' ? 'badge-high' : f.novelty === 'low' ? 'badge-low' : 'badge-medium';
+      badges = `<div class="finding-badges"><span class="badge ${fCls}">FEASIBILITY: ${(f.feasibility || 'medium').toUpperCase()}</span><span class="badge ${iCls}">IMPACT: ${(f.impact || 'medium').toUpperCase()}</span><span class="badge ${nCls}">NOVELTY: ${(f.novelty || 'medium').toUpperCase()}</span></div>`;
     }
 
-    // Hypothesis / experiment
+    // Gap packet rendering (replaces simple hypothesis for structured discoveries)
+    const gapPacketHtml = isGapPacket ? renderGapPacket(f) : '';
+
+    // Hypothesis / experiment (only for non-gap-packet findings)
     let hypothesis = '';
-    if (f.hypothesis) hypothesis = `<div class="finding-hypothesis">💡 ${escapeHtml(f.hypothesis)}</div>`;
-    if (f.proposed_experiment) hypothesis = `<div class="finding-hypothesis">🧪 ${escapeHtml(f.proposed_experiment)}</div>`;
+    if (!isGapPacket) {
+      if (f.hypothesis) hypothesis = `<div class="finding-hypothesis">\uD83D\uDCA1 ${escapeHtml(f.hypothesis)}</div>`;
+      if (f.proposed_experiment) hypothesis = `<div class="finding-hypothesis">\uD83E\uDDEA ${escapeHtml(f.proposed_experiment)}</div>`;
+    }
 
     // Cell labels
-    const cellInfo = f.cellLabels ? f.cellLabels.join(' × ') : (f.cellLabel || '');
+    const cellInfo = f.cellLabels ? f.cellLabels.join(' \u00D7 ') : (f.cellLabel || '');
 
     // Keywords
     const kws = f.keywords || [];
@@ -1327,8 +1572,8 @@ function renderFindings() {
     const verif = (f.type === 'discovery' && f.id) ? verificationCache[f.id] : null;
     const verifHtml = renderVerification(verif);
 
-    // If deep-dive has an experiment, use it instead of the finding's own
-    if (dd && dd.actionability?.proposed_experiment) {
+    // If deep-dive has an experiment and no gap packet, use deep-dive's
+    if (!isGapPacket && dd && dd.actionability?.proposed_experiment) {
       hypothesis = ''; // deep-dive panel renders the experiment
     }
 
@@ -1344,18 +1589,24 @@ function renderFindings() {
         <button class="rate-btn${downClass}" onclick="rateFinding('${f.id}','down')">👎 ${r.down}</button>
       </div>` : '';
 
+    // For gap-packet discoveries, show hypothesis as bold header + structured packet
+    const contentHtml = isGapPacket
+      ? `<div class="gap-hypothesis">${escapeHtml(content)}</div>`
+      : `<div class="finding-content">${escapeHtml(content)}</div>`;
+
     return `
       <div class="finding-item ${typeClass} ${isHighNovelty ? 'high-novelty' : ''}">
         <div class="finding-meta">
           <span class="finding-type ${typeClass}">${typeIcon} ${typeLabel}</span>
           <span class="finding-agents">${agentLinks}</span>
-          <span class="finding-cell">→ ${escapeHtml(cellInfo)}</span>
+          <span class="finding-cell">\u2192 ${escapeHtml(cellInfo)}</span>
           <span class="finding-tick">tick ${f.tick}</span>
         </div>
-        <div class="finding-content">${escapeHtml(content)}</div>
+        ${contentHtml}
         ${source}
         ${badges}
         ${hypothesis}
+        ${gapPacketHtml}
         ${ddHtml}
         ${verifHtml}
         ${kwHtml}
@@ -1384,14 +1635,19 @@ async function loadDiscoveries() {
 
     feed.innerHTML = data.discoveries.map(d => {
       const verif = verificationCache[d.id];
+      const isGapPacket = d.abc_chain && d.abc_chain.length > 0;
+      const gapHtml = isGapPacket ? renderGapPacket(d) : '';
       return `
       <div class="discovery-item ${d.novelty === 'high' ? 'high-novelty' : ''}">
-        <div class="discovery-domains">💡 ${d.agentDomains ? d.agentDomains.join(' × ') : 'Cross-domain'}</div>
-        <div class="discovery-connection">${escapeHtml(d.connection || '')}</div>
-        ${d.evidence ? `<div class="discovery-evidence"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}${d.source ? ` — <em>${escapeHtml(d.source)}</em>` : ''}</div>` : ''}
-        ${d.hypothesis ? `<div class="discovery-hypothesis">💡 ${escapeHtml(d.hypothesis)}</div>` : ''}
+        <div class="discovery-domains">\uD83D\uDCA1 ${d.agentDomains ? d.agentDomains.join(' \u00D7 ') : 'Cross-domain'}</div>
+        ${isGapPacket
+          ? `<div class="gap-hypothesis">${escapeHtml(d.hypothesis || d.connection || '')}</div>${gapHtml}`
+          : `<div class="discovery-connection">${escapeHtml(d.connection || '')}</div>
+             ${d.evidence ? `<div class="discovery-evidence"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}${d.source ? ` \u2014 <em>${escapeHtml(d.source)}</em>` : ''}</div>` : ''}
+             ${d.hypothesis ? `<div class="discovery-hypothesis">\uD83D\uDCA1 ${escapeHtml(d.hypothesis)}</div>` : ''}`
+        }
         ${renderVerification(verif)}
-        <div class="discovery-meta">tick ${d.tick} · ${d.novelty || 'medium'} novelty · ${d.agents ? d.agents.map(a => `<a href="/agent.html?id=${encodeURIComponent(a)}" style="color:#666">${a}</a>`).join(', ') : ''}${d.verificationTotal ? ` · <span style="color:#22aa22">${d.verificationCount}/${d.verificationTotal} verified</span> · score ${d.diveScore} (${d.diveScoreDelta >= 0 ? '+' : ''}${d.diveScoreDelta})` : ''}</div>
+        <div class="discovery-meta">tick ${d.tick} \u00B7 ${d.novelty || 'medium'} novelty \u00B7 ${d.agents ? d.agents.map(a => `<a href="/agent.html?id=${encodeURIComponent(a)}" style="color:#666">${a}</a>`).join(', ') : ''}${d.verificationTotal ? ` \u00B7 <span style="color:#22aa22">${d.verificationCount}/${d.verificationTotal} verified</span> \u00B7 score ${d.diveScore} (${d.diveScoreDelta >= 0 ? '+' : ''}${d.diveScoreDelta})` : ''}</div>
       </div>`;
     }).join('');
   } catch (e) {
