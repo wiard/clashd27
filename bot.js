@@ -16,6 +16,7 @@ const {
 const { investigateCell, investigateBond, investigateDiscovery, investigateVerification, readFindings, queueFollowUps, getNextFollowUp } = require('./lib/researcher');
 const { deepDive, readDeepDives } = require('./lib/deep-dive');
 const { verifyGap } = require('./lib/verifier');
+const { validateGap } = require('./lib/validator');
 
 const TICK_INTERVAL = parseInt(process.env.TICK_INTERVAL || '300') * 1000; // 5 minutes (rate limits)
 const CHANNEL_PREFIX = 'cel-';
@@ -31,6 +32,7 @@ const channels = {};
 // Research state
 let deepDiveQueue = [];
 let verificationQueue = [];
+let validationQueue = [];
 
 function getAgentKeywords(agent) {
   return agent.keywords || [];
@@ -256,6 +258,11 @@ async function tick() {
         const vResult = await verifyGap(vItem.discovery, vItem.deepDive);
         if (vResult && !vResult.error) {
           verificationQueue.shift(); // Remove from queue only on success
+          // Queue for validation if survives scrutiny
+          if (vResult.survives_scrutiny && vResult.gpt_verdict === 'CONFIRMED') {
+            validationQueue.push(vItem.discovery);
+            console.log(`[VALIDATOR] Queued ${vItem.discovery.id} for pre-experiment validation (queue: ${validationQueue.length})`);
+          }
         } else if (vResult && vResult.error) {
           verificationQueue.shift(); // Remove on permanent failure too
           console.error(`[VERIFIER] Failed: ${vResult.error}`);
@@ -264,6 +271,20 @@ async function tick() {
       } catch (err) {
         console.error(`[VERIFIER] Error: ${err.message}`);
         verificationQueue.shift();
+      }
+    }
+    // Process pending validations (max 1 per tick, rate-limited to 1/hour internally)
+    if (validationQueue.length > 0) {
+      const valDiscovery = validationQueue[0];
+      try {
+        const valResult = await validateGap(valDiscovery);
+        if (valResult) {
+          validationQueue.shift(); // Success — remove from queue
+        }
+        // null means rate-limited — keep in queue for next tick
+      } catch (err) {
+        console.error(`[VALIDATOR] Error: ${err.message}`);
+        validationQueue.shift();
       }
     }
     // Deep dive uses multiple API calls internally — skip research this tick

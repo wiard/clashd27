@@ -917,6 +917,141 @@
     gap: 8px;
     flex-wrap: wrap;
   }
+
+  /* VALIDATION REPORT */
+  .val-panel {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(0,119,85,0.04);
+    border: 1px solid #333;
+    border-radius: 4px;
+  }
+  .val-header {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--mod);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .val-feasibility {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+  }
+  .val-feasibility.ready-to-test { background: #22aa22; color: #fff; }
+  .val-feasibility.needs-data { background: #cc8800; color: #000; }
+  .val-feasibility.blocked { background: #cc2222; color: #fff; }
+  .val-section {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #2a2a2a;
+  }
+  .val-section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: #666;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .val-dataset {
+    font-size: 11px;
+    color: #ccc;
+    padding: 4px 8px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    margin-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .val-dataset-name {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    color: var(--mod);
+  }
+  .val-dataset-meta {
+    font-size: 9px;
+    color: #888;
+  }
+  .val-trial {
+    font-size: 11px;
+    color: #ccc;
+    padding: 4px 8px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    margin-bottom: 3px;
+  }
+  .val-trial-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--orange);
+  }
+  .val-researcher {
+    font-size: 11px;
+    color: #ccc;
+    padding: 4px 8px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    margin-bottom: 3px;
+  }
+  .val-researcher-name {
+    font-weight: 700;
+    color: #ddd;
+  }
+  .val-researcher-inst {
+    font-size: 10px;
+    color: #888;
+  }
+  .val-action {
+    padding: 8px 12px;
+    border: 1px solid var(--mod);
+    border-radius: 4px;
+    background: rgba(0,119,85,0.06);
+    font-size: 12px;
+    color: #ccc;
+    line-height: 1.6;
+    margin-top: 8px;
+  }
+  .val-action .box-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--mod);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .val-completeness {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .val-completeness.complete { background: rgba(34,170,34,0.2); color: #22aa22; }
+  .val-completeness.partial { background: rgba(204,136,0,0.2); color: #cc8800; }
+  .val-completeness.insufficient { background: rgba(204,34,34,0.2); color: #cc2222; }
+  .val-gap-status {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .val-gap-status.open { background: rgba(34,170,34,0.2); color: #22aa22; }
+  .val-gap-status.partially_explored { background: rgba(204,136,0,0.2); color: #cc8800; }
+  .val-gap-status.actively_studied { background: rgba(204,34,34,0.2); color: #cc2222; }
 </style>
 </head>
 <body>
@@ -1426,6 +1561,79 @@ function renderVerification(v) {
     </div>`;
 }
 
+// Validation cache
+let validationCache = {}; // keyed by discovery_id
+
+async function loadValidations() {
+  try {
+    const data = await fetch('/api/validations?limit=100').then(r => r.json());
+    validationCache = {};
+    for (const v of (data.validations || [])) {
+      validationCache[v.discovery_id] = v;
+    }
+  } catch (e) {
+    console.error('Failed to load validations:', e);
+  }
+}
+
+function renderValidation(val) {
+  if (!val) return '';
+  const feasClass = (val.overall_feasibility || 'blocked').replace(/_/g, '-');
+  const feasLabel = (val.overall_feasibility || 'blocked').toUpperCase().replace(/_/g, ' ');
+
+  // Datasets section
+  const ds = val.datasets || {};
+  const completenessClass = ds.data_completeness || 'insufficient';
+  const datasetsHtml = (ds.datasets_found || []).length ? (ds.datasets_found || []).map(d => `
+    <div class="val-dataset">
+      <div><span class="val-dataset-name">${escapeHtml(d.name)}</span> — ${escapeHtml(d.contains || '')}</div>
+      <div class="val-dataset-meta">${escapeHtml(d.sample_size || '')} · ${escapeHtml(d.access || '')}</div>
+    </div>`).join('') : '<div style="font-size:11px;color:#666;">No public datasets found</div>';
+
+  // Trials section
+  const tr = val.trials || {};
+  const gapStatusClass = (tr.gap_status || 'open').replace(/ /g, '_');
+  const trialsHtml = (tr.active_trials || []).length ? (tr.active_trials || []).map(t => `
+    <div class="val-trial">
+      <span class="val-trial-id">${escapeHtml(t.id)}</span> ${escapeHtml(t.title || '')}
+      <span style="font-size:9px;color:#888;"> · ${escapeHtml(t.status || '')} · ${escapeHtml(t.relevance || '')}</span>
+    </div>`).join('') : '<div style="font-size:11px;color:#22aa22;">No competing trials found — gap is open</div>';
+
+  // Contacts section
+  const ct = val.contacts || {};
+  const researchersHtml = (ct.cross_domain_researchers || []).length ? (ct.cross_domain_researchers || []).map(r => `
+    <div class="val-researcher">
+      <span class="val-researcher-name">${escapeHtml(r.name)}</span>
+      <span class="val-researcher-inst"> · ${escapeHtml(r.institution)}</span>
+      <div style="font-size:10px;color:#888;margin-top:2px;">${escapeHtml(r.relevant_work || '')}</div>
+    </div>`).join('') : '';
+
+  // Action summary
+  const actionHtml = val.action_summary ? `
+    <div class="val-action">
+      <div class="box-label">Next Steps</div>
+      ${escapeHtml(val.action_summary)}
+    </div>` : '';
+
+  return `
+    <div class="val-panel">
+      <div class="val-header">
+        \uD83E\uDDEA VALIDATION REPORT
+        <span class="val-feasibility ${feasClass}">${feasLabel}</span>
+      </div>
+      <div class="val-section">
+        <div class="val-section-label">Datasets <span class="val-completeness ${completenessClass}">${(ds.data_completeness || 'insufficient').toUpperCase()}</span></div>
+        ${datasetsHtml}
+      </div>
+      <div class="val-section">
+        <div class="val-section-label">Clinical Trials <span class="val-gap-status ${gapStatusClass}">${(tr.gap_status || 'open').toUpperCase().replace(/_/g, ' ')}</span></div>
+        ${trialsHtml}
+      </div>
+      ${researchersHtml ? `<div class="val-section"><div class="val-section-label">Cross-Domain Researchers</div>${researchersHtml}</div>` : ''}
+      ${actionHtml}
+    </div>`;
+}
+
 // Rating helpers
 function getVoted() {
   try { return JSON.parse(localStorage.getItem('clashd27-votes') || '{}'); } catch { return {}; }
@@ -1572,6 +1780,10 @@ function renderFindings() {
     const verif = (f.type === 'discovery' && f.id) ? verificationCache[f.id] : null;
     const verifHtml = renderVerification(verif);
 
+    // Validation data (discoveries only)
+    const valData = (f.type === 'discovery' && f.id) ? validationCache[f.id] : null;
+    const valHtml = renderValidation(valData);
+
     // If deep-dive has an experiment and no gap packet, use deep-dive's
     if (!isGapPacket && dd && dd.actionability?.proposed_experiment) {
       hypothesis = ''; // deep-dive panel renders the experiment
@@ -1609,6 +1821,7 @@ function renderFindings() {
         ${gapPacketHtml}
         ${ddHtml}
         ${verifHtml}
+        ${valHtml}
         ${kwHtml}
         ${ratingHtml}
       </div>
@@ -1635,6 +1848,7 @@ async function loadDiscoveries() {
 
     feed.innerHTML = data.discoveries.map(d => {
       const verif = verificationCache[d.id];
+      const valData = validationCache[d.id];
       const isGapPacket = d.abc_chain && d.abc_chain.length > 0;
       const gapHtml = isGapPacket ? renderGapPacket(d) : '';
       return `
@@ -1647,6 +1861,7 @@ async function loadDiscoveries() {
              ${d.hypothesis ? `<div class="discovery-hypothesis">\uD83D\uDCA1 ${escapeHtml(d.hypothesis)}</div>` : ''}`
         }
         ${renderVerification(verif)}
+        ${renderValidation(valData)}
         <div class="discovery-meta">tick ${d.tick} \u00B7 ${d.novelty || 'medium'} novelty \u00B7 ${d.agents ? d.agents.map(a => `<a href="/agent.html?id=${encodeURIComponent(a)}" style="color:#666">${a}</a>`).join(', ') : ''}${d.verificationTotal ? ` \u00B7 <span style="color:#22aa22">${d.verificationCount}/${d.verificationTotal} verified</span> \u00B7 score ${d.diveScore} (${d.diveScoreDelta >= 0 ? '+' : ''}${d.diveScoreDelta})` : ''}</div>
       </div>`;
     }).join('');
@@ -1714,10 +1929,12 @@ loadPack().then(() => {
   loadDiscoveries();
   loadDeepDives();
   loadVerifications();
+  loadValidations();
   setInterval(refresh, 15000);
   setInterval(loadDiscoveries, 30000);
   setInterval(loadDeepDives, 30000);
   setInterval(loadVerifications, 60000);
+  setInterval(loadValidations, 60000);
   updateCountdown();
   setInterval(updateCountdown, 1000);
 });

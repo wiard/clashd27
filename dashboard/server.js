@@ -698,6 +698,38 @@ app.get('/api/verifications', (req, res) => {
   });
 });
 
+// --- API: Validations (Pre-Experiment Validation) ---
+const VALIDATIONS_FILE = path.join(__dirname, '..', 'data', 'validations.json');
+
+function readValidationsData() {
+  try {
+    if (fs.existsSync(VALIDATIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(VALIDATIONS_FILE, 'utf8'));
+      return data.validations || [];
+    }
+  } catch (e) {
+    console.error('[VALIDATIONS] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/validations', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const validations = readValidationsData();
+  res.json({
+    validations: validations.slice(-limit).reverse(),
+    total: validations.length
+  });
+});
+
+app.get('/api/validations/:id', (req, res) => {
+  const id = req.params.id;
+  const validations = readValidationsData();
+  const validation = validations.find(v => v.discovery_id === id);
+  if (!validation) return res.status(404).json({ error: 'Validation not found' });
+  res.json(validation);
+});
+
 // --- API: Post Weigher Proxy ---
 app.post('/api/weigh', async (req, res) => {
   try {
