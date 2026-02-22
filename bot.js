@@ -13,8 +13,9 @@ const {
   getNeighborsByType, getNeighborType, getLayerName, getLayerForCell, isCrossLayer, neighborSummary,
   NEIGHBOR_TYPE, NEIGHBOR_INFO,
 } = require('./lib/cube');
-const { investigateCell, investigateBond, investigateDiscovery } = require('./lib/researcher');
+const { investigateCell, investigateBond, investigateDiscovery, investigateVerification, readFindings, queueFollowUps, getNextFollowUp } = require('./lib/researcher');
 const { deepDive, readDeepDives } = require('./lib/deep-dive');
+const { verifyGap } = require('./lib/verifier');
 
 const TICK_INTERVAL = parseInt(process.env.TICK_INTERVAL || '300') * 1000; // 5 minutes (rate limits)
 const CHANNEL_PREFIX = 'cel-';
@@ -29,6 +30,7 @@ const channels = {};
 
 // Research state
 let deepDiveQueue = [];
+let verificationQueue = [];
 
 function getAgentKeywords(agent) {
   return agent.keywords || [];
@@ -157,6 +159,60 @@ function statusEmbed(agent) {
     ).setTimestamp();
 }
 
+function getPriorDiscoveries(label1, label2) {
+  const data = readFindings();
+  const sorted = [label1, label2].sort();
+  return (data.findings || []).filter(f => {
+    if (f.type !== 'discovery') return false;
+    const labels = (f.cellLabels || []).slice().sort();
+    return labels[0] === sorted[0] && labels[1] === sorted[1];
+  });
+}
+
+function getUnverifiedClaim() {
+  const ddData = readDeepDives();
+  if (!ddData.dives || ddData.dives.length === 0) return null;
+
+  // Find highest-scoring dive
+  const sorted = [...ddData.dives].sort((a, b) => (b.scores?.total || 0) - (a.scores?.total || 0));
+  const bestDive = sorted[0];
+  if (!bestDive) return null;
+
+  // Find the source discovery
+  const findings = readFindings();
+  const discovery = (findings.findings || []).find(f => f.id === bestDive.discovery_id);
+  if (!discovery) return null;
+
+  // Extract claims from the discovery text
+  const claims = [];
+  if (discovery.discovery) claims.push(discovery.discovery);
+  if (discovery.gap) claims.push(discovery.gap);
+  if (discovery.proposed_experiment) claims.push(discovery.proposed_experiment);
+
+  // Check which claims have already been verified
+  const verified = (bestDive.verifications || []).map(v => v.claim);
+
+  // Find first unverified claim
+  for (const claim of claims) {
+    if (!verified.includes(claim)) {
+      return { dive: bestDive, discovery, claim };
+    }
+  }
+  // All claims verified on best dive, try next
+  for (const dive of sorted.slice(1)) {
+    const disc = (findings.findings || []).find(f => f.id === dive.discovery_id);
+    if (!disc) continue;
+    const dClaims = [disc.discovery, disc.gap, disc.proposed_experiment].filter(Boolean);
+    const dVerified = (dive.verifications || []).map(v => v.claim);
+    for (const claim of dClaims) {
+      if (!dVerified.includes(claim)) {
+        return { dive, discovery: disc, claim };
+      }
+    }
+  }
+  return null;
+}
+
 async function tick() {
   const result = state.processTick();
   const { tick: tickNum, activeCell, cycle, events, isCycleEnd } = result;
@@ -184,9 +240,31 @@ async function tick() {
       const ddResult = await deepDive(ddDiscovery);
       if (ddResult) {
         console.log(`[DEEP-DIVE] ${ddDiscovery.id} complete: ${ddResult.verdict} (${ddResult.scores.total}/100)`);
+        // Queue HIGH-VALUE GAP discoveries for GPT verification
+        if (ddResult.verdict === 'HIGH-VALUE GAP') {
+          verificationQueue.push({ discovery: ddDiscovery, deepDive: ddResult });
+          console.log(`[VERIFIER] Queued ${ddDiscovery.id} for GPT verification (queue: ${verificationQueue.length})`);
+        }
       }
     } catch (err) {
       console.error(`[DEEP-DIVE] Error: ${err.message}`);
+    }
+    // Process pending verifications (max 1 per tick, rate-limited internally)
+    if (verificationQueue.length > 0) {
+      const vItem = verificationQueue[0];
+      try {
+        const vResult = await verifyGap(vItem.discovery, vItem.deepDive);
+        if (vResult && !vResult.error) {
+          verificationQueue.shift(); // Remove from queue only on success
+        } else if (vResult && vResult.error) {
+          verificationQueue.shift(); // Remove on permanent failure too
+          console.error(`[VERIFIER] Failed: ${vResult.error}`);
+        }
+        // null means rate-limited — keep in queue for next tick
+      } catch (err) {
+        console.error(`[VERIFIER] Error: ${err.message}`);
+        verificationQueue.shift();
+      }
     }
     // Deep dive uses multiple API calls internally — skip research this tick
     state.save();
@@ -215,21 +293,81 @@ async function tick() {
 
     let apiUsed = false;
 
-    // If 2+ agents with different homeCells → investigateBond() or investigateDiscovery()
-    if (agentsHere.length >= 2) {
-      const agent1 = agentsHere[0];
-      const agent2 = agentsHere[1];
-      if (agent1.homeCell !== agent2.homeCell) {
-        const a1Label = getCellLabel(agent1.homeCell);
-        const a2Label = getCellLabel(agent2.homeCell);
-        const crossLayer = isCrossLayer(agent1.homeCell, agent2.homeCell);
+    // Rotate agent pairs by tick parity for cross-layer discoveries
+    // Even ticks: Agent-001 (home 0) × Agent-003 (home 18)
+    // Odd ticks:  greenbanaanas (home 4) × Agent-002 (home 9)
+    const allAgents = agentsHere;
+    let agent1, agent2;
+    if (tickNum % 2 === 0) {
+      agent1 = allAgents.find(a => a.homeCell === 0);
+      agent2 = allAgents.find(a => a.homeCell === 18);
+    } else {
+      agent1 = allAgents.find(a => a.homeCell === 4);
+      agent2 = allAgents.find(a => a.homeCell === 9);
+    }
 
-        if (crossLayer) {
+    if (agent1 && agent2 && agent1.homeCell !== agent2.homeCell) {
+      const a1Label = getCellLabel(agent1.homeCell);
+      const a2Label = getCellLabel(agent2.homeCell);
+      const crossLayer = isCrossLayer(agent1.homeCell, agent2.homeCell);
+
+      if (crossLayer) {
+        // Check if this cell-label combo already has 2+ discoveries
+        const priorDiscoveries = getPriorDiscoveries(a1Label, a2Label);
+        if (priorDiscoveries.length >= 2) {
+          console.log(`[RESEARCH] SKIP discovery: ${a1Label} × ${a2Label} already has ${priorDiscoveries.length} discoveries`);
+          // Deepen: verify a claim from the best deep dive
+          const claimData = getUnverifiedClaim();
+          if (claimData) {
+            const leadAgent = agentsHere[0];
+            try {
+              const vResult = await investigateVerification({
+                tick: tickNum,
+                agentName: leadAgent.displayName,
+                cell: activeCell,
+                cellLabel: label,
+                packName,
+                claim: claimData.claim,
+                discoveryId: claimData.discovery.id
+              });
+              if (vResult) {
+                updateAgentKeywords(leadAgent, vResult.keywords || []);
+                leadAgent.findingsCount = (leadAgent.findingsCount || 0) + 1;
+                console.log(`[RESEARCH] ${vResult.id} | VERIFY | ${claimData.discovery.id} | verified=${vResult.verified} confidence=${vResult.confidence}`);
+                // Update deep dive with verification
+                const { saveDeepDive } = require('./lib/deep-dive');
+                if (!claimData.dive.verifications) claimData.dive.verifications = [];
+                claimData.dive.verifications.push({
+                  claim: claimData.claim,
+                  verified: vResult.verified,
+                  confidence: vResult.confidence,
+                  source: vResult.source || '',
+                  finding_id: vResult.id
+                });
+                // Adjust total score: +5 verified, -10 contradicted
+                if (vResult.verified) {
+                  claimData.dive.scores.total = Math.min(100, claimData.dive.scores.total + 5);
+                } else {
+                  claimData.dive.scores.total = Math.max(0, claimData.dive.scores.total - 10);
+                }
+                saveDeepDive(claimData.dive);
+              }
+              apiUsed = true;
+            } catch (err) {
+              console.error(`[RESEARCH] Verification error: ${err.message}`);
+            }
+          }
+        } else {
           // Cross-layer: discovery investigation
           const layer0Agent = getLayerForCell(agent1.homeCell) === 0 ? agent1 : (getLayerForCell(agent2.homeCell) === 0 ? agent2 : agent1);
           const layer2Agent = layer0Agent === agent1 ? agent2 : agent1;
           const layer0Label = getCellLabel(layer0Agent.homeCell);
           const layer2Label = getCellLabel(layer2Agent.homeCell);
+
+          // Build prior summary for the prompt
+          const priorSummary = priorDiscoveries.length > 0
+            ? priorDiscoveries.map(d => d.discovery || d.gap || '').filter(Boolean).join('; ')
+            : '';
 
           try {
             const discovery = await investigateDiscovery({
@@ -242,7 +380,8 @@ async function tick() {
               layer2Cell: layer2Label,
               packName,
               dataKeywords: getAgentKeywords(layer0Agent),
-              hypothesisKeywords: getAgentKeywords(layer2Agent)
+              hypothesisKeywords: getAgentKeywords(layer2Agent),
+              priorSummary
             });
 
             if (discovery) {
@@ -251,6 +390,12 @@ async function tick() {
               layer0Agent.bondsWithFindings = (layer0Agent.bondsWithFindings || 0) + 1;
               layer2Agent.bondsWithFindings = (layer2Agent.bondsWithFindings || 0) + 1;
               console.log(`[RESEARCH] ${discovery.id} | DISCOVERY | ${layer0Label} x ${layer2Label}`);
+
+              // Queue follow-up questions from this discovery
+              const queued = queueFollowUps(discovery);
+              if (queued.length > 0) {
+                console.log(`[FOLLOW-UP] Queued ${queued.length} follow-ups from ${discovery.id}: ${queued.map(q => q.id).join(', ')}`);
+              }
 
               // If discovery with impact=high → queue for deepDive() on next tick
               if (discovery.impact === 'high') {
@@ -262,31 +407,31 @@ async function tick() {
           } catch (err) {
             console.error(`[RESEARCH] Discovery investigation error: ${err.message}`);
           }
-        } else {
-          // Same-layer: bond investigation
-          try {
-            const bondFinding = await investigateBond({
-              tick: tickNum,
-              cell: activeCell,
-              cellLabel: label,
-              agent1Name: agent1.displayName,
-              agent2Name: agent2.displayName,
-              cell1Label: a1Label,
-              cell2Label: a2Label,
-              packName,
-              cell1Keywords: getAgentKeywords(agent1),
-              cell2Keywords: getAgentKeywords(agent2)
-            });
+        }
+      } else {
+        // Same-layer: bond investigation
+        try {
+          const bondFinding = await investigateBond({
+            tick: tickNum,
+            cell: activeCell,
+            cellLabel: label,
+            agent1Name: agent1.displayName,
+            agent2Name: agent2.displayName,
+            cell1Label: a1Label,
+            cell2Label: a2Label,
+            packName,
+            cell1Keywords: getAgentKeywords(agent1),
+            cell2Keywords: getAgentKeywords(agent2)
+          });
 
-            if (bondFinding) {
-              agent1.bondsWithFindings = (agent1.bondsWithFindings || 0) + 1;
-              agent2.bondsWithFindings = (agent2.bondsWithFindings || 0) + 1;
-              console.log(`[RESEARCH] ${bondFinding.id} | BOND | ${a1Label} x ${a2Label}`);
-            }
-            apiUsed = true;
-          } catch (err) {
-            console.error(`[RESEARCH] Bond investigation error: ${err.message}`);
+          if (bondFinding) {
+            agent1.bondsWithFindings = (agent1.bondsWithFindings || 0) + 1;
+            agent2.bondsWithFindings = (agent2.bondsWithFindings || 0) + 1;
+            console.log(`[RESEARCH] ${bondFinding.id} | BOND | ${a1Label} x ${a2Label}`);
           }
+          apiUsed = true;
+        } catch (err) {
+          console.error(`[RESEARCH] Bond investigation error: ${err.message}`);
         }
       }
     }

@@ -368,9 +368,26 @@ app.get('/api/discoveries', (req, res) => {
     discoveries = discoveries.filter(d => d.pack === pack);
   }
 
+  // Enrich with verification data from deep-dives
+  const dives = readDeepDives();
+  const diveMap = {};
+  for (const dive of dives) diveMap[dive.discovery_id] = dive;
+
+  const enriched = discoveries.map(d => {
+    const dive = diveMap[d.id];
+    if (dive) {
+      const verifications = dive.verifications || [];
+      d.verificationCount = verifications.filter(v => v.verified).length;
+      d.verificationTotal = verifications.length;
+      d.diveScore = dive.scores?.total || 0;
+      d.diveScoreDelta = verifications.reduce((sum, v) => sum + (v.verified ? 5 : -10), 0);
+    }
+    return d;
+  });
+
   res.json({
-    discoveries: discoveries.slice(-limit).reverse(),
-    total: discoveries.length
+    discoveries: enriched.slice(-limit).reverse(),
+    total: enriched.length
   });
 });
 
@@ -496,9 +513,27 @@ app.get('/api/findings/rated', (req, res) => {
 
   if (type) findings = findings.filter(f => f.type === type);
 
+  // Enrich discoveries with verification data from deep-dives
+  const dives = readDeepDives();
+  const diveMap = {};
+  for (const dive of dives) {
+    diveMap[dive.discovery_id] = dive;
+  }
+
   const merged = findings.map(f => {
     const r = ratings[f.id] || { up: 0, down: 0 };
-    return { ...f, ratings: r, netRating: r.up - r.down };
+    const entry = { ...f, ratings: r, netRating: r.up - r.down };
+    // Attach verification info for discoveries
+    if (f.type === 'discovery' && diveMap[f.id]) {
+      const dive = diveMap[f.id];
+      const verifications = dive.verifications || [];
+      const verified = verifications.filter(v => v.verified).length;
+      entry.verificationCount = verified;
+      entry.verificationTotal = verifications.length;
+      entry.diveScore = dive.scores?.total || 0;
+      entry.diveScoreDelta = verifications.reduce((sum, v) => sum + (v.verified ? 5 : -10), 0);
+    }
+    return entry;
   });
 
   merged.sort((a, b) => b.netRating - a.netRating);
@@ -595,6 +630,30 @@ app.get('/api/deep-dives/:id', (req, res) => {
   const dive = dives.find(d => d.discovery_id === id);
   if (!dive) return res.status(404).json({ error: 'Deep-dive not found' });
   res.json(dive);
+});
+
+// --- API: Verifications (GPT-4o Independent Review) ---
+const VERIFICATIONS_FILE = path.join(__dirname, '..', 'data', 'verifications.json');
+
+function readVerifications() {
+  try {
+    if (fs.existsSync(VERIFICATIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(VERIFICATIONS_FILE, 'utf8'));
+      return data.verifications || [];
+    }
+  } catch (e) {
+    console.error('[VERIFICATIONS] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/verifications', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const verifications = readVerifications();
+  res.json({
+    verifications: verifications.slice(-limit).reverse(),
+    total: verifications.length
+  });
 });
 
 // --- API: Post Weigher Proxy ---

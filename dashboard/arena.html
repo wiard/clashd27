@@ -700,6 +700,55 @@
     text-align: center;
     padding: 20px;
   }
+
+  /* VERIFICATION BADGES */
+  .verif-panel {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+  .verif-panel.confirmed {
+    background: rgba(34,170,34,0.08);
+    border-color: #22aa22;
+  }
+  .verif-panel.weakened {
+    background: rgba(204,136,0,0.08);
+    border-color: #cc8800;
+  }
+  .verif-panel.killed {
+    background: rgba(204,34,34,0.08);
+    border-color: #cc2222;
+  }
+  .verif-badge {
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin-bottom: 6px;
+    font-size: 10px;
+  }
+  .verif-badge.confirmed { background: #22aa22; color: #fff; }
+  .verif-badge.weakened { background: #cc8800; color: #000; }
+  .verif-badge.killed { background: #cc2222; color: #fff; }
+  .verif-detail {
+    color: #999;
+    font-size: 10px;
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+  .verif-detail strong { color: #ccc; }
+  .verif-meta {
+    color: #666;
+    font-size: 9px;
+    margin-top: 6px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
 </style>
 </head>
 <body>
@@ -1090,6 +1139,55 @@ function renderDeepDive(dd) {
     </div>`;
 }
 
+// Verification cache
+let verificationCache = {}; // keyed by discovery_id
+
+async function loadVerifications() {
+  try {
+    const data = await fetch('/api/verifications?limit=100').then(r => r.json());
+    verificationCache = {};
+    for (const v of (data.verifications || [])) {
+      verificationCache[v.discovery_id] = v;
+    }
+  } catch (e) {
+    console.error('Failed to load verifications:', e);
+  }
+}
+
+function renderVerification(v) {
+  if (!v) return '';
+  const verdict = (v.gpt_verdict || 'UNKNOWN').toUpperCase();
+  const vClass = verdict === 'CONFIRMED' ? 'confirmed' : verdict === 'KILLED' ? 'killed' : 'weakened';
+  const icon = verdict === 'CONFIRMED' ? '\uD83D\uDD2C' : verdict === 'KILLED' ? '\u274C' : '\u26A0\uFE0F';
+  const survivesText = v.survives_scrutiny ? 'survives scrutiny' : 'counter-evidence found';
+
+  let details = '';
+  if (v.kill_test) {
+    details += `<div class="verif-detail"><strong>Kill test:</strong> ${escapeHtml(v.kill_test)}</div>`;
+  }
+  if (v.cheapest_experiment) {
+    details += `<div class="verif-detail"><strong>Cheapest experiment:</strong> ${escapeHtml(v.cheapest_experiment)}</div>`;
+  }
+  if (v.counter_evidence && v.counter_evidence.length > 0) {
+    details += `<div class="verif-detail"><strong>Counter-evidence:</strong> ${v.counter_evidence.map(c => escapeHtml(c)).join('; ')}</div>`;
+  }
+  if (v.fatal_flaws && v.fatal_flaws.length > 0) {
+    details += `<div class="verif-detail"><strong>Fatal flaws:</strong> ${v.fatal_flaws.map(f => escapeHtml(f)).join('; ')}</div>`;
+  }
+
+  return `
+    <div class="verif-panel ${vClass}">
+      <span class="verif-badge ${vClass}">${icon} Independent review: ${verdict} (${v.gpt_confidence}%)</span>
+      <span style="color:#888;font-size:10px;margin-left:6px;">— ${survivesText}</span>
+      ${details}
+      <div class="verif-meta">
+        <span>Evidence quality: ${v.evidence_quality}/5</span>
+        <span>Claude: ${v.claude_verdict} (${v.claude_score})</span>
+        <span>GPT: ${verdict} (${v.gpt_confidence})</span>
+      </div>
+    </div>`;
+}
+
 // Rating helpers
 function getVoted() {
   try { return JSON.parse(localStorage.getItem('clashd27-votes') || '{}'); } catch { return {}; }
@@ -1225,6 +1323,10 @@ function renderFindings() {
     const dd = (f.type === 'discovery' && f.id) ? deepDiveCache[f.id] : null;
     const ddHtml = renderDeepDive(dd);
 
+    // Verification data (discoveries only)
+    const verif = (f.type === 'discovery' && f.id) ? verificationCache[f.id] : null;
+    const verifHtml = renderVerification(verif);
+
     // If deep-dive has an experiment, use it instead of the finding's own
     if (dd && dd.actionability?.proposed_experiment) {
       hypothesis = ''; // deep-dive panel renders the experiment
@@ -1255,6 +1357,7 @@ function renderFindings() {
         ${badges}
         ${hypothesis}
         ${ddHtml}
+        ${verifHtml}
         ${kwHtml}
         ${ratingHtml}
       </div>
@@ -1279,15 +1382,18 @@ async function loadDiscoveries() {
       return;
     }
 
-    feed.innerHTML = data.discoveries.map(d => `
+    feed.innerHTML = data.discoveries.map(d => {
+      const verif = verificationCache[d.id];
+      return `
       <div class="discovery-item ${d.novelty === 'high' ? 'high-novelty' : ''}">
         <div class="discovery-domains">💡 ${d.agentDomains ? d.agentDomains.join(' × ') : 'Cross-domain'}</div>
         <div class="discovery-connection">${escapeHtml(d.connection || '')}</div>
         ${d.evidence ? `<div class="discovery-evidence"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}${d.source ? ` — <em>${escapeHtml(d.source)}</em>` : ''}</div>` : ''}
         ${d.hypothesis ? `<div class="discovery-hypothesis">💡 ${escapeHtml(d.hypothesis)}</div>` : ''}
-        <div class="discovery-meta">tick ${d.tick} · ${d.novelty || 'medium'} novelty · ${d.agents ? d.agents.map(a => `<a href="/agent.html?id=${encodeURIComponent(a)}" style="color:#666">${a}</a>`).join(', ') : ''}</div>
-      </div>
-    `).join('');
+        ${renderVerification(verif)}
+        <div class="discovery-meta">tick ${d.tick} · ${d.novelty || 'medium'} novelty · ${d.agents ? d.agents.map(a => `<a href="/agent.html?id=${encodeURIComponent(a)}" style="color:#666">${a}</a>`).join(', ') : ''}${d.verificationTotal ? ` · <span style="color:#22aa22">${d.verificationCount}/${d.verificationTotal} verified</span> · score ${d.diveScore} (${d.diveScoreDelta >= 0 ? '+' : ''}${d.diveScoreDelta})` : ''}</div>
+      </div>`;
+    }).join('');
   } catch (e) {
     console.error('Failed to load discoveries:', e);
   }
@@ -1351,9 +1457,11 @@ loadPack().then(() => {
   loadResearch();
   loadDiscoveries();
   loadDeepDives();
+  loadVerifications();
   setInterval(refresh, 15000);
   setInterval(loadDiscoveries, 30000);
   setInterval(loadDeepDives, 30000);
+  setInterval(loadVerifications, 60000);
   updateCountdown();
   setInterval(updateCountdown, 1000);
 });
