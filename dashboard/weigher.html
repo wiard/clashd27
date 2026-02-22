@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Post Weigher</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --orange: #ff4500; --black: #111; --white: #fff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #e0e0e0; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; }
+
+  header {
+    border-bottom: 3px solid var(--orange);
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--black);
+  }
+  .logo { font-family: 'Space Mono', monospace; font-size: 18px; color: var(--orange); letter-spacing: 3px; }
+  .logo-sub { font-family: 'Space Mono', monospace; font-size: 9px; color: #555; letter-spacing: 2px; margin-top: 2px; text-transform: uppercase; }
+  .version { font-family: 'Space Mono', monospace; font-size: 9px; color: #444; text-align: right; letter-spacing: 1px; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+
+  .label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--orange); letter-spacing: 3px; margin-bottom: 8px; text-transform: uppercase; }
+
+  textarea {
+    width: 100%; min-height: 120px; background: #151515; border: 1px solid #333;
+    color: #e0e0e0; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+    line-height: 1.6; padding: 16px; resize: vertical; outline: none; border-radius: 0;
+  }
+  textarea:focus { border-color: var(--orange); }
+
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }
+  .example-btn {
+    background: transparent; border: 1px solid #333; color: #666;
+    font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 1px;
+    padding: 4px 10px; cursor: pointer; text-transform: uppercase;
+  }
+  .example-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+  .weigh-btn {
+    width: 100%; padding: 14px; background: var(--orange); border: none; color: #fff;
+    font-family: 'Space Mono', monospace; font-size: 13px; letter-spacing: 3px;
+    cursor: pointer; text-transform: uppercase; margin-bottom: 24px;
+  }
+  .weigh-btn:disabled { background: #222; color: #666; cursor: wait; }
+
+  .badge {
+    display: inline-block; padding: 8px 24px; font-family: 'Space Mono', monospace;
+    font-size: 20px; letter-spacing: 4px; text-transform: uppercase; border: 2px solid;
+  }
+  .badge-HEAVY { color: var(--orange); border-color: var(--orange); background: rgba(255,69,0,0.15); }
+  .badge-MEDIUM { color: #cc8800; border-color: #cc8800; background: rgba(204,136,0,0.15); }
+  .badge-LIGHT { color: #888; border-color: #888; background: rgba(136,136,136,0.1); }
+  .badge-WEIGHTLESS { color: #444; border-color: #444; background: rgba(68,68,68,0.1); }
+
+  .summary {
+    padding: 16px; background: #151515; border-left: 3px solid var(--orange);
+    margin: 16px 0 24px; font-size: 13px; line-height: 1.7; color: #ccc;
+  }
+
+  .bar-container { margin-bottom: 12px; }
+  .bar-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .bar-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+  .bar-signal { font-family: 'Space Mono', monospace; font-size: 10px; color: #888; max-width: 70%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { height: 6px; background: #222; overflow: hidden; }
+  .bar-fill { height: 100%; transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+  .bar-score { text-align: right; font-family: 'Space Mono', monospace; font-size: 18px; margin-top: 2px; }
+
+  .ingredient {
+    display: inline-block; padding: 3px 8px; margin: 2px 4px 2px 0;
+    border: 1px solid #444; font-family: 'Space Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; color: #aaa; text-transform: uppercase;
+  }
+
+  .json-toggle {
+    background: transparent; border: 1px solid #333; color: #555;
+    font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px;
+    padding: 6px 12px; cursor: pointer; text-transform: uppercase; margin-top: 16px;
+  }
+
+  .json-block {
+    background: #0d0d0d; border: 1px solid #222; padding: 16px;
+    font-family: 'Space Mono', monospace; font-size: 11px; color: #888;
+    overflow: auto; line-height: 1.6; white-space: pre-wrap; word-break: break-all;
+    margin-top: 8px;
+  }
+
+  .error { color: #ff4444; font-family: 'Space Mono', monospace; font-size: 11px; margin-bottom: 16px; }
+
+  footer {
+    border-top: 1px solid #222; margin-top: 40px; padding-top: 16px;
+    font-family: 'Space Mono', monospace; font-size: 9px; color: #333;
+    letter-spacing: 1px; text-align: center; line-height: 1.8;
+  }
+
+  .center { text-align: center; }
+  .elapsed { font-family: 'Space Mono', monospace; font-size: 9px; color: #444; margin-top: 8px; }
+  .section { margin-bottom: 24px; }
+  .back-link { color: var(--orange); text-decoration: none; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 1px; }
+  .back-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">⚔ CLASHD27</div>
+    <div class="logo-sub">Post Weigher · Trust Pre-Weighting Protocol</div>
+  </div>
+  <div class="version">
+    MACHINE-READABLE OUTPUT<br>
+    v0.1 · TESTNET · <a href="/" class="back-link">← Dashboard</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="section">
+    <div class="label">Paste Post to Weigh</div>
+    <textarea id="postInput" placeholder="Paste any social media post here..."></textarea>
+  </div>
+
+  <div class="examples">
+    <button class="example-btn" onclick="setExample(0)">Try: Engagement bait</button>
+    <button class="example-btn" onclick="setExample(1)">Try: Authentic expertise</button>
+    <button class="example-btn" onclick="setExample(2)">Try: Bot pattern</button>
+  </div>
+
+  <button class="weigh-btn" id="weighBtn" onclick="weighPost()">⚖ WEIGH THIS POST</button>
+
+  <div id="error" class="error" style="display:none"></div>
+  <div id="results" style="display:none">
+
+    <div class="center section">
+      <div id="labelBadge" class="badge"></div>
+      <div id="elapsed" class="elapsed"></div>
+    </div>
+
+    <div id="summaryBox" class="summary"></div>
+
+    <div class="section">
+      <div class="label">Core Weight</div>
+      <div id="coreBars"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Layer Analysis</div>
+      <div id="layerBars"></div>
+    </div>
+
+    <div class="section" id="ingredientsSection" style="display:none">
+      <div class="label">Ingredients</div>
+      <div id="ingredients"></div>
+    </div>
+
+    <button class="json-toggle" onclick="toggleJson()">Show Machine-Readable JSON</button>
+    <pre class="json-block" id="jsonBlock" style="display:none"></pre>
+  </div>
+
+  <footer>
+    CLASHD27 · Trust Pre-Weighting Protocol · Not a game — infrastructure<br>
+    We label food for bodies. Time to label ideas for minds.
+  </footer>
+</div>
+
+<script>
+const EXAMPLES = [
+  "Most people don't know this ONE trick that 10x'd my productivity. Thread 🧵👇",
+  "After 3 years running distributed systems at scale, here's what I've learned: consensus algorithms fail in ways textbooks don't cover. Raft handles leader election well but struggles with network partitions in multi-region setups. We switched to a gossip-based protocol and cut our incident rate by 60%.",
+  "Great post! Really insightful content. Thanks for sharing this valuable information with the community. Keep up the good work! 🙌🔥💯"
+];
+
+const PROMPT = `You are CLASHD27, a trust-weighing protocol. Analyze this post and return ONLY valid JSON, no markdown, no backticks, no preamble.
+
+Score each dimension 0.00-1.00:
+
+{
+  "residue": { "score": 0.00-1.00, "signal": "one line: what behavioral pattern does this post reveal?" },
+  "bonds": { "score": 0.00-1.00, "signal": "one line: what relationship pattern does this suggest?" },
+  "weight": { "score": 0.00-1.00, "signal": "one line: how much trust-mass does this carry?" },
+  "layer_scores": {
+    "accuracy": { "score": 0.00-1.00, "signal": "one line: are claims verifiable or vague?" },
+    "judgment": { "score": 0.00-1.00, "signal": "one line: quality of reasoning and nuance?" },
+    "speed": { "score": 0.00-1.00, "signal": "one line: how dense is the signal vs noise?" }
+  },
+  "label": "HEAVY | MEDIUM | LIGHT | WEIGHTLESS",
+  "ingredients": ["list", "of", "detected", "ingredients"],
+  "summary": "Two sentences max. What this post IS, behaviorally."
+}
+
+SCORING GUIDE:
+- residue: Does this post show consistent identity? Expertise? Or generic, could-be-anyone content?
+- bonds: Does it engage others genuinely? Or broadcast-only engagement-bait?
+- weight: Overall trust-mass. High = verifiable + genuine + consistent. Low = vague + manipulative.
+- accuracy: Are factual claims specific and verifiable? Vague claims score low.
+- judgment: Is reasoning present and nuanced? Or simplistic hot-takes?
+- speed: Signal-to-noise ratio. Dense insight scores high. Filler scores low.
+
+INGREDIENTS (include all that apply):
+opinion, fact-claim, engagement-bait, emotional-appeal, self-promotion, expertise-signal, bot-pattern, authentic-voice, sponsored, satire, rage-bait, humble-brag, call-to-action, data-backed, anecdotal, original-thought, recycled-take, astroturf-pattern
+
+Return ONLY the JSON object.`;
+
+const LAYERS = {
+  accuracy: { label: "ACCURACY · Layer 0 — The Floor", color: "#cc4400" },
+  judgment: { label: "JUDGMENT · Layer 1 — No Hats Allowed", color: "#2244cc" },
+  speed:    { label: "SPEED · Layer 2 — Mod 27 Zone", color: "#007755" }
+};
+
+function setExample(i) { document.getElementById('postInput').value = EXAMPLES[i]; }
+
+function makeBar(label, score, signal, color) {
+  return `<div class="bar-container">
+    <div class="bar-header">
+      <span class="bar-label" style="color:${color}">${label}</span>
+      <span class="bar-signal">${signal || ''}</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:${score*100}%;background:${color}"></div></div>
+    <div class="bar-score" style="color:${color}">${score.toFixed(2)}</div>
+  </div>`;
+}
+
+function toggleJson() {
+  const el = document.getElementById('jsonBlock');
+  const btn = event.target;
+  if (el.style.display === 'none') { el.style.display = 'block'; btn.textContent = 'Hide Machine-Readable JSON'; }
+  else { el.style.display = 'none'; btn.textContent = 'Show Machine-Readable JSON'; }
+}
+
+async function weighPost() {
+  const post = document.getElementById('postInput').value.trim();
+  if (!post) return;
+
+  const btn = document.getElementById('weighBtn');
+  const errorEl = document.getElementById('error');
+  const resultsEl = document.getElementById('results');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ WEIGHING...';
+  errorEl.style.display = 'none';
+  resultsEl.style.display = 'none';
+
+  const t0 = Date.now();
+
+  try {
+    const resp = await fetch('/api/weigh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: PROMPT + '\n\nPOST TO WEIGH:\n"""' + post + '"""' }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = (data.content || []).map(c => c.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    const elapsed = Date.now() - t0;
+
+    // Label badge
+    const badge = document.getElementById('labelBadge');
+    badge.textContent = result.label;
+    badge.className = 'badge badge-' + result.label;
+
+    // Elapsed
+    document.getElementById('elapsed').textContent = 'Weighed in ' + (elapsed/1000).toFixed(1) + 's';
+
+    // Summary
+    document.getElementById('summaryBox').textContent = result.summary;
+
+    // Core bars
+    document.getElementById('coreBars').innerHTML =
+      makeBar('Residue', result.residue?.score||0, result.residue?.signal, '#ff4500') +
+      makeBar('Bonds', result.bonds?.score||0, result.bonds?.signal, '#ff8800') +
+      makeBar('Weight', result.weight?.score||0, result.weight?.signal, '#ffcc00');
+
+    // Layer bars
+    let layerHtml = '';
+    for (const [key, layer] of Object.entries(LAYERS)) {
+      layerHtml += makeBar(layer.label, result.layer_scores?.[key]?.score||0, result.layer_scores?.[key]?.signal, layer.color);
+    }
+    document.getElementById('layerBars').innerHTML = layerHtml;
+
+    // Ingredients
+    const ings = result.ingredients || [];
+    if (ings.length > 0) {
+      document.getElementById('ingredientsSection').style.display = 'block';
+      document.getElementById('ingredients').innerHTML = ings.map(i => `<span class="ingredient">${i}</span>`).join('');
+    }
+
+    // JSON
+    document.getElementById('jsonBlock').textContent = JSON.stringify(result, null, 2);
+
+    resultsEl.style.display = 'block';
+
+  } catch (err) {
+    errorEl.textContent = 'Weigh failed: ' + err.message;
+    errorEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚖ WEIGH THIS POST';
+  }
+}
+</script>
+</body>
+</html>

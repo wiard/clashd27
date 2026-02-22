@@ -1,0 +1,43 @@
+{
+  "id": "climate-science",
+  "name": "Climate Science",
+  "version": "0.1",
+  "description": "Multi-agent coordination across climate science domains. Agents explore data, analysis, and hypothesis layers to discover cross-system connections and interventions.",
+  "created_by": "greenbanaanas",
+  "cells": {
+    "0":  { "label": "Emissions Data",        "layer": 0, "domain": "data",       "description": "CO2, methane, nitrous oxide — global emission records and sources" },
+    "1":  { "label": "Ocean Temperatures",    "layer": 0, "domain": "data",       "description": "Sea surface temps, deep ocean heat, thermal expansion data" },
+    "2":  { "label": "Ice Core Records",      "layer": 0, "domain": "data",       "description": "Historical climate data, atmospheric composition over millennia" },
+    "3":  { "label": "Biodiversity Metrics",  "layer": 0, "domain": "data",       "description": "Species counts, extinction rates, ecosystem health indicators" },
+    "4":  { "label": "Air Quality",           "layer": 0, "domain": "data",       "description": "Particulate matter, ozone levels, pollution monitoring" },
+    "5":  { "label": "Deforestation Rates",   "layer": 0, "domain": "data",       "description": "Forest coverage, land use changes, satellite imagery" },
+    "6":  { "label": "Sea Level Data",        "layer": 0, "domain": "data",       "description": "Tide gauges, satellite altimetry, coastal erosion records" },
+    "7":  { "label": "Solar Radiation",       "layer": 0, "domain": "data",       "description": "Insolation patterns, solar cycles, albedo measurements" },
+    "8":  { "label": "Carbon Sinks",          "layer": 0, "domain": "data",       "description": "Forest absorption, ocean uptake, soil carbon storage" },
+
+    "9":  { "label": "Feedback Loops",        "layer": 1, "domain": "analysis",   "description": "Amplifying and dampening cycles — permafrost, albedo, clouds" },
+    "10": { "label": "Tipping Points",        "layer": 1, "domain": "analysis",   "description": "Thresholds of irreversible change — ice sheets, currents, forests" },
+    "11": { "label": "Migration Patterns",    "layer": 1, "domain": "analysis",   "description": "Species and human migration driven by climate shifts" },
+    "12": { "label": "Economic Impact",       "layer": 1, "domain": "analysis",   "description": "GDP effects, infrastructure costs, agricultural losses" },
+    "13": { "label": "Policy Effectiveness",  "layer": 1, "domain": "analysis",   "description": "Carbon pricing, treaties, regulation outcomes" },
+    "14": { "label": "Adaptation Strategies", "layer": 1, "domain": "analysis",   "description": "Resilience planning, infrastructure hardening, crop changes" },
+    "15": { "label": "Renewable Transitions", "layer": 1, "domain": "analysis",   "description": "Energy grid shifts, technology adoption curves, storage" },
+    "16": { "label": "Carbon Capture",        "layer": 1, "domain": "analysis",   "description": "DAC, CCS, enhanced weathering — technical and economic analysis" },
+    "17": { "label": "Ecosystem Modeling",    "layer": 1, "domain": "analysis",   "description": "Interconnected systems, cascading effects, biome shifts" },
+
+    "18": { "label": "Geoengineering",        "layer": 2, "domain": "hypothesis", "description": "Solar radiation management, stratospheric aerosols, ocean iron" },
+    "19": { "label": "Cross-System Cascades", "layer": 2, "domain": "hypothesis", "description": "Unexpected connections between climate subsystems" },
+    "20": { "label": "Unexplored Interventions", "layer": 2, "domain": "hypothesis", "description": "Novel approaches nobody is investigating yet" },
+    "21": { "label": "Circular Economies",    "layer": 2, "domain": "hypothesis", "description": "Waste elimination, regenerative systems, closed loops" },
+    "22": { "label": "Behavioral Shifts",     "layer": 2, "domain": "hypothesis", "description": "Cultural and consumption changes at scale" },
+    "23": { "label": "Bioengineered Solutions", "layer": 2, "domain": "hypothesis", "description": "Synthetic organisms for carbon capture, algae engineering" },
+    "24": { "label": "Ocean Farming",         "layer": 2, "domain": "hypothesis", "description": "Kelp forests, seaweed cultivation, blue carbon at scale" },
+    "25": { "label": "Atmospheric Repair",    "layer": 2, "domain": "hypothesis", "description": "Radical ideas for actively restoring atmospheric balance" },
+    "26": { "label": "Emergent Insights",     "layer": 2, "domain": "hypothesis", "description": "The center cell. What emerges when all domains converge." }
+  },
+  "layers": {
+    "0": { "name": "The Floor — DATA",       "description": "Measurements. Records. Observations. Hard evidence." },
+    "1": { "name": "No Hats Allowed — ANALYSIS", "description": "Connections. Models. Cross-referencing systems." },
+    "2": { "name": "Mod 27 Zone — HYPOTHESIS",   "description": "New ideas. Untested interventions. The frontier." }
+  }
+}

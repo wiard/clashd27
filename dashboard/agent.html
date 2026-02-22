@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Profile — CLASHD27</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #ff4500;
+    --black: #0a0a0a;
+    --dark: #111111;
+    --white: #ffffff;
+    --muted: #888888;
+    --green: #22aa22;
+    --red: #cc2222;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--black); color: var(--white); font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: var(--dark);
+    border-bottom: 4px solid var(--orange);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .back-link { color: #666; font-family: 'Space Mono', monospace; font-size: 11px; text-decoration: none; letter-spacing: 1px; }
+  .back-link:hover { color: var(--orange); }
+  .header-title { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--orange); letter-spacing: 3px; }
+  .live-pulse { display: flex; align-items: center; gap: 8px; font-family: 'Space Mono', monospace; font-size: 11px; color: #666; }
+  .pulse-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* AGENT HEADER */
+  .agent-header {
+    padding: 40px 20px;
+    border-bottom: 2px solid #222;
+  }
+  @media (min-width: 700px) { .agent-header { padding: 60px 40px; } }
+  .agent-header-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 700px) { .agent-header-inner { grid-template-columns: 1fr auto; } }
+  .agent-name { font-family: 'Space Mono', monospace; font-size: 36px; color: var(--orange); letter-spacing: 2px; margin-bottom: 8px; }
+  .agent-status { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .status-badge { font-family: 'Space Mono', monospace; font-size: 12px; padding: 4px 12px; border-radius: 3px; letter-spacing: 1px; }
+  .status-alive { background: var(--green); color: #000; }
+  .status-dead { background: var(--red); color: #fff; }
+  .agent-meta { font-family: 'Space Mono', monospace; font-size: 13px; color: #999; }
+  .agent-meta span { margin-right: 20px; }
+  .agent-meta strong { color: var(--orange); }
+  .energy-big { text-align: right; }
+  .energy-value { font-family: 'Space Mono', monospace; font-size: 64px; color: var(--orange); line-height: 1; }
+  .energy-label { font-family: 'Space Mono', monospace; font-size: 11px; color: #666; letter-spacing: 2px; margin-top: 8px; }
+  .energy-bar-big { width: 200px; height: 8px; background: #333; border-radius: 4px; margin-top: 8px; }
+  .energy-fill { height: 100%; border-radius: 4px; transition: width 0.6s; }
+  .e-hi { background: var(--green); }
+  .e-md { background: #cc8800; }
+  .e-lo { background: var(--red); }
+
+  /* MAIN GRID */
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px 20px; display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 900px) { .main { grid-template-columns: 1fr 1fr; padding: 40px; } }
+
+  .card { background: var(--dark); border: 2px solid #333; border-radius: 6px; padding: 20px; }
+  .card h2 { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--orange); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+
+  /* CUBE MAP */
+  .cube-map { display: flex; flex-direction: column; gap: 8px; }
+  .cube-layer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .cube-layer-label { font-family: 'Space Mono', monospace; font-size: 9px; color: #666; margin-bottom: 4px; letter-spacing: 1px; }
+  .cube-map-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #666;
+    border: 1px solid #333;
+    transition: all 0.3s;
+  }
+  .cube-map-cell.current { border-color: var(--orange); box-shadow: 0 0 10px rgba(255,69,0,0.3); }
+  .cube-map-cell.home { border-color: var(--green); }
+
+  /* STATS */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-item { background: #1a1a1a; padding: 12px; border-radius: 4px; }
+  .stat-value { font-family: 'Space Mono', monospace; font-size: 24px; color: var(--orange); }
+  .stat-label { font-family: 'Space Mono', monospace; font-size: 10px; color: #666; margin-top: 4px; letter-spacing: 1px; }
+
+  /* TIMELINE */
+  .timeline { max-height: 400px; overflow-y: auto; }
+  .timeline-item { padding: 12px; border-left: 2px solid #333; margin-left: 8px; margin-bottom: 8px; background: #1a1a1a; border-radius: 0 4px 4px 0; }
+  .timeline-item.bond { border-left-color: var(--orange); }
+  .timeline-item.resonance { border-left-color: var(--green); }
+  .timeline-tick { font-family: 'Space Mono', monospace; font-size: 10px; color: #666; margin-bottom: 4px; }
+  .timeline-event { font-size: 13px; color: #ccc; }
+  .timeline-event strong { color: var(--orange); }
+
+  /* RELATIONSHIPS */
+  .relationship-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #222; }
+  .relationship-item:last-child { border-bottom: none; }
+  .rel-name { font-family: 'Space Mono', monospace; font-size: 14px; color: var(--orange); cursor: pointer; }
+  .rel-name:hover { text-decoration: underline; }
+  .rel-stats { font-family: 'Space Mono', monospace; font-size: 11px; color: #666; }
+  .rel-stats span { margin-left: 12px; }
+
+  /* NAVIGATION */
+  .nav-bar { display: flex; justify-content: space-between; padding: 12px 20px; border-top: 1px solid #222; margin-top: 40px; }
+  .nav-link { font-family: 'Space Mono', monospace; font-size: 12px; color: #666; text-decoration: none; }
+  .nav-link:hover { color: var(--orange); }
+  .nav-link.disabled { color: #333; pointer-events: none; }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 60px; color: #666; font-family: 'Space Mono', monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="/arena.html" class="back-link">&larr; Back to Arena</a>
+    <span class="header-title">CLASHD27</span>
+  </div>
+  <div class="live-pulse">
+    <span class="pulse-dot"></span>
+    LIVE <span id="countdown">—</span>
+  </div>
+</header>
+
+<div id="content">
+  <div class="loading">Loading agent profile...</div>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const agentName = urlParams.get('id');
+
+if (!agentName) {
+  document.getElementById('content').innerHTML = '<div class="loading">No agent specified. Go back to <a href="/arena.html" style="color:var(--orange)">Arena</a>.</div>';
+} else {
+  loadAgent();
+}
+
+async function loadAgent() {
+  try {
+    const [agentData, historyData, state] = await Promise.all([
+      fetch(`/api/agent/${encodeURIComponent(agentName)}`).then(r => r.json()),
+      fetch(`/api/agent/${encodeURIComponent(agentName)}/history?limit=50`).then(r => r.json()),
+      fetch('/api/state').then(r => r.json())
+    ]);
+
+    if (agentData.error) {
+      document.getElementById('content').innerHTML = `<div class="loading">Agent "${agentName}" not found. <a href="/arena.html" style="color:var(--orange)">Back to Arena</a></div>`;
+      return;
+    }
+
+    renderAgent(agentData, historyData, state);
+    startCountdown();
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="loading">Error loading agent: ${e.message}</div>`;
+  }
+}
+
+function ec(e) { return e >= 70 ? 'e-hi' : e >= 40 ? 'e-md' : 'e-lo'; }
+
+function renderAgent(agent, history, state) {
+  document.title = `${agent.displayName} — CLASHD27`;
+
+  // Find prev/next agents in leaderboard
+  const leaderboard = state.leaderboard || [];
+  const currentIndex = leaderboard.findIndex(a => a.displayName === agent.displayName);
+  const prevAgent = currentIndex > 0 ? leaderboard[currentIndex - 1] : null;
+  const nextAgent = currentIndex < leaderboard.length - 1 ? leaderboard[currentIndex + 1] : null;
+
+  document.getElementById('content').innerHTML = `
+    <div class="agent-header">
+      <div class="agent-header-inner">
+        <div>
+          <div class="agent-name">${agent.displayName}</div>
+          <div class="agent-status">
+            <span class="status-badge ${agent.alive ? 'status-alive' : 'status-dead'}">${agent.alive ? 'ALIVE' : 'DEAD'}</span>
+            ${agent.rank ? `<span style="font-family:'Space Mono',monospace;font-size:12px;color:#666;">Rank #${agent.rank} of ${agent.totalInLeaderboard}</span>` : ''}
+          </div>
+          <div class="agent-meta">
+            <span>Cell <strong>${agent.currentCell}</strong>${agent.currentCellLabel ? ` — ${agent.currentCellLabel}` : ''}</span>
+            <span>Home <strong>${agent.homeCell}</strong>${agent.homeCellLabel ? ` — ${agent.homeCellLabel}` : ''}</span>
+            <span>Streak <strong>${agent.survivalStreak}</strong></span>
+            <span>Bonds <strong>${agent.totalBonds}</strong></span>
+          </div>
+        </div>
+        <div class="energy-big">
+          <div class="energy-value">${agent.energy}%</div>
+          <div class="energy-label">ENERGY</div>
+          <div class="energy-bar-big"><div class="energy-fill ${ec(agent.energy)}" style="width:${agent.energy}%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="card">
+        <h2>Cell Fingerprint</h2>
+        <div class="cube-map">
+          ${renderCubeMap(agent.cellVisits, agent.currentCell, agent.homeCell)}
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Agent Stats</h2>
+        <div class="stat-grid">
+          <div class="stat-item">
+            <div class="stat-value">${agent.stats.uniqueCellsVisited}</div>
+            <div class="stat-label">CELLS VISITED</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${agent.stats.favoriteCell}</div>
+            <div class="stat-label">FAVORITE CELL${agent.stats.favoriteCellLabel ? ` (${agent.stats.favoriteCellLabel})` : ''}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">L${agent.stats.favoriteLayer}</div>
+            <div class="stat-label">FAVORITE LAYER</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${agent.stats.crossLayerBondPct}%</div>
+            <div class="stat-label">CROSS-LAYER BONDS</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${agent.stats.insightsGenerated}</div>
+            <div class="stat-label">INSIGHTS GENERATED</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${agent.deaths || 0}</div>
+            <div class="stat-label">DEATHS</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Activity Timeline</h2>
+        <div class="timeline">
+          ${renderTimeline(history.events)}
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Relationships (${agent.relationships.length})</h2>
+        <div class="relationships">
+          ${renderRelationships(agent.relationships)}
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-bar">
+      <a href="${prevAgent ? '/agent.html?id=' + encodeURIComponent(prevAgent.displayName) : '#'}" class="nav-link ${prevAgent ? '' : 'disabled'}">&larr; ${prevAgent ? prevAgent.displayName : 'No previous'}</a>
+      <a href="/arena.html" class="nav-link">Back to Arena</a>
+      <a href="${nextAgent ? '/agent.html?id=' + encodeURIComponent(nextAgent.displayName) : '#'}" class="nav-link ${nextAgent ? '' : 'disabled'}">${nextAgent ? nextAgent.displayName : 'No next'} &rarr;</a>
+    </div>
+  `;
+}
+
+function renderCubeMap(cellVisits, currentCell, homeCell) {
+  const maxVisits = Math.max(...Object.values(cellVisits), 1);
+  let html = '';
+
+  const layerNames = ['Layer 0 — Data', 'Layer 1 — Analysis', 'Layer 2 — Hypothesis'];
+
+  for (let layer = 0; layer < 3; layer++) {
+    html += `<div class="cube-layer-label">${layerNames[layer]}</div><div class="cube-layer">`;
+    for (let i = layer * 9; i < (layer + 1) * 9; i++) {
+      const visits = cellVisits[i] || 0;
+      const intensity = visits / maxVisits;
+      const bgColor = visits > 0 ? `rgba(255,69,0,${0.1 + intensity * 0.7})` : '#1a1a1a';
+      const isCurrent = i === currentCell;
+      const isHome = i === homeCell;
+      html += `<div class="cube-map-cell ${isCurrent ? 'current' : ''} ${isHome ? 'home' : ''}" style="background:${bgColor}" title="Cell ${i}: ${visits} visits">${i}</div>`;
+    }
+    html += '</div>';
+  }
+  return html;
+}
+
+function renderTimeline(events) {
+  if (!events || events.length === 0) {
+    return '<div style="color:#666;font-size:12px;padding:20px;text-align:center;">No activity recorded yet</div>';
+  }
+
+  return events.map(e => {
+    const typeClass = e.event === 'bond' ? 'bond' : e.event === 'resonance' ? 'resonance' : '';
+    let eventText = '';
+
+    if (e.event === 'resonance') {
+      eventText = `Resonated on <strong>${e.cellLabel || 'Cell ' + e.cell}</strong>${e.isHome ? ' (home)' : ''}`;
+    } else if (e.event === 'bond') {
+      eventText = `Bonded with <strong>${e.bondWith}</strong> on <strong>${e.cellLabel || 'Cell ' + e.cell}</strong>${e.crossLayer ? ' <span style="color:var(--orange)">[CROSS-LAYER]</span>' : ''}`;
+    } else {
+      eventText = `${e.event} on Cell ${e.cell}`;
+    }
+
+    return `
+      <div class="timeline-item ${typeClass}">
+        <div class="timeline-tick">Tick ${e.tick}</div>
+        <div class="timeline-event">${eventText}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderRelationships(relationships) {
+  if (!relationships || relationships.length === 0) {
+    return '<div style="color:#666;font-size:12px;padding:20px;text-align:center;">No bonds formed yet</div>';
+  }
+
+  return relationships.slice(0, 15).map(r => `
+    <div class="relationship-item">
+      <span class="rel-name" onclick="window.location='/agent.html?id=${encodeURIComponent(r.agent)}'">${r.agent}</span>
+      <div class="rel-stats">
+        <span>${r.bondCount} bonds</span>
+        <span>${r.crossLayerBonds} cross-layer</span>
+        <span>${r.sharedCells} cells</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Countdown timer
+let tickInterval = 120000; // 2 minutes default
+function startCountdown() {
+  const update = () => {
+    const now = Date.now();
+    const nextTick = Math.ceil(now / tickInterval) * tickInterval;
+    const remaining = Math.max(0, nextTick - now);
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('countdown').textContent = `${mins}m ${secs}s`;
+  };
+  update();
+  setInterval(update, 1000);
+}
+</script>
+</body>
+</html>

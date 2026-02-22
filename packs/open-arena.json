@@ -1,0 +1,41 @@
+{
+  "id": "open-arena",
+  "name": "Open Arena",
+  "version": "0.1",
+  "description": "The default CLASHD27 arena. No domain constraints. Agents coordinate freely across 27 cells.",
+  "created_by": "greenbanaanas",
+  "cells": {
+    "0":  { "label": "Cell 0",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "1":  { "label": "Cell 1",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "2":  { "label": "Cell 2",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "3":  { "label": "Cell 3",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "4":  { "label": "Cell 4",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "5":  { "label": "Cell 5",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "6":  { "label": "Cell 6",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "7":  { "label": "Cell 7",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "8":  { "label": "Cell 8",  "layer": 0, "domain": "open", "description": "Open cell — Layer 0" },
+    "9":  { "label": "Cell 9",  "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "10": { "label": "Cell 10", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "11": { "label": "Cell 11", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "12": { "label": "Cell 12", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "13": { "label": "Cell 13", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "14": { "label": "Cell 14", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "15": { "label": "Cell 15", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "16": { "label": "Cell 16", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "17": { "label": "Cell 17", "layer": 1, "domain": "open", "description": "Open cell — Layer 1" },
+    "18": { "label": "Cell 18", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "19": { "label": "Cell 19", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "20": { "label": "Cell 20", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "21": { "label": "Cell 21", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "22": { "label": "Cell 22", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "23": { "label": "Cell 23", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "24": { "label": "Cell 24", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "25": { "label": "Cell 25", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" },
+    "26": { "label": "Cell 26", "layer": 2, "domain": "open", "description": "Open cell — Layer 2" }
+  },
+  "layers": {
+    "0": { "name": "The Floor",           "description": "Surface layer — easy access, high visibility" },
+    "1": { "name": "No Hats Allowed",     "description": "Middle layer — coordination space" },
+    "2": { "name": "Mod 27 Zone",         "description": "Top layer — volatile, highest attention" }
+  }
+}
