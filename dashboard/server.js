@@ -424,6 +424,22 @@ app.get('/api/discoveries/agent/:name', (req, res) => {
 
 // --- API: Findings (Active Research Output) ---
 const FINDINGS_FILE = path.join(__dirname, '..', 'data', 'findings.json');
+const RATINGS_FILE = path.join(__dirname, '..', 'data', 'ratings.json');
+
+function readRatings() {
+  try {
+    if (fs.existsSync(RATINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(RATINGS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[RATINGS] Read failed:', e.message);
+  }
+  return {};
+}
+
+function writeRatings(ratings) {
+  fs.writeFileSync(RATINGS_FILE, JSON.stringify(ratings, null, 2));
+}
 
 function readFindings() {
   try {
@@ -443,13 +459,53 @@ app.get('/api/findings', (req, res) => {
   const novelty = req.query.novelty || null;
 
   let findings = readFindings();
+  const ratings = readRatings();
 
   if (type) findings = findings.filter(f => f.type === type);
   if (novelty) findings = findings.filter(f => f.novelty === novelty);
 
+  const merged = findings.slice(-limit).reverse().map(f => ({
+    ...f,
+    ratings: ratings[f.id] || { up: 0, down: 0 }
+  }));
+
   res.json({
-    findings: findings.slice(-limit).reverse(),
+    findings: merged,
     total: findings.length
+  });
+});
+
+app.post('/api/findings/:id/rate', (req, res) => {
+  const findingId = req.params.id;
+  const { rating } = req.body;
+  if (rating !== 'up' && rating !== 'down') {
+    return res.status(400).json({ error: 'rating must be "up" or "down"' });
+  }
+  const ratings = readRatings();
+  if (!ratings[findingId]) ratings[findingId] = { up: 0, down: 0 };
+  ratings[findingId][rating]++;
+  writeRatings(ratings);
+  res.json({ id: findingId, ratings: ratings[findingId] });
+});
+
+app.get('/api/findings/rated', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const type = req.query.type || null;
+  const ratings = readRatings();
+  let findings = readFindings();
+
+  if (type) findings = findings.filter(f => f.type === type);
+
+  const merged = findings.map(f => {
+    const r = ratings[f.id] || { up: 0, down: 0 };
+    return { ...f, ratings: r, netRating: r.up - r.down };
+  });
+
+  merged.sort((a, b) => b.netRating - a.netRating);
+
+  res.json({
+    findings: merged.slice(0, limit),
+    total: merged.length
   });
 });
 

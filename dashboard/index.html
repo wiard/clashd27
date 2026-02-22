@@ -353,7 +353,7 @@
   <div class="discoveries-inner">
     <div class="discoveries-header">
       <span class="pulse"></span>
-      LIVE DISCOVERY FEED
+      TOP RATED DISCOVERIES
     </div>
     <div id="discovery-feed">
       <div class="discoveries-empty">Loading discoveries...</div>
@@ -427,7 +427,7 @@ async function refreshStats() {
 
 async function loadDiscoveries() {
   try {
-    const data = await fetch('/api/findings?type=discovery&limit=5').then(r => r.json());
+    const data = await fetch('/api/findings/rated?type=discovery&limit=5').then(r => r.json());
     const feed = document.getElementById('discovery-feed');
 
     if (!data.findings || data.findings.length === 0) {

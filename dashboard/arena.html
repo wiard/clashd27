@@ -313,6 +313,27 @@
     border-radius: 2px;
     border: 1px solid #333;
   }
+  .finding-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 8px;
+    gap: 6px;
+  }
+  .rate-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid #333;
+    color: #666;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .rate-btn:hover { border-color: #888; color: #ccc; }
+  .rate-btn.voted { border-color: var(--orange); color: var(--orange); }
+  .rate-sep { color: #444; font-family: 'Space Mono', monospace; font-size: 11px; }
   .findings-empty {
     color: #555;
     font-family: 'Space Mono', monospace;
@@ -657,6 +678,7 @@
           <button class="findings-tab active" onclick="setFindingsFilter('all')">ALL</button>
           <button class="findings-tab" onclick="setFindingsFilter('bond')">BONDS</button>
           <button class="findings-tab" onclick="setFindingsFilter('discovery')">DISCOVERIES</button>
+          <button class="findings-tab" onclick="setFindingsFilter('top-rated')">TOP RATED</button>
         </div>
         <div class="findings-stats" id="findings-stats">
           <span class="stat-num">—</span> findings · <span class="stat-num">—</span> discoveries · <span class="stat-num">—</span> bonds
@@ -919,12 +941,60 @@ async function refresh(){
 
 let currentFindingsFilter = 'all';
 let allFindings = [];
+let topRatedFindings = [];
+
+// Rating helpers
+function getVoted() {
+  try { return JSON.parse(localStorage.getItem('clashd27-votes') || '{}'); } catch { return {}; }
+}
+function setVoted(id, dir) {
+  const v = getVoted();
+  v[id] = dir;
+  localStorage.setItem('clashd27-votes', JSON.stringify(v));
+}
+async function rateFinding(id, dir) {
+  const voted = getVoted();
+  if (voted[id]) return; // already voted
+  try {
+    const resp = await fetch(`/api/findings/${encodeURIComponent(id)}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: dir })
+    });
+    const data = await resp.json();
+    setVoted(id, dir);
+    // Update in-memory ratings
+    const updateList = (list) => {
+      const f = list.find(f => f.id === id);
+      if (f) f.ratings = data.ratings;
+    };
+    updateList(allFindings);
+    updateList(topRatedFindings);
+    renderFindings();
+  } catch (e) {
+    console.error('Rate failed:', e);
+  }
+}
 
 function setFindingsFilter(filter) {
   currentFindingsFilter = filter;
   document.querySelectorAll('.findings-tab').forEach(t => t.classList.remove('active'));
   event.target.classList.add('active');
-  renderFindings();
+  if (filter === 'top-rated') {
+    loadTopRated();
+  } else {
+    renderFindings();
+  }
+}
+
+async function loadTopRated() {
+  try {
+    const data = await fetch('/api/findings/rated?limit=30').then(r => r.json());
+    topRatedFindings = data.findings || [];
+    renderFindings();
+  } catch (e) {
+    console.error('Failed to load top rated:', e);
+  }
 }
 
 async function loadFindings() {
@@ -934,7 +1004,11 @@ async function loadFindings() {
     const statsData = await fetch('/api/findings/stats').then(r => r.json());
     const statsEl = document.getElementById('findings-stats');
     statsEl.innerHTML = `<span class="stat-num">${statsData.total}</span> findings · <span class="stat-num">${statsData.byType?.discovery || 0}</span> discoveries · <span class="stat-num">${statsData.byType?.bond || 0}</span> bonds`;
-    renderFindings();
+    if (currentFindingsFilter === 'top-rated') {
+      await loadTopRated();
+    } else {
+      renderFindings();
+    }
   } catch (e) {
     console.error('Failed to load findings:', e);
   }
@@ -942,15 +1016,21 @@ async function loadFindings() {
 
 function renderFindings() {
   const feed = document.getElementById('findings-feed');
-  let filtered = allFindings;
-  if (currentFindingsFilter !== 'all') {
+  let filtered;
+  if (currentFindingsFilter === 'top-rated') {
+    filtered = topRatedFindings;
+  } else if (currentFindingsFilter !== 'all') {
     filtered = allFindings.filter(f => f.type === currentFindingsFilter);
+  } else {
+    filtered = allFindings;
   }
 
   if (filtered.length === 0) {
     feed.innerHTML = '<div class="findings-empty">No findings yet. Agents are investigating...</div>';
     return;
   }
+
+  const voted = getVoted();
 
   feed.innerHTML = filtered.map(f => {
     const typeClass = f.type;
@@ -994,6 +1074,18 @@ function renderFindings() {
     const kws = f.keywords || [];
     const kwHtml = kws.length ? `<div class="finding-keywords">${kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('')}</div>` : '';
 
+    // Ratings
+    const r = f.ratings || { up: 0, down: 0 };
+    const v = voted[f.id];
+    const upClass = v === 'up' ? ' voted' : '';
+    const downClass = v === 'down' ? ' voted' : '';
+    const ratingHtml = f.id ? `
+      <div class="finding-footer">
+        <button class="rate-btn${upClass}" onclick="rateFinding('${f.id}','up')">👍 ${r.up}</button>
+        <span class="rate-sep">·</span>
+        <button class="rate-btn${downClass}" onclick="rateFinding('${f.id}','down')">👎 ${r.down}</button>
+      </div>` : '';
+
     return `
       <div class="finding-item ${typeClass} ${isHighNovelty ? 'high-novelty' : ''}">
         <div class="finding-meta">
@@ -1007,6 +1099,7 @@ function renderFindings() {
         ${badges}
         ${hypothesis}
         ${kwHtml}
+        ${ratingHtml}
       </div>
     `;
   }).join('');
