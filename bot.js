@@ -27,6 +27,12 @@ const { deepDive, readDeepDives } = require('./lib/deep-dive');
 const { verifyGap } = require('./lib/verifier');
 const { validateGap } = require('./lib/validator');
 const { checkSaturation } = require('./lib/saturation');
+const budget = require('./lib/budget');
+
+const MIN_COLLISION_SCORE = parseFloat(process.env.MIN_COLLISION_SCORE || '0.3');
+const DEEP_DIVE_THRESHOLD = parseInt(process.env.DEEP_DIVE_THRESHOLD || '75', 10);
+const MAX_DEEP_DIVES_PER_DAY = parseInt(process.env.MAX_DEEP_DIVES_PER_DAY || '5', 10);
+const VERIFIER_MIN_SCORE = parseInt(process.env.VERIFIER_MIN_SCORE || '70', 10);
 
 // --- Atomic findings.json helpers ---
 function saveFindingsAtomic(data) {
@@ -136,6 +142,10 @@ let validationQueue = _savedQueues.validation;
 if (deepDiveQueue.length || verificationQueue.length || validationQueue.length) {
   console.log(`[QUEUES] Restored: deepDive=${deepDiveQueue.length}, verification=${verificationQueue.length}, validation=${validationQueue.length}`);
 }
+
+// --- Collision cache (per cube generation) ---
+let collisionCache = new Set();
+let collisionCacheGeneration = null;
 
 function recordDeepDiveFailure(item, message) {
   item.attempts = (item.attempts || 0) + 1;
@@ -730,6 +740,13 @@ async function _tickInner() {
     console.log(`[COST] WARNING $${(costMetrics.estimated_cost_today || 0).toFixed(2)} today — low-spend mode active (skipping deep-dive/verification)`);
   }
 
+  const budgetStatus = budget.getStatus();
+  if (budgetStatus.overBudget || !budget.canAffordCall('claude-haiku-4-5-20251001', 2000)) {
+    console.log(`[BUDGET] Daily limit reached ($${budgetStatus.todaySpent.toFixed(2)}). Pausing research until midnight UTC.`);
+    state.save();
+    return;
+  }
+
   // === CUBE SHUFFLE (Anomaly Magnet v2.0) ===
   if (process.env.USE_CUBE === 'true') {
     try {
@@ -879,38 +896,86 @@ async function _tickInner() {
           const hypoAgent = dataAgent === agent1 ? agent2 : agent1;
           const dataLabel = getCellLabel(dataAgent.homeCell);
           const hypoLabel = getCellLabel(hypoAgent.homeCell);
+          const pairId = `${dataLabel.replace(/\s+/g, '')}_${hypoLabel.replace(/\s+/g, '')}`;
+          const attemptId = `att-${tickNum}-${pairId}`;
 
-          // --- Cube mode: golden collision scoring + cell descriptions ---
+          // --- Golden collision scoring + cache (when cube data exists) ---
           let goldenMeta = null;
           let dataCubeDesc = null;
           let hypoCubeDesc = null;
           const cubeMode = process.env.USE_CUBE === 'true';
 
-          if (cubeMode) {
-            try {
-              const { goldenCollisionScore, getCubeDescription } = require('./lib/shuffler');
-              goldenMeta = goldenCollisionScore(dataAgent.homeCell, hypoAgent.homeCell);
+          try {
+            const { goldenCollisionScore, getCubeDescription, readCube } = require('./lib/shuffler');
+            const cube = readCube();
+            const cubeGen = cube ? cube.generation : null;
+            if (cubeGen !== collisionCacheGeneration) {
+              collisionCacheGeneration = cubeGen;
+              collisionCache = new Set();
+            }
+            if (cubeGen !== null) {
+              const cellA = Math.min(dataAgent.homeCell, hypoAgent.homeCell);
+              const cellB = Math.max(dataAgent.homeCell, hypoAgent.homeCell);
+              const collisionKey = `${cellA}-${cellB}-gen${cubeGen}`;
+              if (collisionCache.has(collisionKey)) {
+                console.log(`[CACHE] Collision ${collisionKey} already evaluated this generation — skipping`);
+                appendFinding({
+                  id: attemptId,
+                  type: 'attempt',
+                  timestamp: new Date().toISOString(),
+                  tick: tickNum,
+                  pair: { a: dataAgent.displayName, b: hypoAgent.displayName },
+                  domains: { domain_a: dataLabel, domain_b: hypoLabel, meeting_cell: label },
+                  goldenCollision: goldenMeta,
+                  result: { outcome: 'skipped', reason: 'collision_cached', discovery_id: null },
+                  completed_at: new Date().toISOString()
+                });
+                recomputeMetricsNow('collision_skipped_cached');
+                return;
+              }
+              collisionCache.add(collisionKey);
+            }
+
+            goldenMeta = goldenCollisionScore(dataAgent.homeCell, hypoAgent.homeCell);
+            if (cubeMode) {
               dataCubeDesc = getCubeDescription(dataAgent.homeCell);
               hypoCubeDesc = getCubeDescription(hypoAgent.homeCell);
-
-              if (goldenMeta.golden) {
-                console.log(`[GOLDEN] Score ${goldenMeta.score} | ${goldenMeta.cellA.method} x ${goldenMeta.cellB.method} | surprise: ${goldenMeta.cellA.surprise} x ${goldenMeta.cellB.surprise}`);
-              }
-
-              // Safety: fall back to pack mode if cube cells are too thin
-              if (dataCubeDesc && dataCubeDesc.paperCount < 3) {
-                console.log(`[CUBE] Cell ${dataAgent.homeCell} too thin (${dataCubeDesc.paperCount} papers) — falling back to pack labels`);
-                dataCubeDesc = null;
-                hypoCubeDesc = null;
-              }
-              if (hypoCubeDesc && hypoCubeDesc.paperCount < 3) {
-                console.log(`[CUBE] Cell ${hypoAgent.homeCell} too thin (${hypoCubeDesc.paperCount} papers) — falling back to pack labels`);
-                dataCubeDesc = null;
-                hypoCubeDesc = null;
-              }
-            } catch (e) {
-              console.error(`[CUBE] Golden scoring error: ${e.message}`);
             }
+
+            if (goldenMeta && goldenMeta.golden) {
+              console.log(`[GOLDEN] Score ${goldenMeta.score} | ${goldenMeta.cellA.method} x ${goldenMeta.cellB.method} | surprise: ${goldenMeta.cellA.surprise} x ${goldenMeta.cellB.surprise}`);
+            }
+
+            if (goldenMeta && typeof goldenMeta.score === 'number' && !goldenMeta.reason && goldenMeta.score < MIN_COLLISION_SCORE) {
+              console.log(`[SKIP] Collision score ${goldenMeta.score.toFixed(2)} below threshold ${MIN_COLLISION_SCORE} — skipping Claude API call`);
+              appendFinding({
+                id: attemptId,
+                type: 'attempt',
+                timestamp: new Date().toISOString(),
+                tick: tickNum,
+                pair: { a: dataAgent.displayName, b: hypoAgent.displayName },
+                domains: { domain_a: dataLabel, domain_b: hypoLabel, meeting_cell: label },
+                goldenCollision: goldenMeta,
+                result: { outcome: 'skipped', reason: 'collision_score_below_threshold', discovery_id: null },
+                completed_at: new Date().toISOString()
+              });
+              recomputeMetricsNow('collision_skipped_score');
+              return;
+            }
+
+            // Safety: fall back to pack mode if cube cells are too thin
+            if (dataCubeDesc && dataCubeDesc.paperCount < 3) {
+              console.log(`[CUBE] Cell ${dataAgent.homeCell} too thin (${dataCubeDesc.paperCount} papers) — falling back to pack labels`);
+              dataCubeDesc = null;
+              hypoCubeDesc = null;
+            }
+            if (hypoCubeDesc && hypoCubeDesc.paperCount < 3) {
+              console.log(`[CUBE] Cell ${hypoAgent.homeCell} too thin (${hypoCubeDesc.paperCount} papers) — falling back to pack labels`);
+              dataCubeDesc = null;
+              hypoCubeDesc = null;
+            }
+          } catch (e) {
+            console.error(`[CUBE] Golden scoring error: ${e.message}`);
           }
 
           // Build prior summary for the prompt
@@ -922,8 +987,6 @@ async function _tickInner() {
           const meetingPointLabel = label;
 
           // --- Attempt Event: persist to findings.json before API call ---
-          const pairId = `${dataLabel.replace(/\s+/g, '')}_${hypoLabel.replace(/\s+/g, '')}`;
-          const attemptId = `att-${tickNum}-${pairId}`;
           const attemptRecord = {
             id: attemptId,
             type: 'attempt',
@@ -1046,11 +1109,14 @@ async function _tickInner() {
                   }
                 }
 
-                // Queue for deep dive if HIGH-VALUE GAP verdict or high impact discovery
-                if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
+                // Queue for deep dive if score >= threshold and verdict/impact meet criteria
+                const totalScore = discovery.scores && typeof discovery.scores.total === 'number' ? discovery.scores.total : 0;
+                if (discovery.type === 'discovery' && totalScore >= DEEP_DIVE_THRESHOLD && (verdictStr === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
                   deepDiveQueue.push({ discovery, attempts: 0, last_error: null });
                   saveQueues();
                   console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
+                } else if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
+                  console.log(`[DEEP-DIVE] Skipped ${discovery.id} (score ${totalScore} < ${DEEP_DIVE_THRESHOLD})`);
                 }
               }
             } else {
@@ -1123,8 +1189,12 @@ async function _tickInner() {
   if (deepDiveQueue.length > 0 && !lowSpendMode && (Date.now() - _tickStartedAt) < TICK_TIME_BUDGET_MS) {
     const ddItem = deepDiveQueue[0];
     const ddDiscovery = ddItem.discovery;
+    if (!budget.canRunDeepDive(MAX_DEEP_DIVES_PER_DAY)) {
+      console.log(`[DEEP-DIVE] Daily cap reached (${MAX_DEEP_DIVES_PER_DAY}). Deferring deep dives until next day.`);
+    } else {
     console.log(`[DEEP-DIVE] Starting deep dive on ${ddDiscovery.id} (${deepDiveQueue.length} remaining)`);
     try {
+      budget.recordDeepDive();
       const ddResult = await withTimeout(deepDive(ddDiscovery), QUEUE_TIMEOUT_MS, 'deep-dive');
       if (ddResult) {
         deepDiveQueue.shift();
@@ -1143,6 +1213,7 @@ async function _tickInner() {
       console.error(`[DEEP-DIVE] ${msg}`);
       recordDeepDiveFailure(ddItem, msg);
     }
+    }
   }
 
   // === VERIFICATION (independent of deep-dive — runs every tick if queue has items, with timeout) ===
@@ -1153,11 +1224,24 @@ async function _tickInner() {
     } else {
       const vItem = verificationQueue[0];
       const vVerdict = (vItem.discovery.verdict && vItem.discovery.verdict.verdict) || vItem.discovery.verdict || '';
+      const vScore = vItem.discovery.scores && typeof vItem.discovery.scores.total === 'number' ? vItem.discovery.scores.total : 0;
       if (vVerdict !== 'HIGH-VALUE GAP') {
         verificationQueue.shift();
         saveQueues();
         updateMetrics({ gpt_skipped_not_high_value: 1 });
         console.warn(`[VERIFIER] Skipping non-high-value discovery ${vItem.discovery.id} (verdict=${vVerdict || 'unknown'})`);
+      } else if (vScore < VERIFIER_MIN_SCORE) {
+        verificationQueue.shift();
+        saveQueues();
+        vItem.discovery.verification = 'skipped-low-score';
+        const findingsData = readFindings();
+        const fIdx = findingsData.findings.findIndex(f => f.id === vItem.discovery.id);
+        if (fIdx !== -1) {
+          findingsData.findings[fIdx] = vItem.discovery;
+          saveFindingsAtomic(findingsData);
+        }
+        updateMetrics({ gpt_skipped_low_score: 1 });
+        console.warn(`[VERIFIER] Skipping ${vItem.discovery.id} (score ${vScore} < ${VERIFIER_MIN_SCORE})`);
       } else {
         try {
           console.log(`[VERIFIER] REVIEWING ${vItem.discovery.id} — sending to GPT-4o...`);
