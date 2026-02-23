@@ -69,6 +69,7 @@ let validationQueue = [];
 
 // --- Metrics ---
 const METRICS_FILE = require('path').join(__dirname, 'data', 'metrics.json');
+const FINDINGS_FILE_PATH = require('path').join(__dirname, 'data', 'findings.json');
 
 function readMetrics() {
   try {
@@ -78,6 +79,38 @@ function readMetrics() {
   } catch (e) {}
   return {};
 }
+
+/** One-time backfill: scan findings.json to correct counters if they look stale */
+function backfillMetrics() {
+  try {
+    const m = readMetrics();
+    if (!require('fs').existsSync(FINDINGS_FILE_PATH)) return;
+    const data = JSON.parse(require('fs').readFileSync(FINDINGS_FILE_PATH, 'utf8'));
+    const findings = data.findings || [];
+    if (findings.length === 0) return;
+
+    const countCell = findings.filter(f => f.type === 'cell').length;
+    const countDiscovery = findings.filter(f => f.type === 'discovery').length;
+    const countDraft = findings.filter(f => f.type === 'draft').length;
+    const countDup = findings.filter(f => f.type === 'duplicate').length;
+
+    let changed = false;
+    if ((m.total_cell_findings || 0) < countCell) { m.total_cell_findings = countCell; changed = true; }
+    if ((m.total_discoveries || 0) < countDiscovery) { m.total_discoveries = countDiscovery; changed = true; }
+    if ((m.total_drafts || 0) < countDraft) { m.total_drafts = countDraft; changed = true; }
+    if ((m.total_duplicates || 0) < countDup) { m.total_duplicates = countDup; changed = true; }
+
+    if (changed) {
+      console.log(`[METRICS] Backfill: cell=${countCell} disc=${countDiscovery} draft=${countDraft} dup=${countDup}`);
+      const tmpFile = METRICS_FILE + '.tmp';
+      require('fs').writeFileSync(tmpFile, JSON.stringify(m, null, 2));
+      require('fs').renameSync(tmpFile, METRICS_FILE);
+    }
+  } catch (e) {
+    console.error(`[METRICS] Backfill failed: ${e.message}`);
+  }
+}
+backfillMetrics();
 
 function updateMetrics(updates) {
   try {
@@ -92,7 +125,7 @@ function updateMetrics(updates) {
     }
 
     for (const [key, val] of Object.entries(updates)) {
-      if (typeof val === 'number' && (key.startsWith('total_') || key.startsWith('gpt_') || key.startsWith('validated') || key.startsWith('ready_') || key.startsWith('needs_') || key.startsWith('blocked') || key.startsWith('saturation_') || key.startsWith('labeled_') || key.startsWith('precision_') || key.startsWith('_'))) {
+      if (typeof val === 'number' && (key.startsWith('total_') || key.startsWith('gpt_') || key.startsWith('validated') || key.startsWith('ready_') || key.startsWith('needs_') || key.startsWith('blocked') || key.startsWith('saturation_') || key.startsWith('labeled_') || key.startsWith('_'))) {
         m[key] = (m[key] || 0) + val;
       } else {
         m[key] = val;
@@ -104,18 +137,30 @@ function updateMetrics(updates) {
     if (m._bridge_count > 0) m.avg_bridge_score = Math.round(m._bridge_sum / m._bridge_count);
     if (m._spec_count > 0) m.avg_speculation_leaps = Math.round((m._spec_sum / m._spec_count) * 10) / 10;
 
-    // Calculated rates
+    // Calculated rates (percentages)
     const att = m.total_discovery_attempts || 0;
     if (att > 0) {
       m.gap_rate = Math.round(((m.total_discoveries || 0) / att) * 1000) / 10;
       m.rejection_rate = Math.round((((m.total_no_gap || 0) + (m.total_drafts || 0) + (m.total_duplicates || 0)) / att) * 1000) / 10;
       m.high_value_rate = Math.round(((m.total_high_value || 0) / att) * 1000) / 10;
-      m.survival_rate = m.high_value_rate;
-      m.red_flag_rate = Math.round(((m.total_drafts || 0) / att) * 1000) / 10;
     }
+    // Remove misleading alias
+    delete m.survival_rate;
+    delete m.red_flag_rate;
+
+    // GPT survival rate
     if ((m.gpt_reviewed || 0) > 0) {
       m.gpt_survival_rate = Math.round(((m.gpt_confirmed || 0) / m.gpt_reviewed) * 1000) / 10;
+    } else {
+      m.gpt_survival_rate = 0;
     }
+
+    // Precision@k: null until enough labels
+    const lt = m.labeled_total || 0;
+    if (lt < 5) { m.precision_at_5 = null; m.precision_at_5_status = 'INSUFFICIENT_LABELS'; }
+    else { delete m.precision_at_5_status; }
+    if (lt < 10) { m.precision_at_10 = null; m.precision_at_10_status = 'INSUFFICIENT_LABELS'; }
+    else { delete m.precision_at_10_status; }
 
     m.last_updated = new Date().toISOString();
 
@@ -373,6 +418,11 @@ async function tick() {
     }
     // Process pending verifications (max 1 per tick, rate-limited internally)
     if (verificationQueue.length > 0) {
+      // Check for missing OPENAI_API_KEY before attempting
+      if (!process.env.OPENAI_API_KEY) {
+        if (tickNum % 50 === 0) console.warn('[VERIFIER] OPENAI_API_KEY not set — skipping verification');
+        updateMetrics({ gpt_skipped_missing_key: 1, last_error: 'OPENAI_API_KEY not set — skipping verification', last_error_at: new Date().toISOString() });
+      } else {
       const vItem = verificationQueue[0];
       try {
         const vResult = await verifyGap(vItem.discovery, vItem.deepDive);
@@ -452,8 +502,10 @@ async function tick() {
         // null means rate-limited — keep in queue for next tick
       } catch (err) {
         console.error(`[VERIFIER] Error: ${err.message}`);
+        updateMetrics({ last_error: `Verifier error: ${err.message}`, last_error_at: new Date().toISOString() });
         verificationQueue.shift();
       }
+      } // end else (OPENAI_API_KEY present)
     }
     // Process pending validations (max 1 per tick, rate-limited to 1/hour internally)
     if (validationQueue.length > 0) {

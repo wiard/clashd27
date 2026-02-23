@@ -837,8 +837,6 @@ function computePrecision(labels, findings, k) {
 
 function updatePrecisionMetrics(labels) {
   const findings = readFindings();
-  const p5 = computePrecision(labels, findings, 5);
-  const p10 = computePrecision(labels, findings, 10);
   const labeledHV = labels.filter(l => {
     const f = findings.find(ff => ff.id === l.id);
     if (!f) return false;
@@ -853,8 +851,23 @@ function updatePrecisionMetrics(labels) {
     if (fs.existsSync(metricsFile)) m = JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
     m.labeled_total = labels.length;
     m.labeled_high_value = labeledHV;
-    if (p5 !== null) m.precision_at_5 = p5;
-    if (p10 !== null) m.precision_at_10 = p10;
+
+    // Precision@k: only compute when enough labels exist
+    if (labeledHV >= 5) {
+      m.precision_at_5 = computePrecision(labels, findings, 5);
+      delete m.precision_at_5_status;
+    } else {
+      m.precision_at_5 = null;
+      m.precision_at_5_status = 'INSUFFICIENT_LABELS';
+    }
+    if (labeledHV >= 10) {
+      m.precision_at_10 = computePrecision(labels, findings, 10);
+      delete m.precision_at_10_status;
+    } else {
+      m.precision_at_10 = null;
+      m.precision_at_10_status = 'INSUFFICIENT_LABELS';
+    }
+
     m.last_updated = new Date().toISOString();
     const tmpM = metricsFile + '.tmp';
     fs.writeFileSync(tmpM, JSON.stringify(m, null, 2));
