@@ -2118,7 +2118,15 @@ function renderFindings() {
       const fCls = f.feasibility === 'high' ? 'badge-strong' : f.feasibility === 'low' ? 'badge-weak' : 'badge-moderate';
       const iCls = f.impact === 'high' ? 'badge-high' : f.impact === 'low' ? 'badge-low' : 'badge-medium';
       const nCls = f.novelty === 'high' ? 'badge-high' : f.novelty === 'low' ? 'badge-low' : 'badge-medium';
-      badges = `<div class="finding-badges"><span class="badge ${fCls}">FEASIBILITY: ${(f.feasibility || 'medium').toUpperCase()}</span><span class="badge ${iCls}">IMPACT: ${(f.impact || 'medium').toUpperCase()}</span><span class="badge ${nCls}">NOVELTY: ${(f.novelty || 'medium').toUpperCase()}</span></div>`;
+      let satBadge = '';
+      if (f.saturation) {
+        const ss = f.saturation.field_saturation_score;
+        const satCls = ss >= 60 ? 'badge-weak' : ss >= 40 ? 'badge-moderate' : 'badge-strong';
+        const satLabel = ss >= 60 ? 'SATURATED' : ss >= 40 ? 'PARTIAL' : 'TRUE GAP';
+        const satTitle = f.saturation.reasoning || '';
+        satBadge = `<span class="badge ${satCls}" title="${escapeHtml(satTitle)}">🔬 ${satLabel} (${ss})</span>`;
+      }
+      badges = `<div class="finding-badges"><span class="badge ${fCls}">FEASIBILITY: ${(f.feasibility || 'medium').toUpperCase()}</span><span class="badge ${iCls}">IMPACT: ${(f.impact || 'medium').toUpperCase()}</span><span class="badge ${nCls}">NOVELTY: ${(f.novelty || 'medium').toUpperCase()}</span>${satBadge}</div>`;
     }
 
     // Gap packet rendering (replaces simple hypothesis for structured discoveries)

@@ -18,6 +18,7 @@ const { investigateCell, investigateBond, investigateDiscovery, investigateVerif
 const { deepDive, readDeepDives } = require('./lib/deep-dive');
 const { verifyGap } = require('./lib/verifier');
 const { validateGap } = require('./lib/validator');
+const { checkSaturation } = require('./lib/saturation');
 
 const TICK_INTERVAL = parseInt(process.env.TICK_INTERVAL || '300') * 1000; // 5 minutes (rate limits)
 const CHANNEL_PREFIX = 'cel-';
@@ -634,8 +635,47 @@ async function tick() {
                   }
                 }
 
+                // --- Field Saturation Check (HIGH-VALUE GAP only) ---
+                let verdictStr = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
+                if (discovery.type === 'discovery' && verdictStr === 'HIGH-VALUE GAP') {
+                  try {
+                    const satResult = await checkSaturation(
+                      discovery.finding || discovery.hypothesis || '',
+                      discovery.abc_chain || [],
+                      discovery.bridge || {}
+                    );
+                    if (satResult) {
+                      discovery.saturation = satResult;
+                      updateMetrics({ saturation_checks: 1 });
+                      console.log(`[SATURATION] ${discovery.id} | score=${satResult.field_saturation_score} | papers=${satResult.paper_estimate_5y} | trials=${satResult.trial_count} | field=${satResult.established_field_name || 'none'}`);
+
+                      if (satResult.field_saturation_score >= 60) {
+                        // DOWNGRADE: saturated field, not a true gap
+                        discovery.verdict = { verdict: 'CONFIRMED DIRECTION', reason: `Saturation downgrade (score ${satResult.field_saturation_score}): ${satResult.reasoning}` };
+                        verdictStr = 'CONFIRMED DIRECTION';
+                        // Adjust metrics: undo HIGH-VALUE, add CONFIRMED DIRECTION
+                        updateMetrics({ total_high_value: -1, total_confirmed_direction: 1, saturation_downgrades: 1 });
+                        console.log(`[SATURATION] ${discovery.id} DOWNGRADED to CONFIRMED DIRECTION (saturation=${satResult.field_saturation_score})`);
+                      } else if (satResult.field_saturation_score >= 40) {
+                        // PENALTY: moderate saturation, reduce novelty
+                        if (discovery.scores && typeof discovery.scores.novelty === 'number') {
+                          discovery.scores.novelty = Math.max(0, discovery.scores.novelty - 5);
+                          discovery.scores.total = Math.max(0, (discovery.scores.total || 0) - 5);
+                        }
+                        updateMetrics({ saturation_penalties: 1 });
+                        console.log(`[SATURATION] ${discovery.id} novelty penalized -5 (saturation=${satResult.field_saturation_score})`);
+                      } else {
+                        // PASS: true gap confirmed
+                        updateMetrics({ saturation_passed: 1 });
+                        console.log(`[SATURATION] ${discovery.id} PASSED saturation check (score=${satResult.field_saturation_score})`);
+                      }
+                    }
+                  } catch (satErr) {
+                    console.error(`[SATURATION] Check failed for ${discovery.id}: ${satErr.message}`);
+                  }
+                }
+
                 // Queue for deep dive if HIGH-VALUE GAP verdict or high impact discovery
-                const verdictStr = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
                 if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
                   deepDiveQueue.push(discovery);
                   console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
