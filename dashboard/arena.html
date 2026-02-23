@@ -437,6 +437,97 @@
     padding: 40px;
   }
 
+  /* METRICS PANEL */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .metrics-card {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 14px;
+    text-align: center;
+  }
+  .metrics-card .m-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--orange);
+    line-height: 1.2;
+  }
+  .metrics-card .m-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .metrics-funnel {
+    margin-top: 16px;
+  }
+  .funnel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .funnel-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    width: 140px;
+    text-align: right;
+    color: #555;
+    flex-shrink: 0;
+  }
+  .funnel-bar-wrap {
+    flex: 1;
+    height: 20px;
+    background: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .funnel-bar {
+    height: 100%;
+    background: var(--orange);
+    border-radius: 3px;
+    transition: width 0.4s;
+    min-width: 2px;
+  }
+  .funnel-bar.green { background: #22aa22; }
+  .funnel-bar.yellow { background: #ddaa00; }
+  .funnel-bar.red { background: #cc2222; }
+  .funnel-bar.blue { background: #2244cc; }
+  .funnel-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    width: 40px;
+    color: #333;
+    flex-shrink: 0;
+  }
+  .metrics-section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--orange);
+    margin: 20px 0 10px 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 6px;
+  }
+  .cost-row {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: #555;
+    margin: 4px 0;
+  }
+  .cost-row .cost-val {
+    color: var(--orange);
+    font-weight: 700;
+  }
+
   /* AGENT KEYWORDS IN LEADERBOARD */
   .agent-keywords {
     display: flex;
@@ -1207,6 +1298,7 @@
           <button class="findings-tab" onclick="setFindingsFilter('bond')">BONDS</button>
           <button class="findings-tab" onclick="setFindingsFilter('discovery')">DISCOVERIES</button>
           <button class="findings-tab" onclick="setFindingsFilter('top-rated')">TOP RATED</button>
+          <button class="findings-tab" onclick="setFindingsFilter('metrics')">METRICS</button>
         </div>
         <div class="findings-stats" id="findings-stats">
           <span class="stat-num">—</span> findings · <span class="stat-num">—</span> discoveries · <span class="stat-num">—</span> bonds
@@ -1214,6 +1306,7 @@
         <div class="findings-feed" id="findings-feed">
           <div class="findings-empty">Agents are investigating... first findings incoming.</div>
         </div>
+        <div id="metrics-panel" style="display:none;"></div>
       </div>
     </div>
   </div>
@@ -1817,10 +1910,137 @@ function setFindingsFilter(filter) {
   currentFindingsFilter = filter;
   document.querySelectorAll('.findings-tab').forEach(t => t.classList.remove('active'));
   event.target.classList.add('active');
-  if (filter === 'top-rated') {
-    loadTopRated();
+  const feedEl = document.getElementById('findings-feed');
+  const metricsEl = document.getElementById('metrics-panel');
+  if (filter === 'metrics') {
+    feedEl.style.display = 'none';
+    metricsEl.style.display = 'block';
+    loadMetricsPanel();
   } else {
-    renderFindings();
+    feedEl.style.display = '';
+    metricsEl.style.display = 'none';
+    if (filter === 'top-rated') {
+      loadTopRated();
+    } else {
+      renderFindings();
+    }
+  }
+}
+
+async function loadMetricsPanel() {
+  const panel = document.getElementById('metrics-panel');
+  try {
+    const m = await fetch('/api/metrics').then(r => r.json());
+    const attempts = m.total_discovery_attempts || 0;
+    const discoveries = m.total_discoveries || 0;
+    const drafts = m.total_drafts || 0;
+    const noGap = m.total_no_gap || 0;
+    const duplicates = m.total_duplicates || 0;
+    const highValue = m.total_high_value || 0;
+    const gptReviewed = m.gpt_reviewed || 0;
+    const gptConfirmed = m.gpt_confirmed || 0;
+    const gptWeakened = m.gpt_weakened || 0;
+    const gptKilled = m.gpt_killed || 0;
+    const validated = m.validated || 0;
+    const readyToTest = m.ready_to_test || 0;
+    const needsData = m.needs_data || 0;
+    const blocked = m.blocked || 0;
+    const maxFunnel = Math.max(attempts, 1);
+
+    panel.innerHTML = `
+      <div class="metrics-section-title">Pipeline Overview</div>
+      <div class="metrics-grid">
+        <div class="metrics-card"><div class="m-value">${attempts}</div><div class="m-label">Discovery Attempts</div></div>
+        <div class="metrics-card"><div class="m-value">${discoveries}</div><div class="m-label">Discoveries</div></div>
+        <div class="metrics-card"><div class="m-value">${highValue}</div><div class="m-label">High-Value Gaps</div></div>
+        <div class="metrics-card"><div class="m-value">${m.avg_score || 0}</div><div class="m-label">Avg Score</div></div>
+        <div class="metrics-card"><div class="m-value">${m.avg_bridge_score || 0}</div><div class="m-label">Avg Bridge</div></div>
+        <div class="metrics-card"><div class="m-value">${m.avg_speculation_leaps || 0}</div><div class="m-label">Avg Spec Leaps</div></div>
+        <div class="metrics-card"><div class="m-value">${m.survival_rate || 0}%</div><div class="m-label">Survival Rate</div></div>
+        <div class="metrics-card"><div class="m-value">${m.total_cell_findings || 0}</div><div class="m-label">Cell Findings</div></div>
+      </div>
+
+      <div class="metrics-section-title">Discovery Funnel</div>
+      <div class="metrics-funnel">
+        <div class="funnel-row">
+          <div class="funnel-label">Attempts</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:100%"></div></div>
+          <div class="funnel-count">${attempts}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">No Gap</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar red" style="width:${(noGap/maxFunnel*100).toFixed(1)}%"></div></div>
+          <div class="funnel-count">${noGap}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">Drafts</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar yellow" style="width:${(drafts/maxFunnel*100).toFixed(1)}%"></div></div>
+          <div class="funnel-count">${drafts}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">Duplicates</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar yellow" style="width:${(duplicates/maxFunnel*100).toFixed(1)}%"></div></div>
+          <div class="funnel-count">${duplicates}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">Discoveries</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar green" style="width:${(discoveries/maxFunnel*100).toFixed(1)}%"></div></div>
+          <div class="funnel-count">${discoveries}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">High-Value</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar green" style="width:${(highValue/maxFunnel*100).toFixed(1)}%"></div></div>
+          <div class="funnel-count">${highValue}</div>
+        </div>
+      </div>
+
+      <div class="metrics-section-title">Verdict Breakdown</div>
+      <div class="metrics-grid">
+        <div class="metrics-card"><div class="m-value">${highValue}</div><div class="m-label">High-Value Gap</div></div>
+        <div class="metrics-card"><div class="m-value">${m.total_confirmed_direction || 0}</div><div class="m-label">Confirmed Direction</div></div>
+        <div class="metrics-card"><div class="m-value">${m.total_needs_work || 0}</div><div class="m-label">Needs Work</div></div>
+        <div class="metrics-card"><div class="m-value">${m.total_low_priority || 0}</div><div class="m-label">Low Priority</div></div>
+      </div>
+
+      <div class="metrics-section-title">GPT Adversarial Review</div>
+      <div class="metrics-funnel">
+        <div class="funnel-row">
+          <div class="funnel-label">Reviewed</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar blue" style="width:100%"></div></div>
+          <div class="funnel-count">${gptReviewed}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">Confirmed</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar green" style="width:${gptReviewed ? (gptConfirmed/gptReviewed*100).toFixed(1) : 0}%"></div></div>
+          <div class="funnel-count">${gptConfirmed}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">Weakened</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar yellow" style="width:${gptReviewed ? (gptWeakened/gptReviewed*100).toFixed(1) : 0}%"></div></div>
+          <div class="funnel-count">${gptWeakened}</div>
+        </div>
+        <div class="funnel-row">
+          <div class="funnel-label">Killed</div>
+          <div class="funnel-bar-wrap"><div class="funnel-bar red" style="width:${gptReviewed ? (gptKilled/gptReviewed*100).toFixed(1) : 0}%"></div></div>
+          <div class="funnel-count">${gptKilled}</div>
+        </div>
+      </div>
+
+      <div class="metrics-section-title">Validation</div>
+      <div class="metrics-grid">
+        <div class="metrics-card"><div class="m-value">${validated}</div><div class="m-label">Validated</div></div>
+        <div class="metrics-card"><div class="m-value">${readyToTest}</div><div class="m-label">Ready to Test</div></div>
+        <div class="metrics-card"><div class="m-value">${needsData}</div><div class="m-label">Needs Data</div></div>
+        <div class="metrics-card"><div class="m-value">${blocked}</div><div class="m-label">Blocked</div></div>
+      </div>
+
+      <div class="metrics-section-title">Cost</div>
+      <div class="cost-row">Today: <span class="cost-val">$${(m.estimated_cost_today || 0).toFixed(2)}</span> (${m.api_calls_today || 0} calls)</div>
+      <div class="cost-row">Total: <span class="cost-val">$${(m.estimated_cost_total || 0).toFixed(2)}</span> (${m.api_calls_total || 0} calls)</div>
+      <div style="font-size:10px;color:#888;margin-top:8px;">Last updated: ${m.last_updated || 'never'}</div>
+    `;
+  } catch (e) {
+    panel.innerHTML = '<div class="findings-empty">Failed to load metrics</div>';
   }
 }
 

@@ -1,3 +1,4 @@
+require("dotenv").config();
 /**
  * CLASHD-27 — Clock Bot
  * 27 cells. One clock. Agents clash.
@@ -13,7 +14,7 @@ const {
   getNeighborsByType, getNeighborType, getLayerName, getLayerForCell, isCrossLayer, neighborSummary,
   NEIGHBOR_TYPE, NEIGHBOR_INFO,
 } = require('./lib/cube');
-const { investigateCell, investigateBond, investigateDiscovery, investigateVerification, readFindings, queueFollowUps, getNextFollowUp } = require('./lib/researcher');
+const { investigateCell, investigateBond, investigateDiscovery, investigateVerification, readFindings, queueFollowUps, getNextFollowUp, trackApiCall, isCircuitOpen, circuitBreakerWarn } = require('./lib/researcher');
 const { deepDive, readDeepDives } = require('./lib/deep-dive');
 const { verifyGap } = require('./lib/verifier');
 const { validateGap } = require('./lib/validator');
@@ -33,6 +34,85 @@ const channels = {};
 let deepDiveQueue = [];
 let verificationQueue = [];
 let validationQueue = [];
+
+// --- Metrics ---
+const METRICS_FILE = require('path').join(__dirname, 'data', 'metrics.json');
+
+function readMetrics() {
+  try {
+    if (require('fs').existsSync(METRICS_FILE)) {
+      return JSON.parse(require('fs').readFileSync(METRICS_FILE, 'utf8'));
+    }
+  } catch (e) {}
+  return {};
+}
+
+function updateMetrics(updates) {
+  try {
+    const m = readMetrics();
+
+    // Midnight UTC cost reset
+    const todayKey = new Date().toISOString().slice(0, 10);
+    if (m._cost_date && m._cost_date !== todayKey) {
+      m.api_calls_today = 0;
+      m.estimated_cost_today = 0;
+      m._cost_date = todayKey;
+    }
+
+    for (const [key, val] of Object.entries(updates)) {
+      if (typeof val === 'number' && (key.startsWith('total_') || key.startsWith('gpt_') || key.startsWith('validated') || key.startsWith('ready_') || key.startsWith('needs_') || key.startsWith('blocked') || key.startsWith('_'))) {
+        m[key] = (m[key] || 0) + val;
+      } else {
+        m[key] = val;
+      }
+    }
+
+    // Recalculate averages
+    if (m._score_count > 0) m.avg_score = Math.round(m._score_sum / m._score_count);
+    if (m._bridge_count > 0) m.avg_bridge_score = Math.round(m._bridge_sum / m._bridge_count);
+    if (m._spec_count > 0) m.avg_speculation_leaps = Math.round((m._spec_sum / m._spec_count) * 10) / 10;
+
+    // Calculated rates
+    const att = m.total_discovery_attempts || 0;
+    if (att > 0) {
+      m.gap_rate = Math.round(((m.total_discoveries || 0) / att) * 1000) / 10;
+      m.rejection_rate = Math.round((((m.total_no_gap || 0) + (m.total_drafts || 0) + (m.total_duplicates || 0)) / att) * 1000) / 10;
+      m.high_value_rate = Math.round(((m.total_high_value || 0) / att) * 1000) / 10;
+      m.survival_rate = m.high_value_rate;
+      m.red_flag_rate = Math.round(((m.total_drafts || 0) / att) * 1000) / 10;
+    }
+    if ((m.gpt_reviewed || 0) > 0) {
+      m.gpt_survival_rate = Math.round(((m.gpt_confirmed || 0) / m.gpt_reviewed) * 1000) / 10;
+    }
+
+    m.last_updated = new Date().toISOString();
+
+    // Atomic write: write to tmp then rename
+    const dir = require('path').dirname(METRICS_FILE);
+    if (!require('fs').existsSync(dir)) require('fs').mkdirSync(dir, { recursive: true });
+    const tmpFile = METRICS_FILE + '.tmp';
+    require('fs').writeFileSync(tmpFile, JSON.stringify(m, null, 2));
+    require('fs').renameSync(tmpFile, METRICS_FILE);
+    return m;
+  } catch (e) {
+    console.error(`[METRICS] Update failed: ${e.message}`);
+    return {};
+  }
+}
+
+function logMetrics(tickNum) {
+  if (tickNum % 10 !== 0) return;
+  const m = readMetrics();
+  const attempts = m.total_discovery_attempts || 0;
+  const gaps = m.total_discoveries || 0;
+  const pct = m.gap_rate || 0;
+  const hv = m.total_high_value || 0;
+  const reject = m.rejection_rate || 0;
+  console.log(`[METRICS] attempts=${attempts} gaps=${gaps} (${pct}%) HV=${hv} reject=${reject}% cost_today=$${(m.estimated_cost_today || 0).toFixed(2)}`);
+  if ((m.estimated_cost_today || 0) > 0) {
+    console.log(`[COST] Today: $${(m.estimated_cost_today || 0).toFixed(2)} (${m.api_calls_today || 0} calls) | Total: $${(m.estimated_cost_total || 0).toFixed(2)} (${m.api_calls_total || 0} calls)`);
+  }
+}
 
 function getAgentKeywords(agent) {
   return agent.keywords || [];
@@ -219,6 +299,7 @@ async function tick() {
   const result = state.processTick();
   const { tick: tickNum, activeCell, cycle, events, isCycleEnd } = result;
   console.log(`[TICK] ${tickNum} | cell=${activeCell} (${cellLabelShort(activeCell)}) | events=${events.length}`);
+  logMetrics(tickNum);
   await sendToChannel('clock', { embeds: [tickEmbed(tickNum, activeCell, cycle)] });
   if (events.length > 0) {
     const embed = eventEmbed(events);
@@ -234,8 +315,15 @@ async function tick() {
     await sendToChannel('leaderboard', { embeds: [leaderboardEmbed()] });
   }
 
+  // === COST GUARD: skip expensive pipeline steps if over daily budget ===
+  const costMetrics = readMetrics();
+  const lowSpendMode = (costMetrics.estimated_cost_today || 0) > 5.00;
+  if (lowSpendMode && tickNum % 50 === 0) {
+    console.log(`[COST] WARNING $${(costMetrics.estimated_cost_today || 0).toFixed(2)} today — low-spend mode active (skipping deep-dive/verification)`);
+  }
+
   // === DEEP DIVE (max 1 per tick, runs before research so it counts as the API call) ===
-  if (deepDiveQueue.length > 0) {
+  if (deepDiveQueue.length > 0 && !lowSpendMode) {
     const ddDiscovery = deepDiveQueue.shift();
     console.log(`[DEEP-DIVE] Starting deep dive on ${ddDiscovery.id} (${deepDiveQueue.length} remaining)`);
     try {
@@ -313,6 +401,13 @@ async function tick() {
 
           console.log(`[ADVERSARIAL] ${vItem.discovery.id} | Claude: ${claudeTotal} → GPT adjustment: -${totalAdjustment} → Final: ${finalScore}${vItem.discovery.adversarial_adjustment.downgraded ? ' → DOWNGRADED to ' + finalVerdict : ''}`);
 
+          // Track GPT review metrics
+          updateMetrics({ gpt_reviewed: 1 });
+          const gptV = (vResult.gpt_verdict || '').toUpperCase();
+          if (gptV === 'CONFIRMED') updateMetrics({ gpt_confirmed: 1 });
+          else if (gptV === 'WEAKENED') updateMetrics({ gpt_weakened: 1 });
+          else if (gptV === 'KILLED') updateMetrics({ gpt_killed: 1 });
+
           // Queue for validation if survives scrutiny
           if (vResult.survives_scrutiny && vResult.gpt_verdict === 'CONFIRMED') {
             validationQueue.push(vItem.discovery);
@@ -335,6 +430,13 @@ async function tick() {
         const valResult = await validateGap(valDiscovery);
         if (valResult) {
           validationQueue.shift(); // Success — remove from queue
+
+          // Track validation metrics
+          updateMetrics({ validated: 1 });
+          const feas = valResult.overall_feasibility || 'blocked';
+          if (feas === 'ready_to_test') updateMetrics({ ready_to_test: 1 });
+          else if (feas === 'needs_data') updateMetrics({ needs_data: 1 });
+          else updateMetrics({ blocked: 1 });
         }
         // null means rate-limited — keep in queue for next tick
       } catch (err) {
@@ -369,18 +471,28 @@ async function tick() {
 
     let apiUsed = false;
 
-    // Rotate agent pairs by tick parity for cross-layer discoveries
-    // Even ticks: Agent-001 (home 0) × Agent-003 (home 18)
-    // Odd ticks:  greenbanaanas (home 4) × Agent-002 (home 9)
-    const allAgents = agentsHere;
-    let agent1, agent2;
-    if (tickNum % 2 === 0) {
-      agent1 = allAgents.find(a => a.homeCell === 0);
-      agent2 = allAgents.find(a => a.homeCell === 18);
-    } else {
-      agent1 = allAgents.find(a => a.homeCell === 4);
-      agent2 = allAgents.find(a => a.homeCell === 9);
+    // Circuit breaker: skip all API research if Anthropic credits exhausted
+    if (isCircuitOpen()) {
+      circuitBreakerWarn(tickNum);
+      return;
     }
+
+    // Rotate through ALL 5 cross-layer pairs using tickNum % 5
+    // Layer 0: home 0 (Genomics), home 4 (Epidemiology)
+    // Layer 1: home 9 (Drug Interactions)
+    // Layer 2: home 18 (Novel Combinations)
+    const CROSS_LAYER_PAIRS = [
+      [0, 9],   // Agent-001 (L0) × Agent-002 (L1)
+      [0, 18],  // Agent-001 (L0) × Agent-003 (L2)
+      [4, 9],   // greenbanaanas (L0) × Agent-002 (L1)
+      [4, 18],  // greenbanaanas (L0) × Agent-003 (L2)
+      [9, 18],  // Agent-002 (L1) × Agent-003 (L2)
+    ];
+    const pairIdx = tickNum % CROSS_LAYER_PAIRS.length;
+    const [home1, home2] = CROSS_LAYER_PAIRS[pairIdx];
+    const allAgents = agentsHere;
+    let agent1 = allAgents.find(a => a.homeCell === home1);
+    let agent2 = allAgents.find(a => a.homeCell === home2);
 
     if (agent1 && agent2 && agent1.homeCell !== agent2.homeCell) {
       const a1Label = getCellLabel(agent1.homeCell);
@@ -435,53 +547,99 @@ async function tick() {
           }
         } else {
           // Cross-layer: discovery investigation
-          const layer0Agent = getLayerForCell(agent1.homeCell) === 0 ? agent1 : (getLayerForCell(agent2.homeCell) === 0 ? agent2 : agent1);
-          const layer2Agent = layer0Agent === agent1 ? agent2 : agent1;
-          const layer0Label = getCellLabel(layer0Agent.homeCell);
-          const layer2Label = getCellLabel(layer2Agent.homeCell);
+          // Assign lower-layer agent as "data" side, higher as "hypothesis" side
+          const layer1 = getLayerForCell(agent1.homeCell);
+          const layer2 = getLayerForCell(agent2.homeCell);
+          const dataAgent = layer1 <= layer2 ? agent1 : agent2;
+          const hypoAgent = dataAgent === agent1 ? agent2 : agent1;
+          const dataLabel = getCellLabel(dataAgent.homeCell);
+          const hypoLabel = getCellLabel(hypoAgent.homeCell);
 
           // Build prior summary for the prompt
           const priorSummary = priorDiscoveries.length > 0
             ? priorDiscoveries.map(d => d.discovery || d.gap || '').filter(Boolean).join('; ')
             : '';
 
+          // Meeting point: the active cell domain provides additional context
+          const meetingPointLabel = label;
+
           try {
             const discovery = await investigateDiscovery({
               tick: tickNum,
               cell: activeCell,
-              cellLabel: label,
-              agent1Name: layer0Agent.displayName,
-              agent2Name: layer2Agent.displayName,
-              layer0Cell: layer0Label,
-              layer2Cell: layer2Label,
+              cellLabel: meetingPointLabel,
+              agent1Name: dataAgent.displayName,
+              agent2Name: hypoAgent.displayName,
+              layer0Cell: dataLabel,
+              layer2Cell: hypoLabel,
               packName,
-              dataKeywords: getAgentKeywords(layer0Agent),
-              hypothesisKeywords: getAgentKeywords(layer2Agent),
-              priorSummary
+              dataKeywords: getAgentKeywords(dataAgent),
+              hypothesisKeywords: getAgentKeywords(hypoAgent),
+              priorSummary,
+              meetingPoint: meetingPointLabel
             });
 
+            // Track discovery attempt
+            updateMetrics({ total_discovery_attempts: 1 });
+
             if (discovery) {
-              // Only count full discoveries, not drafts
-              if (discovery.type === 'discovery') {
-                layer0Agent.discoveriesCount = (layer0Agent.discoveriesCount || 0) + 1;
-                layer2Agent.discoveriesCount = (layer2Agent.discoveriesCount || 0) + 1;
-              }
-              layer0Agent.bondsWithFindings = (layer0Agent.bondsWithFindings || 0) + 1;
-              layer2Agent.bondsWithFindings = (layer2Agent.bondsWithFindings || 0) + 1;
-              console.log(`[RESEARCH] ${discovery.id} | ${(discovery.type || 'discovery').toUpperCase()} | ${layer0Label} x ${layer2Label} | verdict=${discovery.verdict || 'none'}`);
+              // Handle no_gap responses
+              if (discovery.type === 'no_gap') {
+                updateMetrics({ total_no_gap: 1 });
+                // no_gap is not saved as a finding, just logged
+              } else {
+                // Track by type
+                if (discovery.type === 'discovery') {
+                  dataAgent.discoveriesCount = (dataAgent.discoveriesCount || 0) + 1;
+                  hypoAgent.discoveriesCount = (hypoAgent.discoveriesCount || 0) + 1;
+                  updateMetrics({ total_discoveries: 1 });
 
-              // Queue follow-up questions from this discovery
-              if (discovery.type === 'discovery') {
-                const queued = queueFollowUps(discovery);
-                if (queued.length > 0) {
-                  console.log(`[FOLLOW-UP] Queued ${queued.length} follow-ups from ${discovery.id}: ${queued.map(q => q.id).join(', ')}`);
+                  // Track by verdict
+                  const vStr = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
+                  if (vStr === 'HIGH-VALUE GAP') updateMetrics({ total_high_value: 1 });
+                  else if (vStr === 'CONFIRMED DIRECTION') updateMetrics({ total_confirmed_direction: 1 });
+                  else if (vStr === 'NEEDS WORK') updateMetrics({ total_needs_work: 1 });
+                  else if (vStr === 'LOW PRIORITY') updateMetrics({ total_low_priority: 1 });
+
+                  // Track scores for averages
+                  if (discovery.scores) {
+                    updateMetrics({
+                      _score_sum: discovery.scores.total || 0,
+                      _score_count: 1,
+                      _bridge_sum: discovery.scores.bridge || 0,
+                      _bridge_count: 1
+                    });
+                  }
+                  if (discovery.speculation_index) {
+                    updateMetrics({
+                      _spec_sum: discovery.speculation_index.leaps || 0,
+                      _spec_count: 1
+                    });
+                  }
+                } else if (discovery.type === 'draft') {
+                  updateMetrics({ total_drafts: 1 });
+                } else if (discovery.type === 'duplicate') {
+                  updateMetrics({ total_duplicates: 1, total_reproduced: 1 });
                 }
-              }
 
-              // Queue for deep dive if HIGH-VALUE GAP verdict or high impact discovery
-              if (discovery.type === 'discovery' && (discovery.verdict === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
-                deepDiveQueue.push(discovery);
-                console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
+                dataAgent.bondsWithFindings = (dataAgent.bondsWithFindings || 0) + 1;
+                hypoAgent.bondsWithFindings = (hypoAgent.bondsWithFindings || 0) + 1;
+                console.log(`[RESEARCH] ${discovery.id} | ${(discovery.type || 'discovery').toUpperCase()} | ${dataLabel} x ${hypoLabel} | verdict=${discovery.verdict || 'none'}`);
+
+                // Queue follow-up questions from this discovery
+                if (discovery.type === 'discovery') {
+                  const queued = queueFollowUps(discovery);
+                  if (queued.length > 0) {
+                    console.log(`[FOLLOW-UP] Queued ${queued.length} follow-ups from ${discovery.id}: ${queued.map(q => q.id).join(', ')}`);
+                  }
+                }
+
+                // Queue for deep dive if HIGH-VALUE GAP verdict or high impact discovery
+                const verdictStr = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
+                if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
+                  deepDiveQueue.push(discovery);
+                  console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
+                }
               }
             }
             apiUsed = true;
@@ -532,6 +690,7 @@ async function tick() {
         if (cellFinding && cellFinding.keywords) {
           updateAgentKeywords(leadAgent, cellFinding.keywords);
           leadAgent.findingsCount = (leadAgent.findingsCount || 0) + 1;
+          updateMetrics({ total_cell_findings: 1 });
           console.log(`[RESEARCH] ${cellFinding.id} | CELL | ${label}`);
         }
       } catch (err) {

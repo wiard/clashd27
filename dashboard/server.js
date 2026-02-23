@@ -749,6 +749,47 @@ app.post('/api/weigh', async (req, res) => {
   }
 });
 
+// --- API: Metrics ---
+const METRICS_FILE = path.join(__dirname, '..', 'data', 'metrics.json');
+
+app.get('/api/metrics', (req, res) => {
+  try {
+    if (fs.existsSync(METRICS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(METRICS_FILE, 'utf8'));
+      // Strip internal tracking fields
+      const clean = { ...data };
+      delete clean._score_sum;
+      delete clean._score_count;
+      delete clean._bridge_sum;
+      delete clean._bridge_count;
+      delete clean._spec_sum;
+      delete clean._spec_count;
+      delete clean._cost_date;
+      res.json(clean);
+    } else {
+      res.json({});
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to read metrics' });
+  }
+});
+
+// --- API: Retrospective ---
+const RETRO_FILE = path.join(__dirname, '..', 'data', 'retrospective.json');
+
+app.get('/api/retrospective', (req, res) => {
+  try {
+    if (fs.existsSync(RETRO_FILE)) {
+      const data = JSON.parse(fs.readFileSync(RETRO_FILE, 'utf8'));
+      res.json(data);
+    } else {
+      res.json({ outcomes: [] });
+    }
+  } catch (e) {
+    res.json({ outcomes: [] });
+  }
+});
+
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
 
