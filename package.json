@@ -5,7 +5,8 @@
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
-    "register": "node register-commands.js"
+    "register": "node register-commands.js",
+    "doctor": "node tools/doctor.js"
   },
   "dependencies": {
     "discord.js": "^14.0.0",

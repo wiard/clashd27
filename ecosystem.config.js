@@ -1,4 +1,6 @@
-require('dotenv').config({ path: __dirname + '/.env' });
+// CLASHD-27 PM2 config
+// Secrets are loaded by the app via dotenv from /home/greenbanaanas/.secrets/clashd27.env
+// Do NOT inject keys here — it causes stale-env bugs on pm2 restart.
 
 module.exports = {
   apps: [{
@@ -9,10 +11,7 @@ module.exports = {
     restart_delay: 5000,
     max_restarts: 10,
     env: {
-      NODE_ENV: 'production',
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-      DISCORD_TOKEN: process.env.DISCORD_TOKEN
+      NODE_ENV: 'production'
     }
   }]
 };

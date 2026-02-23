@@ -3,9 +3,8 @@
  * Run once: node register-commands.js
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: '/home/greenbanaanas/.secrets/clashd27.env', override: true });
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
-require('dotenv').config();
 
 const commands = [
   new SlashCommandBuilder()

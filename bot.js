@@ -1,10 +1,18 @@
-require("dotenv").config();
+require("dotenv").config({ path: "/home/greenbanaanas/.secrets/clashd27.env", override: true });
+
+// Safe boot log — never prints full keys
+{
+  const k = process.env.OPENAI_API_KEY || '';
+  const a = process.env.ANTHROPIC_API_KEY || '';
+  const d = process.env.DISCORD_TOKEN || '';
+  console.log(`[BOOT] env: openai_key_present=${!!k} openai_len=${k.length} openai_last4=${k.slice(-4) || 'n/a'} anthropic_present=${!!a} discord_present=${!!d}`);
+}
+
 /**
  * CLASHD-27 — Clock Bot
  * 27 cells. One clock. Agents clash.
  */
 
-require('dotenv').config();
 const {
   Client, GatewayIntentBits, EmbedBuilder, ChannelType, PermissionFlagsBits,
 } = require('discord.js');
@@ -19,6 +27,28 @@ const { deepDive, readDeepDives } = require('./lib/deep-dive');
 const { verifyGap } = require('./lib/verifier');
 const { validateGap } = require('./lib/validator');
 const { checkSaturation } = require('./lib/saturation');
+
+// --- Atomic findings.json helpers ---
+function saveFindingsAtomic(data) {
+  const tmpF = FINDINGS_FILE_PATH + '.tmp';
+  require('fs').writeFileSync(tmpF, JSON.stringify(data, null, 2));
+  require('fs').renameSync(tmpF, FINDINGS_FILE_PATH);
+}
+
+function appendFinding(record) {
+  const data = readFindings();
+  data.findings.push(record);
+  if (data.findings.length > 1000) data.findings = data.findings.slice(-1000);
+  saveFindingsAtomic(data);
+}
+
+function updateFindingById(id, patch) {
+  const data = readFindings();
+  const idx = data.findings.findIndex(f => f.id === id);
+  if (idx === -1) return;
+  Object.assign(data.findings[idx], patch);
+  saveFindingsAtomic(data);
+}
 
 // --- Review Pack Builder ---
 function buildReviewPack(discovery) {
@@ -94,14 +124,34 @@ function backfillMetrics() {
     const countDraft = findings.filter(f => f.type === 'draft').length;
     const countDup = findings.filter(f => f.type === 'duplicate').length;
 
+    // Derive attempt-based metrics
+    const attempts = findings.filter(f => f.type === 'attempt');
+    const countAttempts = attempts.length;
+    const countNoGap = attempts.filter(a => a.result && a.result.outcome === 'no_gap').length;
+    const countErrors = attempts.filter(a => a.result && a.result.outcome === 'error').length;
+
     let changed = false;
     if ((m.total_cell_findings || 0) < countCell) { m.total_cell_findings = countCell; changed = true; }
     if ((m.total_discoveries || 0) < countDiscovery) { m.total_discoveries = countDiscovery; changed = true; }
     if ((m.total_drafts || 0) < countDraft) { m.total_drafts = countDraft; changed = true; }
     if ((m.total_duplicates || 0) < countDup) { m.total_duplicates = countDup; changed = true; }
 
+    // Backfill attempt-derived counters (authoritative source)
+    if (countAttempts > 0 && (m.total_discovery_attempts || 0) < countAttempts) {
+      m.total_discovery_attempts = countAttempts;
+      changed = true;
+    }
+    if (countNoGap > 0 && (m.total_no_gap || 0) < countNoGap) {
+      m.total_no_gap = countNoGap;
+      changed = true;
+    }
+    if (countErrors > 0) {
+      m.total_attempt_errors = countErrors;
+      changed = true;
+    }
+
     if (changed) {
-      console.log(`[METRICS] Backfill: cell=${countCell} disc=${countDiscovery} draft=${countDraft} dup=${countDup}`);
+      console.log(`[METRICS] Backfill: cell=${countCell} disc=${countDiscovery} draft=${countDraft} dup=${countDup} att=${countAttempts} no_gap=${countNoGap} err=${countErrors}`);
       const tmpFile = METRICS_FILE + '.tmp';
       require('fs').writeFileSync(tmpFile, JSON.stringify(m, null, 2));
       require('fs').renameSync(tmpFile, METRICS_FILE);
@@ -111,6 +161,28 @@ function backfillMetrics() {
   }
 }
 backfillMetrics();
+
+// --- Epoch Marker: set once at first startup, never overwritten ---
+(function initEpoch() {
+  try {
+    const m = readMetrics();
+    if (!m.epoch_started_at) {
+      const { execSync } = require('child_process');
+      let gitHash = 'unknown';
+      try { gitHash = execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim(); } catch (e) {}
+      const state = new (require('./lib/state').State)();
+      m.epoch_started_at = new Date().toISOString();
+      m.epoch_git_commit = gitHash;
+      m.epoch_tick_start = state.tick;
+      const tmpFile = METRICS_FILE + '.tmp';
+      require('fs').writeFileSync(tmpFile, JSON.stringify(m, null, 2));
+      require('fs').renameSync(tmpFile, METRICS_FILE);
+      console.log(`[EPOCH] Initialized: commit=${gitHash} tick=${state.tick}`);
+    }
+  } catch (e) {
+    console.error(`[EPOCH] Init failed: ${e.message}`);
+  }
+})();
 
 function updateMetrics(updates) {
   try {
@@ -410,7 +482,7 @@ async function tick() {
         // Queue HIGH-VALUE GAP discoveries for GPT verification
         if (ddResult.verdict === 'HIGH-VALUE GAP') {
           verificationQueue.push({ discovery: ddDiscovery, deepDive: ddResult });
-          console.log(`[VERIFIER] Queued ${ddDiscovery.id} for GPT verification (queue: ${verificationQueue.length})`);
+          console.log(`[VERIFIER] QUEUED ${ddDiscovery.id} for GPT-4o adversarial review (queue: ${verificationQueue.length})`);
         }
       }
     } catch (err) {
@@ -425,6 +497,7 @@ async function tick() {
       } else {
       const vItem = verificationQueue[0];
       try {
+        console.log(`[VERIFIER] REVIEWING ${vItem.discovery.id} — sending to GPT-4o...`);
         const vResult = await verifyGap(vItem.discovery, vItem.deepDive);
         if (vResult && !vResult.error) {
           verificationQueue.shift(); // Remove from queue only on success
@@ -481,7 +554,7 @@ async function tick() {
             require('fs').writeFileSync(require('path').join(__dirname, 'data', 'findings.json'), JSON.stringify(findingsData, null, 2));
           }
 
-          console.log(`[ADVERSARIAL] ${vItem.discovery.id} | Claude: ${claudeTotal} → GPT adjustment: -${totalAdjustment} → Final: ${finalScore}${vItem.discovery.adversarial_adjustment.downgraded ? ' → DOWNGRADED to ' + finalVerdict : ''}`);
+          console.log(`[VERIFIER] RESULT ${vItem.discovery.id} | Claude: ${claudeTotal} → GPT: -${totalAdjustment} → Final: ${finalScore} | verdict=${finalVerdict}${vItem.discovery.adversarial_adjustment.downgraded ? ' (DOWNGRADED)' : ''}`);
 
           // Track GPT review metrics
           updateMetrics({ gpt_reviewed: 1 });
@@ -647,6 +720,20 @@ async function tick() {
           // Meeting point: the active cell domain provides additional context
           const meetingPointLabel = label;
 
+          // --- Attempt Event: persist to findings.json before API call ---
+          const pairId = `${dataLabel.replace(/\s+/g, '')}_${hypoLabel.replace(/\s+/g, '')}`;
+          const attemptId = `att-${tickNum}-${pairId}`;
+          const attemptRecord = {
+            id: attemptId,
+            type: 'attempt',
+            timestamp: new Date().toISOString(),
+            tick: tickNum,
+            pair: { a: dataAgent.displayName, b: hypoAgent.displayName },
+            domains: { domain_a: dataLabel, domain_b: hypoLabel, meeting_cell: meetingPointLabel },
+            result: { outcome: 'pending', reason: '', discovery_id: null }
+          };
+          appendFinding(attemptRecord);
+
           try {
             const discovery = await investigateDiscovery({
               tick: tickNum,
@@ -663,14 +750,13 @@ async function tick() {
               meetingPoint: meetingPointLabel
             });
 
-            // Track discovery attempt
             updateMetrics({ total_discovery_attempts: 1 });
 
             if (discovery) {
               // Handle no_gap responses
               if (discovery.type === 'no_gap') {
                 updateMetrics({ total_no_gap: 1 });
-                // no_gap is not saved as a finding, just logged
+                updateFindingById(attemptId, { result: { outcome: 'no_gap', reason: discovery.reason || 'insufficient evidence', discovery_id: null }, completed_at: new Date().toISOString() });
               } else {
                 // Track by type
                 if (discovery.type === 'discovery') {
@@ -710,6 +796,11 @@ async function tick() {
                 hypoAgent.bondsWithFindings = (hypoAgent.bondsWithFindings || 0) + 1;
                 console.log(`[RESEARCH] ${discovery.id} | ${(discovery.type || 'discovery').toUpperCase()} | ${dataLabel} x ${hypoLabel} | verdict=${discovery.verdict?.verdict || discovery.verdict || 'none'}`);
 
+                // Finalize attempt: map verdict to outcome
+                const vFinal = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
+                const outcomeMap = { 'HIGH-VALUE GAP': 'high_value', 'CONFIRMED DIRECTION': 'confirmed_direction', 'NEEDS WORK': 'needs_work', 'LOW PRIORITY': 'low_priority' };
+                updateFindingById(attemptId, { result: { outcome: outcomeMap[vFinal] || 'discovery', reason: vFinal, discovery_id: discovery.id }, completed_at: new Date().toISOString() });
+
                 // Queue follow-up questions from this discovery
                 if (discovery.type === 'discovery') {
                   const queued = queueFollowUps(discovery);
@@ -733,14 +824,11 @@ async function tick() {
                       console.log(`[SATURATION] ${discovery.id} | score=${satResult.field_saturation_score} | papers=${satResult.paper_estimate_5y} | trials=${satResult.trial_count} | field=${satResult.established_field_name || 'none'}`);
 
                       if (satResult.field_saturation_score >= 60) {
-                        // DOWNGRADE: saturated field, not a true gap
                         discovery.verdict = { verdict: 'CONFIRMED DIRECTION', reason: `Saturation downgrade (score ${satResult.field_saturation_score}): ${satResult.reasoning}` };
                         verdictStr = 'CONFIRMED DIRECTION';
-                        // Adjust metrics: undo HIGH-VALUE, add CONFIRMED DIRECTION
                         updateMetrics({ total_high_value: -1, total_confirmed_direction: 1, saturation_downgrades: 1 });
                         console.log(`[SATURATION] ${discovery.id} DOWNGRADED to CONFIRMED DIRECTION (saturation=${satResult.field_saturation_score})`);
                       } else if (satResult.field_saturation_score >= 40) {
-                        // PENALTY: moderate saturation, reduce novelty
                         if (discovery.scores && typeof discovery.scores.novelty === 'number') {
                           discovery.scores.novelty = Math.max(0, discovery.scores.novelty - 5);
                           discovery.scores.total = Math.max(0, (discovery.scores.total || 0) - 5);
@@ -748,7 +836,6 @@ async function tick() {
                         updateMetrics({ saturation_penalties: 1 });
                         console.log(`[SATURATION] ${discovery.id} novelty penalized -5 (saturation=${satResult.field_saturation_score})`);
                       } else {
-                        // PASS: true gap confirmed
                         updateMetrics({ saturation_passed: 1 });
                         console.log(`[SATURATION] ${discovery.id} PASSED saturation check (score=${satResult.field_saturation_score})`);
                       }
@@ -761,14 +848,11 @@ async function tick() {
                 // Build review pack for reviewable discoveries (not NEEDS WORK / LOW PRIORITY)
                 if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || verdictStr === 'CONFIRMED DIRECTION')) {
                   discovery.review_pack = buildReviewPack(discovery);
-                  // Re-save discovery with saturation + review_pack
                   const findingsData = readFindings();
                   const fIdx = (findingsData.findings || []).findIndex(f => f.id === discovery.id);
                   if (fIdx !== -1) {
                     findingsData.findings[fIdx] = discovery;
-                    const tmpF = require('path').join(__dirname, 'data', 'findings.json.tmp');
-                    require('fs').writeFileSync(tmpF, JSON.stringify(findingsData, null, 2));
-                    require('fs').renameSync(tmpF, require('path').join(__dirname, 'data', 'findings.json'));
+                    saveFindingsAtomic(findingsData);
                   }
                 }
 
@@ -778,10 +862,14 @@ async function tick() {
                   console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
                 }
               }
+            } else {
+              // discovery returned null/undefined — finalize as error
+              updateFindingById(attemptId, { result: { outcome: 'error', reason: 'investigateDiscovery returned null', discovery_id: null }, completed_at: new Date().toISOString() });
             }
             apiUsed = true;
           } catch (err) {
             console.error(`[RESEARCH] Discovery investigation error: ${err.message}`);
+            updateFindingById(attemptId, { result: { outcome: 'error', reason: err.message, discovery_id: null }, completed_at: new Date().toISOString() });
           }
         }
       } else {

@@ -2,7 +2,7 @@
  * Test script for OpenAI GPT-4o verifier.
  * Usage: node test-verifier.js
  */
-require('dotenv').config();
+require('dotenv').config({ path: '/home/greenbanaanas/.secrets/clashd27.env', override: true });
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_MODEL = 'gpt-4o';
