@@ -790,6 +790,125 @@ app.get('/api/retrospective', (req, res) => {
   }
 });
 
+// --- API: Labels (Human Review) ---
+const LABELS_FILE = path.join(__dirname, '..', 'data', 'labels.json');
+
+function readLabels() {
+  try {
+    if (fs.existsSync(LABELS_FILE)) {
+      return JSON.parse(fs.readFileSync(LABELS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[LABELS] Read failed:', e.message);
+  }
+  return [];
+}
+
+function writeLabels(labels) {
+  const tmpFile = LABELS_FILE + '.tmp';
+  fs.writeFileSync(tmpFile, JSON.stringify(labels, null, 2));
+  fs.renameSync(tmpFile, LABELS_FILE);
+}
+
+function computePrecision(labels, findings, k) {
+  // Get most recent K HIGH-VALUE GAP discoveries that have labels
+  const hvFindings = findings.filter(f => {
+    const v = (f.verdict && f.verdict.verdict) || f.verdict || '';
+    return f.type === 'discovery' && (v === 'HIGH-VALUE GAP' || v === 'CONFIRMED DIRECTION');
+  });
+  // Sort by timestamp descending
+  hvFindings.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+  const labelMap = {};
+  for (const l of labels) labelMap[l.id] = l;
+
+  let count = 0, tp = 0;
+  for (const f of hvFindings) {
+    if (count >= k) break;
+    const label = labelMap[f.id];
+    if (!label) continue;
+    count++;
+    if (label.labels.novel === 1 && label.labels.testable === 1 && label.labels.wrong === 0) {
+      tp++;
+    }
+  }
+  return count > 0 ? Math.round((tp / k) * 1000) / 1000 : null;
+}
+
+function updatePrecisionMetrics(labels) {
+  const findings = readFindings();
+  const p5 = computePrecision(labels, findings, 5);
+  const p10 = computePrecision(labels, findings, 10);
+  const labeledHV = labels.filter(l => {
+    const f = findings.find(ff => ff.id === l.id);
+    if (!f) return false;
+    const v = (f.verdict && f.verdict.verdict) || f.verdict || '';
+    return v === 'HIGH-VALUE GAP' || v === 'CONFIRMED DIRECTION';
+  }).length;
+
+  // Update metrics file
+  const metricsFile = path.join(__dirname, '..', 'data', 'metrics.json');
+  try {
+    let m = {};
+    if (fs.existsSync(metricsFile)) m = JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
+    m.labeled_total = labels.length;
+    m.labeled_high_value = labeledHV;
+    if (p5 !== null) m.precision_at_5 = p5;
+    if (p10 !== null) m.precision_at_10 = p10;
+    m.last_updated = new Date().toISOString();
+    const tmpM = metricsFile + '.tmp';
+    fs.writeFileSync(tmpM, JSON.stringify(m, null, 2));
+    fs.renameSync(tmpM, metricsFile);
+  } catch (e) {
+    console.error('[LABELS] Metrics update failed:', e.message);
+  }
+}
+
+app.get('/api/review/:id', (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+  const labels = readLabels().filter(l => l.id === id);
+  res.json({ finding, review_pack: finding.review_pack || null, labels });
+});
+
+app.post('/api/review/:id/label', (req, res) => {
+  const id = req.params.id;
+  const { reviewer, labels: labelData } = req.body;
+  if (!reviewer || !labelData) {
+    return res.status(400).json({ error: 'reviewer and labels required' });
+  }
+  if (typeof labelData.novel !== 'number' || typeof labelData.testable !== 'number') {
+    return res.status(400).json({ error: 'labels.novel and labels.testable are required (0 or 1)' });
+  }
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  const labels = readLabels();
+  labels.push({
+    id,
+    timestamp: new Date().toISOString(),
+    reviewer,
+    labels: {
+      novel: labelData.novel ? 1 : 0,
+      testable: labelData.testable ? 1 : 0,
+      obvious: labelData.obvious ? 1 : 0,
+      wrong: labelData.wrong ? 1 : 0,
+      confidence: Math.min(5, Math.max(1, parseInt(labelData.confidence) || 3)),
+      notes: (labelData.notes || '').substring(0, 500)
+    }
+  });
+  writeLabels(labels);
+  updatePrecisionMetrics(labels);
+  res.json({ ok: true, total_labels: labels.length });
+});
+
+app.get('/api/labels', (req, res) => {
+  res.json(readLabels());
+});
+
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
 

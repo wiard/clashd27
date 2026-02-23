@@ -20,6 +20,37 @@ const { verifyGap } = require('./lib/verifier');
 const { validateGap } = require('./lib/validator');
 const { checkSaturation } = require('./lib/saturation');
 
+// --- Review Pack Builder ---
+function buildReviewPack(discovery) {
+  const hypo = discovery.finding || discovery.hypothesis || discovery.discovery || '';
+  const chain = (discovery.abc_chain || []).map(link => ({
+    claim: link.claim || link.link || '',
+    source: link.source || ''
+  }));
+  const bridge = discovery.bridge || {};
+  const sat = discovery.saturation || {};
+  const adj = discovery.adversarial_adjustment || {};
+  const sources = chain.map(l => l.source).filter(Boolean);
+  if (bridge.source) sources.push(bridge.source);
+  return {
+    title: hypo.length > 80 ? hypo.substring(0, 77) + '...' : hypo,
+    one_sentence_hypothesis: hypo,
+    abc_chain: chain.map(l => ({ claim: l.claim, source: l.source })),
+    bridge: { claim: bridge.claim || '', source: bridge.source || '' },
+    kill_test: discovery.kill_test || '',
+    cheapest_validation: discovery.cheapest_validation || '',
+    confounders: (discovery.confounders || []).slice(0, 2),
+    saturation_summary: {
+      paper_count_5y: sat.paper_estimate_5y || null,
+      trial_count: typeof sat.trial_count === 'number' ? sat.trial_count : null,
+      field_name_found: sat.established_field_name || null,
+      saturation_score: typeof sat.field_saturation_score === 'number' ? sat.field_saturation_score : null
+    },
+    gpt_verdict_summary: adj.final_verdict || null,
+    links: [...new Set(sources)]
+  };
+}
+
 const TICK_INTERVAL = parseInt(process.env.TICK_INTERVAL || '300') * 1000; // 5 minutes (rate limits)
 const CHANNEL_PREFIX = 'cel-';
 
@@ -61,7 +92,7 @@ function updateMetrics(updates) {
     }
 
     for (const [key, val] of Object.entries(updates)) {
-      if (typeof val === 'number' && (key.startsWith('total_') || key.startsWith('gpt_') || key.startsWith('validated') || key.startsWith('ready_') || key.startsWith('needs_') || key.startsWith('blocked') || key.startsWith('_'))) {
+      if (typeof val === 'number' && (key.startsWith('total_') || key.startsWith('gpt_') || key.startsWith('validated') || key.startsWith('ready_') || key.startsWith('needs_') || key.startsWith('blocked') || key.startsWith('saturation_') || key.startsWith('labeled_') || key.startsWith('precision_') || key.startsWith('_'))) {
         m[key] = (m[key] || 0) + val;
       } else {
         m[key] = val;
@@ -672,6 +703,20 @@ async function tick() {
                     }
                   } catch (satErr) {
                     console.error(`[SATURATION] Check failed for ${discovery.id}: ${satErr.message}`);
+                  }
+                }
+
+                // Build review pack for reviewable discoveries (not NEEDS WORK / LOW PRIORITY)
+                if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || verdictStr === 'CONFIRMED DIRECTION')) {
+                  discovery.review_pack = buildReviewPack(discovery);
+                  // Re-save discovery with saturation + review_pack
+                  const findingsData = readFindings();
+                  const fIdx = (findingsData.findings || []).findIndex(f => f.id === discovery.id);
+                  if (fIdx !== -1) {
+                    findingsData.findings[fIdx] = discovery;
+                    const tmpF = require('path').join(__dirname, 'data', 'findings.json.tmp');
+                    require('fs').writeFileSync(tmpF, JSON.stringify(findingsData, null, 2));
+                    require('fs').renameSync(tmpF, require('path').join(__dirname, 'data', 'findings.json'));
                   }
                 }
 

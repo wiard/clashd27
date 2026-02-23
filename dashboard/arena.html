@@ -1279,6 +1279,38 @@
       </div>
     </div>
 
+    <div class="card" id="review-section" style="margin-top:16px;">
+      <h2>🔬 EXPERT REVIEW QUEUE</h2>
+      <div id="review-queue" style="font-family:monospace;font-size:13px;color:#ccc;">Loading...</div>
+      <div id="review-detail" style="display:none;margin-top:16px;padding:16px;background:#1a1a2e;border:1px solid #333;border-radius:4px;">
+        <div id="review-pack-content"></div>
+        <div style="margin-top:16px;border-top:1px solid #333;padding-top:12px;">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+            <label style="color:#999;font-size:12px;">Novel: <button class="rate-btn" id="lbl-novel-1" onclick="setLabel('novel',1)">Yes</button><button class="rate-btn" id="lbl-novel-0" onclick="setLabel('novel',0)">No</button></label>
+            <label style="color:#999;font-size:12px;">Testable: <button class="rate-btn" id="lbl-testable-1" onclick="setLabel('testable',1)">Yes</button><button class="rate-btn" id="lbl-testable-0" onclick="setLabel('testable',0)">No</button></label>
+            <label style="color:#999;font-size:12px;">Obvious: <button class="rate-btn" id="lbl-obvious-1" onclick="setLabel('obvious',1)">Yes</button><button class="rate-btn" id="lbl-obvious-0" onclick="setLabel('obvious',0)">No</button></label>
+            <label style="color:#999;font-size:12px;">Wrong: <button class="rate-btn" id="lbl-wrong-1" onclick="setLabel('wrong',1)">Yes</button><button class="rate-btn" id="lbl-wrong-0" onclick="setLabel('wrong',0)">No</button></label>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+            <label style="color:#999;font-size:12px;">Confidence (1-5):
+              <select id="lbl-confidence" style="background:#111;color:#ccc;border:1px solid #444;padding:2px 6px;font-family:monospace;">
+                <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
+              </select>
+            </label>
+            <label style="color:#999;font-size:12px;">Reviewer:
+              <input id="lbl-reviewer" type="text" value="anon" style="background:#111;color:#ccc;border:1px solid #444;padding:2px 6px;width:80px;font-family:monospace;">
+            </label>
+          </div>
+          <div style="margin-bottom:8px;">
+            <textarea id="lbl-notes" rows="2" placeholder="Notes (optional)" style="width:100%;background:#111;color:#ccc;border:1px solid #444;padding:6px;font-family:monospace;font-size:12px;resize:vertical;"></textarea>
+          </div>
+          <button onclick="submitLabel()" style="background:#27ae60;color:#fff;border:none;padding:6px 16px;cursor:pointer;font-family:monospace;font-size:12px;border-radius:2px;">SUBMIT LABEL</button>
+          <span id="label-status" style="color:#999;font-size:11px;margin-left:8px;"></span>
+        </div>
+        <div id="review-labels" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
     <div class="research-section" id="research-section" style="display:none;">
       <div class="research-header">📰 TODAY'S RESEARCH</div>
       <div class="research-date" id="research-date">—</div>
@@ -2285,6 +2317,113 @@ function toggleResearchCell(idx) {
   el.classList.toggle('expanded');
 }
 
+// --- Review Queue ---
+let reviewFindingId = null;
+const pendingLabel = { novel: null, testable: null, obvious: null, wrong: null };
+
+async function loadReviewQueue() {
+  try {
+    const data = await fetch('/api/findings?type=discovery&limit=100').then(r => r.json());
+    const hv = (data.findings || []).filter(f => {
+      const v = (f.verdict && f.verdict.verdict) || f.verdict || '';
+      return v === 'HIGH-VALUE GAP' || v === 'CONFIRMED DIRECTION';
+    }).slice(0, 10);
+    const labels = await fetch('/api/labels').then(r => r.json());
+    const labeledIds = new Set(labels.map(l => l.id));
+    const el = document.getElementById('review-queue');
+    if (hv.length === 0) { el.innerHTML = '<span style="color:#666;">No reviewable discoveries yet.</span>'; return; }
+    el.innerHTML = hv.map(f => {
+      const v = (f.verdict && f.verdict.verdict) || f.verdict || '';
+      const labeled = labeledIds.has(f.id) ? ' <span style="color:#27ae60;">[LABELED]</span>' : '';
+      const hypo = (f.finding || f.hypothesis || f.discovery || '').substring(0, 90);
+      return `<div style="padding:4px 0;border-bottom:1px solid #222;cursor:pointer;" onclick="openReview('${f.id}')"><span style="color:var(--orange);">${f.id}</span> <span style="color:#666;">${v}</span>${labeled} <span style="color:#999;">${escapeHtml(hypo)}...</span></div>`;
+    }).join('');
+  } catch (e) { console.error('Review queue error:', e); }
+}
+
+async function openReview(id) {
+  reviewFindingId = id;
+  pendingLabel.novel = null; pendingLabel.testable = null; pendingLabel.obvious = null; pendingLabel.wrong = null;
+  document.querySelectorAll('#review-detail .rate-btn').forEach(b => b.classList.remove('voted'));
+  document.getElementById('lbl-notes').value = '';
+  document.getElementById('label-status').textContent = '';
+  try {
+    const data = await fetch(`/api/review/${id}`).then(r => r.json());
+    const el = document.getElementById('review-pack-content');
+    const rp = data.review_pack;
+    if (!rp) {
+      el.innerHTML = `<div style="color:#999;">No review pack for ${id}. Hypothesis: ${escapeHtml((data.finding || {}).hypothesis || 'N/A')}</div>`;
+    } else {
+      const chain = (rp.abc_chain || []).map((l, i) => `<div style="padding:2px 0;"><span style="color:var(--orange);">Link ${i+1}:</span> ${escapeHtml(l.claim)} <span style="color:#666;">[${escapeHtml(l.source)}]</span></div>`).join('');
+      const conf = (rp.confounders || []).map(c => `<li>${escapeHtml(c)}</li>`).join('');
+      const sat = rp.saturation_summary || {};
+      const links = (rp.links || []).map(l => `<li style="color:#666;">${escapeHtml(l)}</li>`).join('');
+      el.innerHTML = `
+        <div style="font-size:14px;color:#fff;margin-bottom:8px;font-weight:bold;">${escapeHtml(rp.title || '')}</div>
+        <div style="color:#ccc;margin-bottom:8px;">${escapeHtml(rp.one_sentence_hypothesis || '')}</div>
+        <div style="margin-bottom:8px;"><span style="color:var(--orange);">Chain:</span>${chain}</div>
+        <div style="margin-bottom:8px;"><span style="color:var(--orange);">Bridge:</span> ${escapeHtml((rp.bridge || {}).claim || 'N/A')} <span style="color:#666;">[${escapeHtml((rp.bridge || {}).source || '')}]</span></div>
+        <div style="margin-bottom:6px;"><span style="color:var(--orange);">Kill test:</span> ${escapeHtml(rp.kill_test || 'N/A')}</div>
+        <div style="margin-bottom:6px;"><span style="color:var(--orange);">Cheapest validation:</span> ${escapeHtml(rp.cheapest_validation || 'N/A')}</div>
+        ${conf ? `<div style="margin-bottom:6px;"><span style="color:var(--orange);">Confounders:</span><ul style="margin:4px 0;padding-left:20px;">${conf}</ul></div>` : ''}
+        <div style="margin-bottom:6px;"><span style="color:var(--orange);">Saturation:</span> papers=${sat.paper_count_5y || '?'}, trials=${sat.trial_count ?? '?'}, field=${sat.field_name_found || 'none'}, score=${sat.saturation_score ?? '?'}</div>
+        ${rp.gpt_verdict_summary ? `<div style="margin-bottom:6px;"><span style="color:var(--orange);">GPT verdict:</span> ${escapeHtml(rp.gpt_verdict_summary)}</div>` : ''}
+        ${links ? `<div><span style="color:var(--orange);">Sources:</span><ul style="margin:4px 0;padding-left:20px;font-size:11px;">${links}</ul></div>` : ''}
+      `;
+    }
+    // Show existing labels
+    const labelsEl = document.getElementById('review-labels');
+    if (data.labels && data.labels.length > 0) {
+      labelsEl.innerHTML = `<div style="color:#666;font-size:11px;margin-bottom:4px;">Previous labels (${data.labels.length}):</div>` +
+        data.labels.map(l => `<div style="font-size:11px;color:#999;padding:2px 0;">by ${escapeHtml(l.reviewer)} — novel=${l.labels.novel} testable=${l.labels.testable} obvious=${l.labels.obvious} wrong=${l.labels.wrong} conf=${l.labels.confidence}${l.labels.notes ? ' — ' + escapeHtml(l.labels.notes) : ''}</div>`).join('');
+    } else { labelsEl.innerHTML = ''; }
+    document.getElementById('review-detail').style.display = 'block';
+  } catch (e) { console.error('Review open error:', e); }
+}
+
+function setLabel(field, val) {
+  pendingLabel[field] = val;
+  document.getElementById(`lbl-${field}-1`).classList.toggle('voted', val === 1);
+  document.getElementById(`lbl-${field}-0`).classList.toggle('voted', val === 0);
+}
+
+async function submitLabel() {
+  if (!reviewFindingId) return;
+  if (pendingLabel.novel === null || pendingLabel.testable === null) {
+    document.getElementById('label-status').textContent = 'Novel and Testable are required.';
+    return;
+  }
+  try {
+    const res = await fetch(`/api/review/${reviewFindingId}/label`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reviewer: document.getElementById('lbl-reviewer').value || 'anon',
+        labels: {
+          novel: pendingLabel.novel,
+          testable: pendingLabel.testable,
+          obvious: pendingLabel.obvious || 0,
+          wrong: pendingLabel.wrong || 0,
+          confidence: parseInt(document.getElementById('lbl-confidence').value) || 3,
+          notes: document.getElementById('lbl-notes').value
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('label-status').textContent = `Saved (${data.total_labels} labels total)`;
+      document.getElementById('label-status').style.color = '#27ae60';
+      loadReviewQueue();
+    } else {
+      document.getElementById('label-status').textContent = data.error || 'Error';
+      document.getElementById('label-status').style.color = '#e74c3c';
+    }
+  } catch (e) {
+    document.getElementById('label-status').textContent = 'Network error';
+    document.getElementById('label-status').style.color = '#e74c3c';
+  }
+}
+
 // Countdown timer
 const TICK_INTERVAL = 120000; // 2 minutes
 function updateCountdown() {
@@ -2304,11 +2443,13 @@ loadPack().then(() => {
   loadDeepDives();
   loadVerifications();
   loadValidations();
+  loadReviewQueue();
   setInterval(refresh, 15000);
   setInterval(loadDiscoveries, 30000);
   setInterval(loadDeepDives, 30000);
   setInterval(loadVerifications, 60000);
   setInterval(loadValidations, 60000);
+  setInterval(loadReviewQueue, 60000);
   updateCountdown();
   setInterval(updateCountdown, 1000);
 });
