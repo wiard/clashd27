@@ -865,9 +865,90 @@
     display: inline-block;
   }
   .gap-verdict-badge.high-value-gap { background: #ffd700; color: #000; }
-  .gap-verdict-badge.confirmed-direction { background: var(--orange); color: #000; }
+  .gap-verdict-badge.confirmed-direction { background: #22aa22; color: #000; }
   .gap-verdict-badge.needs-work { background: #cc8800; color: #000; }
+  .gap-verdict-badge.low-priority { background: #666; color: #ccc; }
   .gap-verdict-badge.draft { background: #555; color: #ccc; }
+
+  /* RED FLAG BADGES */
+  .red-flag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 6px 0;
+  }
+  .red-flag-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    background: rgba(204,34,34,0.2);
+    color: #cc2222;
+    border: 1px solid #cc2222;
+    letter-spacing: 0.5px;
+  }
+
+  /* SPECULATION INDEX */
+  .speculation-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #cc8800;
+    margin: 4px 0;
+  }
+
+  /* ADVERSARIAL ADJUSTMENT */
+  .adversarial-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #cc2222;
+    margin: 4px 0;
+    padding: 4px 8px;
+    background: rgba(204,34,34,0.08);
+    border-radius: 3px;
+    border-left: 2px solid #cc2222;
+  }
+  .adversarial-tag.downgraded { color: #cc2222; }
+  .adversarial-tag.stable { color: #22aa22; border-left-color: #22aa22; background: rgba(34,170,34,0.08); }
+
+  /* NEW SCORE BREAKDOWN BARS */
+  .score-breakdown {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin: 8px 0;
+  }
+  @media (max-width: 600px) {
+    .score-breakdown { grid-template-columns: 1fr 1fr; }
+  }
+  .score-bar-item {
+    display: flex;
+    flex-direction: column;
+  }
+  .score-bar-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .score-bar-track {
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+  .score-bar-fill.gold { background: #ffd700; }
+  .score-bar-fill.green { background: #22aa22; }
+  .score-bar-fill.orange { background: var(--orange); }
+  .score-bar-fill.red { background: #cc2222; }
 
   /* VERIFICATION BADGES */
   .verif-panel {
@@ -1454,9 +1535,54 @@ function renderGapPacket(f) {
       ${f.limiting_sources.map(s => `<div class="ls-item">${escapeHtml(s)}</div>`).join('')}
     </div>` : '';
 
-  // Verdict badge
-  const verdictClass = (f.verdict || '').toLowerCase().replace(/\s+/g, '-') || 'confirmed-direction';
-  const verdictHtml = f.verdict ? `<span class="gap-verdict-badge ${verdictClass}">${f.verdict}</span>` : '';
+  // Verdict badge — handle both string and object format
+  const verdictStr = typeof f.verdict === 'object' ? (f.verdict.verdict || '') : (f.verdict || '');
+  const verdictReason = typeof f.verdict === 'object' ? (f.verdict.reason || '') : '';
+  const verdictClass = verdictStr.toLowerCase().replace(/\s+/g, '-') || 'confirmed-direction';
+  const verdictHtml = verdictStr ? `<span class="gap-verdict-badge ${verdictClass}">${verdictStr}</span>${verdictReason ? `<span style="font-size:9px;color:#888;margin-left:6px;">${escapeHtml(verdictReason)}</span>` : ''}` : '';
+
+  // Score breakdown bars
+  const sc = f.scores || {};
+  const scoreBarFillColor = (val, max) => {
+    const pct = max > 0 ? (val / max * 100) : 0;
+    return pct >= 70 ? 'green' : pct >= 40 ? 'orange' : 'red';
+  };
+  const scoreBar = (label, val, max) => `
+    <div class="score-bar-item">
+      <div class="score-bar-label"><span>${label}</span><span>${val}/${max}</span></div>
+      <div class="score-bar-track"><div class="score-bar-fill ${scoreBarFillColor(val, max)}" style="width:${max > 0 ? (val / max * 100) : 0}%"></div></div>
+    </div>`;
+  const hasScores = sc.structural !== undefined;
+  const scoreHtml = hasScores ? `
+    <div class="score-breakdown">
+      ${scoreBar('STRUCTURAL', sc.structural || 0, 20)}
+      ${scoreBar('EVIDENCE', sc.evidence || 0, 20)}
+      ${scoreBar('BRIDGE', sc.bridge || 0, 20)}
+      ${scoreBar('TESTABILITY', sc.testability || 0, 15)}
+      ${scoreBar('CLINICAL', sc.clinical || 0, 15)}
+      ${scoreBar('NOVELTY', sc.novelty || 0, 10)}
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);margin:2px 0;">
+      Total: ${sc.total || 0}/100${sc.speculation_penalty ? ` (spec penalty: ${sc.speculation_penalty})` : ''}${sc.adversarial_total !== undefined ? ` → Adversarial: ${sc.adversarial_total}/100` : ''}
+    </div>` : '';
+
+  // Red flags
+  const flags = f.red_flags || [];
+  const redFlagHtml = flags.length > 0 ? `
+    <div class="red-flag-list">
+      ${flags.map(fl => `<span class="red-flag-badge">${escapeHtml(typeof fl === 'string' ? fl.split(':')[0] : fl)}</span>`).join('')}
+    </div>` : '';
+
+  // Speculation index
+  const specIdx = f.speculation_index || {};
+  const specHtml = specIdx.leaps !== undefined ? `<div class="speculation-tag">${specIdx.leaps} leaps (${specIdx.penalty} pts)</div>` : '';
+
+  // Adversarial adjustment
+  const adv = f.adversarial_adjustment || {};
+  const advHtml = adv.final_score !== undefined ? `
+    <div class="adversarial-tag ${adv.downgraded ? 'downgraded' : 'stable'}">
+      GPT adjustment: -${(adv.bridge_diff || 0) + (adv.gpt_reduction || 0)} pts → Final: ${adv.final_score}${adv.downgraded ? ' → ' + adv.final_verdict : ''}
+    </div>` : '';
 
   // Clinical relevance
   const clinicalHtml = f.clinical_relevance ? `<div style="font-size:11px;color:#888;border-top:1px solid #2a2a2a;padding-top:6px;margin-top:4px;"><strong style="color:#aaa;">Clinical relevance:</strong> ${escapeHtml(f.clinical_relevance)}</div>` : '';
@@ -1464,6 +1590,10 @@ function renderGapPacket(f) {
   return `
     <div class="gap-packet">
       ${verdictHtml}
+      ${redFlagHtml}
+      ${scoreHtml}
+      ${specHtml}
+      ${advHtml}
       <div class="abc-chain">${chainHtml}</div>
       ${bridgeHtml}
       ${killHtml}
@@ -1479,12 +1609,33 @@ function renderDeepDive(dd) {
   const s = dd.scores || {};
   const scoreFillClass = (val) => val >= 65 ? 'high' : val >= 35 ? 'mid' : 'low';
 
-  const scoreBar = (label, val) => `
+  const scoreBar = (label, val, max) => {
+    const pct = max > 0 ? Math.min(100, (val / max) * 100) : 0;
+    return `
     <div class="dd-score-item">
       <div class="dd-score-label">${label}</div>
-      <div class="dd-score-bar"><div class="dd-score-fill ${scoreFillClass(val)}" style="width:${val}%"></div></div>
-      <div class="dd-score-num">${val}</div>
+      <div class="dd-score-bar"><div class="dd-score-fill ${scoreFillClass(pct)}" style="width:${pct}%"></div></div>
+      <div class="dd-score-num">${val}/${max}</div>
     </div>`;
+  };
+
+  // Use new 6-category scores if available, otherwise fall back to old format
+  const hasNewScores = s.structural !== undefined;
+  const scoresHtml = hasNewScores ? `
+      <div class="dd-scores">
+        ${scoreBar('STRUCTURAL', s.structural || 0, 20)}
+        ${scoreBar('EVIDENCE', s.evidence || 0, 20)}
+        ${scoreBar('BRIDGE', s.bridge || 0, 20)}
+        ${scoreBar('TESTABILITY', s.testability || 0, 15)}
+        ${scoreBar('CLINICAL', s.clinical || 0, 15)}
+        ${scoreBar('NOVELTY', s.novelty || 0, 10)}
+      </div>` : `
+      <div class="dd-scores">
+        ${scoreBar('NOVELTY', s.novelty || 0, 100)}
+        ${scoreBar('FEASIBILITY', s.feasibility || 0, 100)}
+        ${scoreBar('IMPACT', s.impact || 0, 100)}
+        ${scoreBar('MOMENTUM', s.momentum || 0, 100)}
+      </div>`;
 
   const closest = dd.existence?.closest_work
     ? `<div class="dd-closest"><strong>CLOSEST WORK:</strong> ${escapeHtml(dd.existence.closest_work)}</div>` : '';
@@ -1499,13 +1650,8 @@ function renderDeepDive(dd) {
   return `
     <div class="dd-panel">
       <span class="dd-verdict ${vClass}">🔭 ${dd.verdict}</span>
-      <span class="dd-score-num" style="margin-left:8px;color:var(--orange);font-weight:700;">${s.total}/100</span>
-      <div class="dd-scores">
-        ${scoreBar('NOVELTY', s.novelty || 0)}
-        ${scoreBar('FEASIBILITY', s.feasibility || 0)}
-        ${scoreBar('IMPACT', s.impact || 0)}
-        ${scoreBar('MOMENTUM', s.momentum || 0)}
-      </div>
+      <span class="dd-score-num" style="margin-left:8px;color:var(--orange);font-weight:700;">${s.total}/100${s.speculation_penalty ? ` (spec: ${s.speculation_penalty})` : ''}</span>
+      ${scoresHtml}
       ${closest}
       ${labsHtml}
       ${experiment}

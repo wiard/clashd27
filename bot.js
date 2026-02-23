@@ -258,6 +258,61 @@ async function tick() {
         const vResult = await verifyGap(vItem.discovery, vItem.deepDive);
         if (vResult && !vResult.error) {
           verificationQueue.shift(); // Remove from queue only on success
+
+          // === ADVERSARIAL SCORE ADJUSTMENT ===
+          const claudeScores = vItem.discovery.scores || {};
+          const claudeTotal = claudeScores.total || 0;
+          const claudeBridge = claudeScores.bridge || 0;
+          const gptBridge = typeof vResult.bridge_strength_override === 'number' ? vResult.bridge_strength_override : claudeBridge;
+          const gptReduction = typeof vResult.score_reduction === 'number' ? vResult.score_reduction : 0;
+
+          // Take the LOWER bridge score
+          const finalBridge = Math.min(claudeBridge, gptBridge);
+          const bridgeDiff = claudeBridge - finalBridge;
+
+          // Recalculate total: subtract bridge difference + GPT reduction
+          const totalAdjustment = bridgeDiff + gptReduction;
+          const finalScore = Math.max(0, claudeTotal - totalAdjustment);
+
+          // Determine if verdict should be downgraded
+          let finalVerdict = (vItem.discovery.verdict && vItem.discovery.verdict.verdict) || vItem.discovery.verdict || 'CONFIRMED DIRECTION';
+          const wasHighValue = finalVerdict === 'HIGH-VALUE GAP';
+          if (finalScore < 75 && wasHighValue) {
+            finalVerdict = 'CONFIRMED DIRECTION';
+          }
+          if (finalScore < 50) {
+            finalVerdict = 'LOW PRIORITY';
+          }
+
+          // Save adversarial adjustment to the finding
+          vItem.discovery.adversarial_adjustment = {
+            gpt_bridge: gptBridge,
+            gpt_reduction: gptReduction,
+            bridge_diff: bridgeDiff,
+            final_bridge: finalBridge,
+            final_score: finalScore,
+            final_verdict: finalVerdict,
+            downgraded: wasHighValue && finalVerdict !== 'HIGH-VALUE GAP'
+          };
+
+          // Update scores on the finding
+          if (vItem.discovery.scores) {
+            vItem.discovery.scores.adversarial_total = finalScore;
+            vItem.discovery.scores.adversarial_bridge = finalBridge;
+          }
+
+          // Save updated finding
+          const findingsData = readFindings();
+          const fIdx = findingsData.findings.findIndex(f => f.id === vItem.discovery.id);
+          if (fIdx !== -1) {
+            findingsData.findings[fIdx] = vItem.discovery;
+            const fDir = require('path').dirname(require('path').join(__dirname, 'data', 'findings.json'));
+            if (!require('fs').existsSync(fDir)) require('fs').mkdirSync(fDir, { recursive: true });
+            require('fs').writeFileSync(require('path').join(__dirname, 'data', 'findings.json'), JSON.stringify(findingsData, null, 2));
+          }
+
+          console.log(`[ADVERSARIAL] ${vItem.discovery.id} | Claude: ${claudeTotal} → GPT adjustment: -${totalAdjustment} → Final: ${finalScore}${vItem.discovery.adversarial_adjustment.downgraded ? ' → DOWNGRADED to ' + finalVerdict : ''}`);
+
           // Queue for validation if survives scrutiny
           if (vResult.survives_scrutiny && vResult.gpt_verdict === 'CONFIRMED') {
             validationQueue.push(vItem.discovery);
@@ -287,9 +342,9 @@ async function tick() {
         validationQueue.shift();
       }
     }
-    // Deep dive uses multiple API calls internally — skip research this tick
-    state.save();
-    return;
+    // Deep dive done — continue to research
+
+
   }
 
   // Move all alive agents to active cell
