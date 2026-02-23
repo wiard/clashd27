@@ -857,6 +857,12 @@ async function _tickInner() {
                 hypoAgent.bondsWithFindings = (hypoAgent.bondsWithFindings || 0) + 1;
                 console.log(`[RESEARCH] ${discovery.id} | ${(discovery.type || 'discovery').toUpperCase()} | ${dataLabel} x ${hypoLabel} | verdict=${discovery.verdict?.verdict || discovery.verdict || 'none'}`);
 
+                // Log S2 metadata if present
+                if (discovery.s2_metadata) {
+                  const s2 = discovery.s2_metadata;
+                  console.log(`[S2] ${discovery.id} | prefetched=${s2.papers_prefetched} verified=${s2.sources_verified}/${s2.sources_total} (${s2.verification_rate}%)`);
+                }
+
                 // Finalize attempt: map verdict to outcome
                 const vFinal = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
                 const outcomeMap = { 'HIGH-VALUE GAP': 'high_value', 'CONFIRMED DIRECTION': 'confirmed_direction', 'NEEDS WORK': 'needs_work', 'LOW PRIORITY': 'low_priority' };
