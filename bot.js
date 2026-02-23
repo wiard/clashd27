@@ -30,6 +30,9 @@ const { checkSaturation } = require('./lib/saturation');
 
 // --- Atomic findings.json helpers ---
 function saveFindingsAtomic(data) {
+  if (Array.isArray(data.findings) && data.findings.length > 1000) {
+    data.findings = data.findings.slice(-1000);
+  }
   const tmpF = FINDINGS_FILE_PATH + '.tmp';
   require('fs').writeFileSync(tmpF, JSON.stringify(data, null, 2));
   require('fs').renameSync(tmpF, FINDINGS_FILE_PATH);
