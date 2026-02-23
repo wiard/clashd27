@@ -2,6 +2,7 @@
  * CLASHD27 — Dashboard Server
  * Reads state.json, serves packs, and runs the live dashboard on port 3027
  */
+require('dotenv').config({ path: '/home/greenbanaanas/.secrets/clashd27.env', override: true });
 
 const express = require('express');
 const fs = require('fs');

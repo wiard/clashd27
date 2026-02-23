@@ -92,10 +92,31 @@ const state = new State();
 let clockTimer = null;
 const channels = {};
 
-// Research state
-let deepDiveQueue = [];
-let verificationQueue = [];
-let validationQueue = [];
+// Research state — persisted to disk so PM2 restarts don't lose queued items
+const QUEUES_FILE = require('path').join(__dirname, 'data', 'queues.json');
+function loadQueues() {
+  try {
+    const raw = require('fs').readFileSync(QUEUES_FILE, 'utf8');
+    const q = JSON.parse(raw);
+    return {
+      deepDive: Array.isArray(q.deepDive) ? q.deepDive : [],
+      verification: Array.isArray(q.verification) ? q.verification : [],
+      validation: Array.isArray(q.validation) ? q.validation : [],
+    };
+  } catch { return { deepDive: [], verification: [], validation: [] }; }
+}
+function saveQueues() {
+  const tmp = QUEUES_FILE + '.tmp';
+  require('fs').writeFileSync(tmp, JSON.stringify({ deepDive: deepDiveQueue, verification: verificationQueue, validation: validationQueue }, null, 2));
+  require('fs').renameSync(tmp, QUEUES_FILE);
+}
+const _savedQueues = loadQueues();
+let deepDiveQueue = _savedQueues.deepDive;
+let verificationQueue = _savedQueues.verification;
+let validationQueue = _savedQueues.validation;
+if (deepDiveQueue.length || verificationQueue.length || validationQueue.length) {
+  console.log(`[QUEUES] Restored: deepDive=${deepDiveQueue.length}, verification=${verificationQueue.length}, validation=${validationQueue.length}`);
+}
 
 // --- Metrics ---
 const METRICS_FILE = require('path').join(__dirname, 'data', 'metrics.json');
@@ -110,6 +131,12 @@ function readMetrics() {
   return {};
 }
 
+/** Detect legacy discoveries: missing abc_chain, kill_test, or scores */
+function isLegacyDiscovery(f) {
+  if (f.type !== 'discovery') return false;
+  return !f.abc_chain || !f.kill_test || !f.scores;
+}
+
 /** One-time backfill: scan findings.json to correct counters if they look stale */
 function backfillMetrics() {
   try {
@@ -120,9 +147,14 @@ function backfillMetrics() {
     if (findings.length === 0) return;
 
     const countCell = findings.filter(f => f.type === 'cell').length;
-    const countDiscovery = findings.filter(f => f.type === 'discovery').length;
+    const allDiscoveries = findings.filter(f => f.type === 'discovery');
+    const countDiscovery = allDiscoveries.length;
     const countDraft = findings.filter(f => f.type === 'draft').length;
     const countDup = findings.filter(f => f.type === 'duplicate').length;
+
+    // Strict vs legacy split
+    const legacyDiscoveries = allDiscoveries.filter(isLegacyDiscovery);
+    const strictDiscoveries = allDiscoveries.filter(f => !isLegacyDiscovery(f));
 
     // Derive attempt-based metrics
     const attempts = findings.filter(f => f.type === 'attempt');
@@ -150,8 +182,28 @@ function backfillMetrics() {
       changed = true;
     }
 
+    // Strict/legacy counters (always recompute)
+    m.legacy_discoveries_count = legacyDiscoveries.length;
+    m.strict_discoveries_count = strictDiscoveries.length;
+
+    // Strict rates: based on attempts only (excludes legacy discoveries from rates)
+    const strictAtt = countAttempts > 0 ? countAttempts : (strictDiscoveries.length + countNoGap + countDraft + countDup);
+    if (strictAtt > 0) {
+      m.strict_gap_rate = Math.round((strictDiscoveries.length / strictAtt) * 1000) / 10;
+      const strictHV = strictDiscoveries.filter(f => {
+        const v = (f.verdict && f.verdict.verdict) || f.verdict || '';
+        return v === 'HIGH-VALUE GAP';
+      }).length;
+      m.strict_high_value_rate = Math.round((strictHV / strictAtt) * 1000) / 10;
+    } else {
+      m.strict_gap_rate = 0;
+      m.strict_high_value_rate = 0;
+    }
+    changed = true;
+
     if (changed) {
-      console.log(`[METRICS] Backfill: cell=${countCell} disc=${countDiscovery} draft=${countDraft} dup=${countDup} att=${countAttempts} no_gap=${countNoGap} err=${countErrors}`);
+      console.log(`[METRICS] Backfill: cell=${countCell} disc=${countDiscovery} (strict=${strictDiscoveries.length} legacy=${legacyDiscoveries.length}) draft=${countDraft} dup=${countDup} att=${countAttempts} no_gap=${countNoGap} err=${countErrors}`);
+      console.log(`[METRICS] Strict rates: gap_rate=${m.strict_gap_rate}% high_value_rate=${m.strict_high_value_rate}%`);
       const tmpFile = METRICS_FILE + '.tmp';
       require('fs').writeFileSync(tmpFile, JSON.stringify(m, null, 2));
       require('fs').renameSync(tmpFile, METRICS_FILE);
@@ -209,12 +261,16 @@ function updateMetrics(updates) {
     if (m._bridge_count > 0) m.avg_bridge_score = Math.round(m._bridge_sum / m._bridge_count);
     if (m._spec_count > 0) m.avg_speculation_leaps = Math.round((m._spec_sum / m._spec_count) * 10) / 10;
 
-    // Calculated rates (percentages)
+    // Calculated rates (percentages) — total includes legacy
     const att = m.total_discovery_attempts || 0;
     if (att > 0) {
       m.gap_rate = Math.round(((m.total_discoveries || 0) / att) * 1000) / 10;
       m.rejection_rate = Math.round((((m.total_no_gap || 0) + (m.total_drafts || 0) + (m.total_duplicates || 0)) / att) * 1000) / 10;
       m.high_value_rate = Math.round(((m.total_high_value || 0) / att) * 1000) / 10;
+
+      // Strict rates: exclude legacy discoveries
+      const strictDisc = (m.strict_discoveries_count || 0);
+      m.strict_gap_rate = Math.round((strictDisc / att) * 1000) / 10;
     }
     // Remove misleading alias
     delete m.survival_rate;
@@ -444,7 +500,25 @@ function getUnverifiedClaim() {
   return null;
 }
 
+// Timeout wrapper for optional async work (deep-dive, verifier, validator)
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`timeout:${label} (${ms}ms)`)), ms))
+  ]);
+}
+const QUEUE_TIMEOUT_MS = 90_000; // 90s per queue operation
+const TICK_TIME_BUDGET_MS = 240_000; // 240s soft budget for optional work
+
+let _tickRunning = false;
+let _tickStartedAt = 0;
 async function tick() {
+  if (_tickRunning) { console.log('[TICK] SKIP overlap'); return; }
+  _tickRunning = true;
+  _tickStartedAt = Date.now();
+  try { await _tickInner(); } finally { _tickRunning = false; }
+}
+async function _tickInner() {
   const result = state.processTick();
   const { tick: tickNum, activeCell, cycle, events, isCycleEnd } = result;
   console.log(`[TICK] ${tickNum} | cell=${activeCell} (${cellLabelShort(activeCell)}) | events=${events.length}`);
@@ -471,36 +545,39 @@ async function tick() {
     console.log(`[COST] WARNING $${(costMetrics.estimated_cost_today || 0).toFixed(2)} today — low-spend mode active (skipping deep-dive/verification)`);
   }
 
-  // === DEEP DIVE (max 1 per tick, runs before research so it counts as the API call) ===
-  if (deepDiveQueue.length > 0 && !lowSpendMode) {
+  // === DEEP DIVE (max 1 per tick, with timeout) ===
+  if (deepDiveQueue.length > 0 && !lowSpendMode && (Date.now() - _tickStartedAt) < TICK_TIME_BUDGET_MS) {
     const ddDiscovery = deepDiveQueue.shift();
+    saveQueues();
     console.log(`[DEEP-DIVE] Starting deep dive on ${ddDiscovery.id} (${deepDiveQueue.length} remaining)`);
     try {
-      const ddResult = await deepDive(ddDiscovery);
+      const ddResult = await withTimeout(deepDive(ddDiscovery), QUEUE_TIMEOUT_MS, 'deep-dive');
       if (ddResult) {
         console.log(`[DEEP-DIVE] ${ddDiscovery.id} complete: ${ddResult.verdict} (${ddResult.scores.total}/100)`);
-        // Queue HIGH-VALUE GAP discoveries for GPT verification
         if (ddResult.verdict === 'HIGH-VALUE GAP') {
           verificationQueue.push({ discovery: ddDiscovery, deepDive: ddResult });
+          saveQueues();
           console.log(`[VERIFIER] QUEUED ${ddDiscovery.id} for GPT-4o adversarial review (queue: ${verificationQueue.length})`);
         }
       }
     } catch (err) {
-      console.error(`[DEEP-DIVE] Error: ${err.message}`);
+      console.error(`[DEEP-DIVE] ${err.message.startsWith('timeout:') ? 'TIMEOUT' : 'Error'}: ${err.message}`);
     }
-    // Process pending verifications (max 1 per tick, rate-limited internally)
-    if (verificationQueue.length > 0) {
-      // Check for missing OPENAI_API_KEY before attempting
-      if (!process.env.OPENAI_API_KEY) {
-        if (tickNum % 50 === 0) console.warn('[VERIFIER] OPENAI_API_KEY not set — skipping verification');
-        updateMetrics({ gpt_skipped_missing_key: 1, last_error: 'OPENAI_API_KEY not set — skipping verification', last_error_at: new Date().toISOString() });
-      } else {
+  }
+
+  // === VERIFICATION (independent of deep-dive — runs every tick if queue has items, with timeout) ===
+  if (verificationQueue.length > 0 && !lowSpendMode && (Date.now() - _tickStartedAt) < TICK_TIME_BUDGET_MS) {
+    if (!process.env.OPENAI_API_KEY) {
+      if (tickNum % 50 === 0) console.warn('[VERIFIER] OPENAI_API_KEY not set — skipping verification');
+      updateMetrics({ gpt_skipped_missing_key: 1, last_error: 'OPENAI_API_KEY not set — skipping verification', last_error_at: new Date().toISOString() });
+    } else {
       const vItem = verificationQueue[0];
       try {
         console.log(`[VERIFIER] REVIEWING ${vItem.discovery.id} — sending to GPT-4o...`);
-        const vResult = await verifyGap(vItem.discovery, vItem.deepDive);
+        const vResult = await withTimeout(verifyGap(vItem.discovery, vItem.deepDive), QUEUE_TIMEOUT_MS, 'gpt-verifier');
         if (vResult && !vResult.error) {
-          verificationQueue.shift(); // Remove from queue only on success
+          verificationQueue.shift();
+          saveQueues();
 
           // === ADVERSARIAL SCORE ADJUSTMENT ===
           const claudeScores = vItem.discovery.scores || {};
@@ -509,67 +586,52 @@ async function tick() {
           const gptBridge = typeof vResult.bridge_strength_override === 'number' ? vResult.bridge_strength_override : claudeBridge;
           const gptReduction = typeof vResult.score_reduction === 'number' ? vResult.score_reduction : 0;
 
-          // Take the LOWER bridge score
           const finalBridge = Math.min(claudeBridge, gptBridge);
           const bridgeDiff = claudeBridge - finalBridge;
-
-          // Recalculate total: subtract bridge difference + GPT reduction
           const totalAdjustment = bridgeDiff + gptReduction;
           const finalScore = Math.max(0, claudeTotal - totalAdjustment);
 
-          // Determine if verdict should be downgraded
           let finalVerdict = (vItem.discovery.verdict && vItem.discovery.verdict.verdict) || vItem.discovery.verdict || 'CONFIRMED DIRECTION';
           const wasHighValue = finalVerdict === 'HIGH-VALUE GAP';
-          if (finalScore < 75 && wasHighValue) {
-            finalVerdict = 'CONFIRMED DIRECTION';
-          }
-          if (finalScore < 50) {
-            finalVerdict = 'LOW PRIORITY';
-          }
+          if (finalScore < 75 && wasHighValue) finalVerdict = 'CONFIRMED DIRECTION';
+          if (finalScore < 50) finalVerdict = 'LOW PRIORITY';
 
-          // Save adversarial adjustment to the finding
           vItem.discovery.adversarial_adjustment = {
-            gpt_bridge: gptBridge,
-            gpt_reduction: gptReduction,
-            bridge_diff: bridgeDiff,
-            final_bridge: finalBridge,
-            final_score: finalScore,
-            final_verdict: finalVerdict,
+            gpt_bridge: gptBridge, gpt_reduction: gptReduction,
+            bridge_diff: bridgeDiff, final_bridge: finalBridge,
+            final_score: finalScore, final_verdict: finalVerdict,
             downgraded: wasHighValue && finalVerdict !== 'HIGH-VALUE GAP'
           };
 
-          // Update scores on the finding
           if (vItem.discovery.scores) {
             vItem.discovery.scores.adversarial_total = finalScore;
             vItem.discovery.scores.adversarial_bridge = finalBridge;
           }
 
-          // Save updated finding
+          // Save updated finding (atomic)
           const findingsData = readFindings();
           const fIdx = findingsData.findings.findIndex(f => f.id === vItem.discovery.id);
           if (fIdx !== -1) {
             findingsData.findings[fIdx] = vItem.discovery;
-            const fDir = require('path').dirname(require('path').join(__dirname, 'data', 'findings.json'));
-            if (!require('fs').existsSync(fDir)) require('fs').mkdirSync(fDir, { recursive: true });
-            require('fs').writeFileSync(require('path').join(__dirname, 'data', 'findings.json'), JSON.stringify(findingsData, null, 2));
+            saveFindingsAtomic(findingsData);
           }
 
           console.log(`[VERIFIER] RESULT ${vItem.discovery.id} | Claude: ${claudeTotal} → GPT: -${totalAdjustment} → Final: ${finalScore} | verdict=${finalVerdict}${vItem.discovery.adversarial_adjustment.downgraded ? ' (DOWNGRADED)' : ''}`);
 
-          // Track GPT review metrics
           updateMetrics({ gpt_reviewed: 1 });
           const gptV = (vResult.gpt_verdict || '').toUpperCase();
           if (gptV === 'CONFIRMED') updateMetrics({ gpt_confirmed: 1 });
           else if (gptV === 'WEAKENED') updateMetrics({ gpt_weakened: 1 });
           else if (gptV === 'KILLED') updateMetrics({ gpt_killed: 1 });
 
-          // Queue for validation if survives scrutiny
           if (vResult.survives_scrutiny && vResult.gpt_verdict === 'CONFIRMED') {
             validationQueue.push(vItem.discovery);
+            saveQueues();
             console.log(`[VALIDATOR] Queued ${vItem.discovery.id} for pre-experiment validation (queue: ${validationQueue.length})`);
           }
         } else if (vResult && vResult.error) {
-          verificationQueue.shift(); // Remove on permanent failure too
+          verificationQueue.shift();
+          saveQueues();
           console.error(`[VERIFIER] Failed: ${vResult.error}`);
         }
         // null means rate-limited — keep in queue for next tick
@@ -577,33 +639,32 @@ async function tick() {
         console.error(`[VERIFIER] Error: ${err.message}`);
         updateMetrics({ last_error: `Verifier error: ${err.message}`, last_error_at: new Date().toISOString() });
         verificationQueue.shift();
+        saveQueues();
       }
-      } // end else (OPENAI_API_KEY present)
     }
-    // Process pending validations (max 1 per tick, rate-limited to 1/hour internally)
-    if (validationQueue.length > 0) {
-      const valDiscovery = validationQueue[0];
-      try {
-        const valResult = await validateGap(valDiscovery);
-        if (valResult) {
-          validationQueue.shift(); // Success — remove from queue
+  }
 
-          // Track validation metrics
-          updateMetrics({ validated: 1 });
-          const feas = valResult.overall_feasibility || 'blocked';
-          if (feas === 'ready_to_test') updateMetrics({ ready_to_test: 1 });
-          else if (feas === 'needs_data') updateMetrics({ needs_data: 1 });
-          else updateMetrics({ blocked: 1 });
-        }
-        // null means rate-limited — keep in queue for next tick
-      } catch (err) {
-        console.error(`[VALIDATOR] Error: ${err.message}`);
+  // === VALIDATION (independent of deep-dive — runs every tick if queue has items, with timeout) ===
+  if (validationQueue.length > 0 && !lowSpendMode && (Date.now() - _tickStartedAt) < TICK_TIME_BUDGET_MS) {
+    const valDiscovery = validationQueue[0];
+    try {
+      const valResult = await withTimeout(validateGap(valDiscovery), QUEUE_TIMEOUT_MS, 'validator');
+      if (valResult) {
         validationQueue.shift();
+        saveQueues();
+
+        updateMetrics({ validated: 1 });
+        const feas = valResult.overall_feasibility || 'blocked';
+        if (feas === 'ready_to_test') updateMetrics({ ready_to_test: 1 });
+        else if (feas === 'needs_data') updateMetrics({ needs_data: 1 });
+        else updateMetrics({ blocked: 1 });
       }
+      // null means rate-limited — keep in queue for next tick
+    } catch (err) {
+      console.error(`[VALIDATOR] Error: ${err.message}`);
+      validationQueue.shift();
+      saveQueues();
     }
-    // Deep dive done — continue to research
-
-
   }
 
   // Move all alive agents to active cell
@@ -663,10 +724,10 @@ async function tick() {
           console.log(`[RESEARCH] SKIP discovery: ${a1Label} × ${a2Label} already has ${priorDiscoveries.length} discoveries`);
           // Deepen: verify a claim from the best deep dive
           const claimData = getUnverifiedClaim();
-          if (claimData) {
+          if (claimData && !isLegacyDiscovery(claimData.discovery)) {
             const leadAgent = agentsHere[0];
             try {
-              const vResult = await investigateVerification({
+              const vResult = await withTimeout(investigateVerification({
                 tick: tickNum,
                 agentName: leadAgent.displayName,
                 cell: activeCell,
@@ -674,7 +735,7 @@ async function tick() {
                 packName,
                 claim: claimData.claim,
                 discoveryId: claimData.discovery.id
-              });
+              }), QUEUE_TIMEOUT_MS, 'claim-verify');
               if (vResult) {
                 updateAgentKeywords(leadAgent, vResult.keywords || []);
                 leadAgent.findingsCount = (leadAgent.findingsCount || 0) + 1;
@@ -859,6 +920,7 @@ async function tick() {
                 // Queue for deep dive if HIGH-VALUE GAP verdict or high impact discovery
                 if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
                   deepDiveQueue.push(discovery);
+                  saveQueues();
                   console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
                 }
               }
