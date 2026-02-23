@@ -923,6 +923,80 @@ app.get('/api/labels', (req, res) => {
   res.json(readLabels());
 });
 
+// --- API: Cube (Anomaly Magnet v2.0) ---
+const CUBE_FILE = path.join(__dirname, '..', 'data', 'cube.json');
+
+function readCube() {
+  try {
+    if (fs.existsSync(CUBE_FILE)) {
+      return JSON.parse(fs.readFileSync(CUBE_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[CUBE] Read failed:', e.message);
+  }
+  return null;
+}
+
+app.get('/api/cube', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.json({ active: false });
+  // Return cube without full paper arrays (just counts) for overview
+  const overview = {
+    active: true,
+    generation: cube.generation,
+    createdAtTick: cube.createdAtTick,
+    timestamp: cube.timestamp,
+    totalPapers: cube.totalPapers,
+    axisLabels: cube.axisLabels,
+    distribution: cube.distribution,
+    cells: {}
+  };
+  for (const [key, cell] of Object.entries(cube.cells || {})) {
+    overview.cells[key] = {
+      x: cell.x, y: cell.y, z: cell.z,
+      methodLabel: cell.methodLabel,
+      surpriseLabel: cell.surpriseLabel,
+      clusterLabel: cell.clusterLabel,
+      paperCount: cell.paperCount,
+      topPapers: (cell.papers || []).slice(0, 3).map(p => ({ title: p.title, year: p.year, citationCount: p.citationCount }))
+    };
+  }
+  res.json(overview);
+});
+
+app.get('/api/cube/cell/:id', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.status(404).json({ error: 'No cube active' });
+  const cell = cube.cells[req.params.id];
+  if (!cell) return res.status(404).json({ error: 'Cell not found' });
+  res.json({
+    cellId: parseInt(req.params.id),
+    ...cell,
+    generation: cube.generation
+  });
+});
+
+app.get('/api/cube/golden/:cellA/:cellB', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.status(404).json({ error: 'No cube active' });
+  const a = cube.cells[req.params.cellA];
+  const b = cube.cells[req.params.cellB];
+  if (!a || !b) return res.status(404).json({ error: 'Cell not found' });
+
+  const methodDistance = Math.abs(a.x - b.x) / 2;
+  const surpriseProduct = (a.y * b.y) / 4;
+  const semanticDistance = a.z !== b.z ? 1.0 : 0.3;
+  const score = Math.round(methodDistance * surpriseProduct * semanticDistance * 1000) / 1000;
+
+  res.json({
+    score,
+    golden: score > 0.5,
+    components: { methodDistance, surpriseProduct, semanticDistance },
+    cellA: { cell: parseInt(req.params.cellA), method: a.methodLabel, surprise: a.surpriseLabel, cluster: a.clusterLabel, papers: a.paperCount },
+    cellB: { cell: parseInt(req.params.cellB), method: b.methodLabel, surprise: b.surpriseLabel, cluster: b.clusterLabel, papers: b.paperCount }
+  });
+});
+
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
 

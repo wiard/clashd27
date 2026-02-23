@@ -691,6 +691,50 @@ async function _tickInner() {
     console.log(`[COST] WARNING $${(costMetrics.estimated_cost_today || 0).toFixed(2)} today — low-spend mode active (skipping deep-dive/verification)`);
   }
 
+  // === CUBE SHUFFLE (Anomaly Magnet v2.0) ===
+  if (process.env.USE_CUBE === 'true') {
+    try {
+      const { shouldShuffle, shuffle, readCube } = require('./lib/shuffler');
+      const cube = readCube();
+      const lastShuffle = cube ? cube.createdAtTick : null;
+
+      if (shouldShuffle(tickNum, lastShuffle) && !global._shuffleInProgress) {
+        global._shuffleInProgress = true;
+        const gen = cube ? cube.generation : 0;
+        console.log(`[SHUFFLE] Triggering cube shuffle at tick ${tickNum} (generation ${gen} → ${gen + 1})`);
+
+        // Run async — does not block tick loop
+        shuffle(tickNum, gen, (fetched, total) => {
+          if (fetched % 100 === 0) console.log(`[SHUFFLE] Progress: ${fetched}/${total} papers`);
+        }).then(newCube => {
+          console.log(`[SHUFFLE] Complete: generation ${newCube.generation}, ${newCube.totalPapers} papers (${newCube.shuffleDurationMs}ms)`);
+          global._shuffleInProgress = false;
+          // Log shuffle event to findings
+          appendFinding({
+            id: `shuffle-${tickNum}`,
+            type: 'shuffle',
+            timestamp: new Date().toISOString(),
+            tick: tickNum,
+            generation: newCube.generation,
+            totalPapers: newCube.totalPapers,
+            distribution: newCube.distribution,
+            durationMs: newCube.shuffleDurationMs
+          });
+          updateMetrics({
+            cubeGeneration: newCube.generation,
+            lastShuffleAtTick: tickNum,
+            cubeTotalPapers: newCube.totalPapers
+          });
+        }).catch(err => {
+          console.error(`[SHUFFLE] Failed: ${err.message}`);
+          global._shuffleInProgress = false;
+        });
+      }
+    } catch (err) {
+      console.error(`[SHUFFLE] Init error: ${err.message}`);
+    }
+  }
+
   // Move all alive agents to active cell
   for (const [, agent] of state.agents) {
     if (agent.alive && agent.currentCell !== activeCell) {
@@ -797,6 +841,39 @@ async function _tickInner() {
           const dataLabel = getCellLabel(dataAgent.homeCell);
           const hypoLabel = getCellLabel(hypoAgent.homeCell);
 
+          // --- Cube mode: golden collision scoring + cell descriptions ---
+          let goldenMeta = null;
+          let dataCubeDesc = null;
+          let hypoCubeDesc = null;
+          const cubeMode = process.env.USE_CUBE === 'true';
+
+          if (cubeMode) {
+            try {
+              const { goldenCollisionScore, getCubeDescription } = require('./lib/shuffler');
+              goldenMeta = goldenCollisionScore(dataAgent.homeCell, hypoAgent.homeCell);
+              dataCubeDesc = getCubeDescription(dataAgent.homeCell);
+              hypoCubeDesc = getCubeDescription(hypoAgent.homeCell);
+
+              if (goldenMeta.golden) {
+                console.log(`[GOLDEN] Score ${goldenMeta.score} | ${goldenMeta.cellA.method} x ${goldenMeta.cellB.method} | surprise: ${goldenMeta.cellA.surprise} x ${goldenMeta.cellB.surprise}`);
+              }
+
+              // Safety: fall back to pack mode if cube cells are too thin
+              if (dataCubeDesc && dataCubeDesc.paperCount < 3) {
+                console.log(`[CUBE] Cell ${dataAgent.homeCell} too thin (${dataCubeDesc.paperCount} papers) — falling back to pack labels`);
+                dataCubeDesc = null;
+                hypoCubeDesc = null;
+              }
+              if (hypoCubeDesc && hypoCubeDesc.paperCount < 3) {
+                console.log(`[CUBE] Cell ${hypoAgent.homeCell} too thin (${hypoCubeDesc.paperCount} papers) — falling back to pack labels`);
+                dataCubeDesc = null;
+                hypoCubeDesc = null;
+              }
+            } catch (e) {
+              console.error(`[CUBE] Golden scoring error: ${e.message}`);
+            }
+          }
+
           // Build prior summary for the prompt
           const priorSummary = priorDiscoveries.length > 0
             ? priorDiscoveries.map(d => d.discovery || d.gap || '').filter(Boolean).join('; ')
@@ -815,6 +892,7 @@ async function _tickInner() {
             tick: tickNum,
             pair: { a: dataAgent.displayName, b: hypoAgent.displayName },
             domains: { domain_a: dataLabel, domain_b: hypoLabel, meeting_cell: meetingPointLabel },
+            goldenCollision: goldenMeta,
             result: { outcome: 'pending', reason: '', discovery_id: null }
           };
           appendFinding(attemptRecord);
@@ -826,16 +904,26 @@ async function _tickInner() {
               cellLabel: meetingPointLabel,
               agent1Name: dataAgent.displayName,
               agent2Name: hypoAgent.displayName,
-              layer0Cell: dataLabel,
-              layer2Cell: hypoLabel,
+              layer0Cell: (cubeMode && dataCubeDesc) ? dataCubeDesc : dataLabel,
+              layer2Cell: (cubeMode && hypoCubeDesc) ? hypoCubeDesc : hypoLabel,
               packName,
               dataKeywords: getAgentKeywords(dataAgent),
               hypothesisKeywords: getAgentKeywords(hypoAgent),
               priorSummary,
-              meetingPoint: meetingPointLabel
+              meetingPoint: meetingPointLabel,
+              cubeMode: cubeMode && !!dataCubeDesc,
+              goldenCollision: goldenMeta
             });
 
             updateMetrics({ total_discovery_attempts: 1 });
+
+            // Attach golden collision metadata to discovery
+            if (discovery && goldenMeta) {
+              discovery.goldenCollision = goldenMeta;
+              if (goldenMeta.golden) {
+                updateMetrics({ goldenCollisions: 1 });
+              }
+            }
 
             if (discovery) {
               // Handle no_gap responses

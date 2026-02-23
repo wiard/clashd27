@@ -1240,6 +1240,7 @@
       <span class="live-text">LIVE</span>
       <span class="live-countdown" id="countdown">—</span>
     </div>
+    <div id="cube-badge" style="display:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;padding:4px 10px;border-radius:3px;background:linear-gradient(135deg,#ff4500,#2244cc,#007755);color:#fff;font-weight:700;">CUBE MODE</div>
     <div class="tick-info">
       <div class="tick-number" id="tick">—</div>
       <div class="tick-sub">TICK · cycle <span id="cycle">—</span></div>
@@ -1454,16 +1455,55 @@ let currentPack = null;
 let currentOccupancy = {};
 
 function ec(e){return e>=70?'e-hi':e>=40?'e-md':'e-lo';}
+// Cube mode color scheme: method DNA → hue, surprise → brightness
+const CUBE_METHOD_COLORS = {
+  'imaging/observation': { h: 0, s: 75 },    // red
+  'computational': { h: 220, s: 75 },         // blue
+  'experimental': { h: 140, s: 70 }           // green
+};
+const CUBE_SURPRISE_LIGHT = { 'confirmatory': 85, 'deviation': 65, 'anomalous': 45 };
+
+function getCubeCellStyle(cubeCell) {
+  if (!cubeCell) return '';
+  const mc = CUBE_METHOD_COLORS[cubeCell.methodLabel] || { h: 0, s: 0 };
+  const sl = CUBE_SURPRISE_LIGHT[cubeCell.surpriseLabel] || 80;
+  const bg = `hsl(${mc.h}, ${mc.s}%, ${sl}%)`;
+  const textColor = sl < 60 ? '#fff' : '#222';
+  const borderColor = `hsl(${mc.h}, ${mc.s}%, ${Math.max(20, sl - 25)}%)`;
+  return `background:${bg};color:${textColor};border-color:${borderColor};`;
+}
+
+let _cubeData = null;
+
 function renderLayer(id,start,active,occ,pack){
   const el=document.getElementById(id);el.innerHTML='';
   for(let i=start;i<start+9;i++){
     const agents=occ[i]||[];
     const isA=i===active,isO=agents.length>0;
-    const label=pack&&pack.cells&&pack.cells[i]?pack.cells[i].label:'';
+    const cubeCell = _cubeData && _cubeData.cells ? _cubeData.cells[i] : null;
+    const label = cubeCell
+      ? `${cubeCell.methodLabel.split('/')[0]} · ${cubeCell.surpriseLabel}`
+      : (pack&&pack.cells&&pack.cells[i]?pack.cells[i].label:'');
     const c=document.createElement('div');
     c.className='cube-cell'+(isA?' active':'')+(isO?' occupied':'');
-    c.title=`Cell ${i}${label?' — '+label:''}${agents.length?'\n'+agents.join(', '):''}`;
-    c.innerHTML=`<span class="cnum">${i}</span><span class="clabel">${label}</span><span class="cagents">${isO?agents.length:''}</span>`;
+
+    // Cube mode: color by method/surprise, tooltip with paper info
+    let cubeStyle = '';
+    let tooltip = `Cell ${i}${label?' — '+label:''}${agents.length?'\n'+agents.join(', '):''}`;
+    if (cubeCell) {
+      cubeStyle = getCubeCellStyle(cubeCell);
+      const papers = cubeCell.paperCount || 0;
+      tooltip = `Cell ${i} [${cubeCell.methodLabel}, ${cubeCell.surpriseLabel}, ${cubeCell.clusterLabel}]\n${papers} papers`;
+      if (cubeCell.topPapers && cubeCell.topPapers.length > 0) {
+        tooltip += '\n\nTop papers:\n' + cubeCell.topPapers.map(p => `• ${p.title} (${p.year})`).join('\n');
+      }
+      if (agents.length) tooltip += '\n\nAgents: ' + agents.join(', ');
+    }
+    c.title = tooltip;
+    if (cubeStyle && !isA) c.setAttribute('style', cubeStyle);
+
+    const paperBadge = cubeCell ? `<span class="cpapers" style="font-size:7px;opacity:0.7">${cubeCell.paperCount||0}p</span>` : '';
+    c.innerHTML=`<span class="cnum">${i}</span><span class="clabel">${label}</span>${paperBadge}<span class="cagents">${isO?agents.length:''}</span>`;
     c.onclick = () => openCellPopup(i);
     el.appendChild(c);
   }
@@ -1543,10 +1583,18 @@ document.addEventListener('keydown', (e) => {
 });
 async function refresh(){
   try{
-    const [d,pack]=await Promise.all([
+    const [d,pack,cubeData]=await Promise.all([
       fetch('/api/state').then(r=>r.json()),
-      fetch('/api/pack').then(r=>r.json()).catch(()=>null)
+      fetch('/api/pack').then(r=>r.json()).catch(()=>null),
+      fetch('/api/cube').then(r=>r.json()).catch(()=>null)
     ]);
+    _cubeData = (cubeData && cubeData.active) ? cubeData : null;
+    // Show/hide cube mode badge
+    const cubeBadge = document.getElementById('cube-badge');
+    if (cubeBadge) {
+      cubeBadge.style.display = _cubeData ? 'block' : 'none';
+      if (_cubeData) cubeBadge.title = `Generation ${_cubeData.generation} · ${_cubeData.totalPapers} papers · ${new Date(_cubeData.timestamp).toLocaleString()}`;
+    }
     document.getElementById('tick').textContent=d.tick;
     document.getElementById('cycle').textContent=d.cycle;
     document.getElementById('active-num').textContent=d.activeCell;
