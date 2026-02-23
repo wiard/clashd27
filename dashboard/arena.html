@@ -961,6 +961,106 @@
   .gap-verdict-badge.low-priority { background: #666; color: #ccc; }
   .gap-verdict-badge.draft { background: #555; color: #ccc; }
 
+  /* GOLDEN COLLISION */
+  .golden-collision-panel {
+    margin: 8px 0;
+    padding: 10px 14px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+  .golden-collision-panel.golden {
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04));
+    border-color: #ffd700;
+    box-shadow: 0 0 12px rgba(255,215,0,0.1);
+  }
+  .golden-collision-panel.normal {
+    background: rgba(255,255,255,0.03);
+    border-color: #333;
+  }
+  .golden-badge {
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+    font-size: 9px;
+    margin-bottom: 6px;
+  }
+  .golden-badge.golden { background: #ffd700; color: #000; }
+  .golden-badge.normal { background: #444; color: #999; }
+  .golden-components {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .golden-component {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+  }
+  .golden-component-label {
+    font-size: 8px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .golden-component-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd700;
+  }
+  .golden-collision-panel.normal .golden-component-val { color: #888; }
+
+  /* SOURCE INDICATORS */
+  .source-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin: 1px;
+    border: 1px solid;
+  }
+  .source-tag.openalex { background: rgba(66,133,244,0.15); color: #4285f4; border-color: #4285f4; }
+  .source-tag.biorxiv { background: rgba(204,102,0,0.15); color: #cc6600; border-color: #cc6600; }
+  .source-tag.medrxiv { background: rgba(0,136,136,0.15); color: #008888; border-color: #008888; }
+  .source-tag.arxiv { background: rgba(179,58,58,0.15); color: #b33a3a; border-color: #b33a3a; }
+  .source-tag.s2 { background: rgba(102,51,153,0.15); color: #663399; border-color: #663399; }
+  .source-tag.unknown { background: rgba(102,102,102,0.15); color: #666; border-color: #666; }
+  .retracted-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    background: rgba(204,34,34,0.2);
+    color: #cc2222;
+    border: 1px solid #cc2222;
+    letter-spacing: 0.5px;
+    display: inline-block;
+  }
+
+  /* CUBE SOURCE BREAKDOWN */
+  .cube-info-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border: 1px solid var(--mid);
+    border-radius: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #666;
+  }
+  .cube-info-item { display: flex; align-items: center; gap: 4px; }
+  .cube-info-val { color: var(--orange); font-weight: 700; }
+
   /* RED FLAG BADGES */
   .red-flag-list {
     display: flex;
@@ -1254,18 +1354,19 @@
       <h2>🧊 The Cube — 3 Layers · 27 Cells</h2>
       <div class="cube-wrapper">
         <div class="layer-block layer-floor">
-          <div class="layer-title">Layer 0 — The Floor · Cells 0–8 · On-chain · Bitcoin Ordinals Parcels</div>
+          <div class="layer-title" id="layer0-title">Layer 0 — The Floor · Cells 0–8 · On-chain · Bitcoin Ordinals Parcels</div>
           <div class="cell-row" id="layer0"></div>
         </div>
         <div class="layer-block layer-nha">
-          <div class="layer-title">Layer 1 — No Hats Allowed · Cells 9–17 · Virtual · Where Agents Coordinate</div>
+          <div class="layer-title" id="layer1-title">Layer 1 — No Hats Allowed · Cells 9–17 · Virtual · Where Agents Coordinate</div>
           <div class="cell-row" id="layer1"></div>
         </div>
         <div class="layer-block layer-mod">
-          <div class="layer-title">Layer 2 — Mod 27 Zone · Cells 18–26 · Volatile · Highest Attention</div>
+          <div class="layer-title" id="layer2-title">Layer 2 — Mod 27 Zone · Cells 18–26 · Volatile · Highest Attention</div>
           <div class="cell-row" id="layer2"></div>
         </div>
       </div>
+      <div class="cube-info-bar" id="cube-info-bar" style="display:none;"></div>
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -1473,6 +1574,31 @@ function getCubeCellStyle(cubeCell) {
   return `background:${bg};color:${textColor};border-color:${borderColor};`;
 }
 
+function getSourceTag(source) {
+  const src = (source || 'unknown').toLowerCase();
+  const label = src === 'openalex' ? 'OA' : src === 'biorxiv' ? 'bioRxiv' : src === 'medrxiv' ? 'medRxiv' : src === 'arxiv' ? 'arXiv' : src === 's2' ? 'S2' : src;
+  const cls = src.includes('openalex') ? 'openalex' : src.includes('biorxiv') ? 'biorxiv' : src.includes('medrxiv') ? 'medrxiv' : src.includes('arxiv') ? 'arxiv' : src === 's2' ? 's2' : 'unknown';
+  return `<span class="source-tag ${cls}">${label}</span>`;
+}
+
+function renderGoldenCollision(f) {
+  if (!f || !f.goldenCollision) return '';
+  const gc = f.goldenCollision;
+  const isGolden = gc.golden || gc.score > 0.5;
+  const cls = isGolden ? 'golden' : 'normal';
+  const c = gc.components || {};
+  return `
+    <div class="golden-collision-panel ${cls}">
+      <span class="golden-badge ${cls}">${isGolden ? '\u2728 GOLDEN COLLISION' : 'COLLISION'} &mdash; ${gc.score}</span>
+      <div class="golden-components">
+        <div class="golden-component"><span class="golden-component-label">Method \u0394</span><span class="golden-component-val">${c.methodDistance || 0}</span></div>
+        <div class="golden-component"><span class="golden-component-label">Surprise \u00D7</span><span class="golden-component-val">${c.surpriseProduct || 0}</span></div>
+        <div class="golden-component"><span class="golden-component-label">Semantic \u0394</span><span class="golden-component-val">${c.semanticDistance || 0}</span></div>
+      </div>
+      ${gc.cellA ? `<div style="font-size:9px;color:#888;margin-top:4px;">[${gc.cellA.method}, ${gc.cellA.surprise}] \u00D7 [${gc.cellB.method}, ${gc.cellB.surprise}]</div>` : ''}
+    </div>`;
+}
+
 let _cubeData = null;
 
 function renderLayer(id,start,active,occ,pack){
@@ -1520,13 +1646,37 @@ async function openCellPopup(cellId) {
   document.getElementById('cell-popup-insights').innerHTML = '<span style="color:#666;font-size:12px;">Loading...</span>';
 
   try {
-    const [cellData, findingsData] = await Promise.all([
+    const fetchPromises = [
       fetch(`/api/cell/${cellId}`).then(r => r.json()),
       fetch(`/api/findings/cell/${cellId}?limit=5`).then(r => r.json())
-    ]);
+    ];
+    if (_cubeData) fetchPromises.push(fetch(`/api/cube/cell/${cellId}`).then(r => r.json()).catch(() => null));
+    const [cellData, findingsData, cubeCellData] = await Promise.all(fetchPromises);
 
-    document.getElementById('cell-popup-title').textContent = `Cell ${cellId} — ${cellData.label || 'Unknown'}`;
-    document.getElementById('cell-popup-desc').textContent = cellData.description || 'No description available.';
+    // In cube mode, show method/surprise/cluster labels
+    const cubeLabel = cubeCellData
+      ? `${cubeCellData.methodLabel} | ${cubeCellData.surpriseLabel} | ${cubeCellData.clusterLabel}`
+      : '';
+    const title = cubeCellData
+      ? `Cell ${cellId} — ${cubeLabel}`
+      : `Cell ${cellId} — ${cellData.label || 'Unknown'}`;
+    document.getElementById('cell-popup-title').textContent = title;
+
+    // Show cube paper details or fallback
+    let descText = cellData.description || 'No description available.';
+    if (cubeCellData) {
+      const pc = cubeCellData.paperCount || 0;
+      const srcCounts = {};
+      let retCount = 0;
+      for (const p of (cubeCellData.papers || [])) {
+        const s = p.source || 'unknown';
+        srcCounts[s] = (srcCounts[s] || 0) + 1;
+        if (p.isRetracted) retCount++;
+      }
+      const srcLine = Object.entries(srcCounts).map(([s, c]) => `${s}: ${c}`).join(', ');
+      descText = `${pc} papers · Sources: ${srcLine || 'none'}${retCount ? ` · ${retCount} retracted` : ''}`;
+    }
+    document.getElementById('cell-popup-desc').innerHTML = descText;
 
     // Show agents with their keywords
     const agents = cellData.occupants || [];
@@ -1547,22 +1697,44 @@ async function openCellPopup(cellId) {
       document.getElementById('cell-popup-agents').innerHTML = '<span style="color:#666;font-size:12px;">No agents currently here</span>';
     }
 
+    // Show top papers with source tags in cube mode
+    if (cubeCellData && cubeCellData.papers && cubeCellData.papers.length > 0) {
+      const insightsEl = document.getElementById('cell-popup-insights');
+      const papersHtml = cubeCellData.papers.slice(0, 8).map(p => {
+        const srcTag = getSourceTag(p.source);
+        const retTag = p.isRetracted ? ' <span class="retracted-tag">RETRACTED</span>' : '';
+        return `<div style="padding:6px 0;border-bottom:1px solid #222;font-size:12px;color:#bbb;">
+          ${srcTag}${retTag} <strong style="color:#ccc;">${escapeHtml(p.title || 'Untitled')}</strong>
+          <span style="color:#666;font-size:10px;"> (${p.year || '?'}) · ${p.citationCount || 0} cites</span>
+        </div>`;
+      }).join('');
+      insightsEl.innerHTML = `<div style="margin-bottom:12px;"><div style="font-family:'Space Mono',monospace;font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Top Papers</div>${papersHtml}</div>`;
+    }
+
     const findings = findingsData.findings || [];
-    document.getElementById('cell-popup-insights').innerHTML = findings.length
+    const insightsEl = document.getElementById('cell-popup-insights');
+    const existingPapers = insightsEl.innerHTML;
+    const findingsHtml = findings.length
       ? findings.map(f => {
           const icon = f.type === 'discovery' ? '💡' : f.type === 'bond' ? '🔗' : '🔬';
-          const agents = f.agents || (f.agent ? [f.agent] : []);
+          const fAgents = f.agents || (f.agent ? [f.agent] : []);
           const content = f.finding || f.connection || f.discovery || '';
-          const source = f.source ? `<div style="font-size:10px;color:#555;margin-top:4px;font-style:italic;">${escapeHtml(f.source)}</div>` : '';
+          const fSource = f.source ? `<div style="font-size:10px;color:#555;margin-top:4px;font-style:italic;">${escapeHtml(f.source)}</div>` : '';
           return `
           <div class="cell-popup-insight">
-            <div class="cell-popup-insight-meta">${icon} ${agents.join(', ')} · tick ${f.tick}</div>
+            <div class="cell-popup-insight-meta">${icon} ${fAgents.join(', ')} · tick ${f.tick}</div>
             <div class="cell-popup-insight-content">${escapeHtml(content.slice(0, 250))}${content.length > 250 ? '...' : ''}</div>
-            ${source}
+            ${fSource}
           </div>
         `;
         }).join('')
-      : '<span style="color:#666;font-size:12px;">No findings on this cell yet</span>';
+      : (cubeCellData ? '' : '<span style="color:#666;font-size:12px;">No findings on this cell yet</span>');
+    // Append findings after papers (if papers were shown)
+    if (cubeCellData && cubeCellData.papers && cubeCellData.papers.length > 0) {
+      insightsEl.innerHTML = existingPapers + (findingsHtml ? `<div style="font-family:'Space Mono',monospace;font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase;margin:8px 0 6px;">Recent Findings</div>${findingsHtml}` : '');
+    } else {
+      insightsEl.innerHTML = findingsHtml;
+    }
   } catch (e) {
     document.getElementById('cell-popup-desc').textContent = 'Failed to load cell data.';
   }
@@ -1594,6 +1766,32 @@ async function refresh(){
     if (cubeBadge) {
       cubeBadge.style.display = _cubeData ? 'block' : 'none';
       if (_cubeData) cubeBadge.title = `Generation ${_cubeData.generation} · ${_cubeData.totalPapers} papers · ${new Date(_cubeData.timestamp).toLocaleString()}`;
+    }
+    // Cube info bar: source breakdown + generation info
+    const cubeInfoBar = document.getElementById('cube-info-bar');
+    if (_cubeData && cubeInfoBar) {
+      cubeInfoBar.style.display = 'flex';
+      const sb = _cubeData.sourceBreakdown || {};
+      const srcItems = Object.entries(sb).map(([src, count]) => `<span class="cube-info-item"><span class="source-tag ${src}">${src}</span> <span class="cube-info-val">${count}</span></span>`).join('');
+      cubeInfoBar.innerHTML = `
+        <span class="cube-info-item">GEN <span class="cube-info-val">${_cubeData.generation}</span></span>
+        <span class="cube-info-item">PAPERS <span class="cube-info-val">${_cubeData.totalPapers}</span></span>
+        <span class="cube-info-item">RETRACTED <span class="cube-info-val">${_cubeData.retractionEnriched || 0}</span></span>
+        ${_cubeData.shuffleDurationMs ? `<span class="cube-info-item">SHUFFLE <span class="cube-info-val">${(_cubeData.shuffleDurationMs / 1000).toFixed(1)}s</span></span>` : ''}
+        ${srcItems}
+      `;
+    } else if (cubeInfoBar) {
+      cubeInfoBar.style.display = 'none';
+    }
+    // Update layer titles in cube mode
+    if (_cubeData && _cubeData.axisLabels && _cubeData.axisLabels.z) {
+      const zLabels = _cubeData.axisLabels.z;
+      const l0 = document.getElementById('layer0-title');
+      const l1 = document.getElementById('layer1-title');
+      const l2 = document.getElementById('layer2-title');
+      if (l0) l0.textContent = `Z=0 — ${zLabels[0] || 'Cluster 0'} · Cells 0–8`;
+      if (l1) l1.textContent = `Z=1 — ${zLabels[1] || 'Cluster 1'} · Cells 9–17`;
+      if (l2) l2.textContent = `Z=2 — ${zLabels[2] || 'Cluster 2'} · Cells 18–26`;
     }
     document.getElementById('tick').textContent=d.tick;
     document.getElementById('cycle').textContent=d.cycle;
@@ -1663,12 +1861,14 @@ function renderGapPacket(f) {
   // ABC chain
   const chainHtml = f.abc_chain.map(l => {
     const strength = l.evidence_strength || 'weak';
+    const srcTag = l.paper_source ? getSourceTag(l.paper_source) : '';
+    const retTag = l.is_retracted ? '<span class="retracted-tag">RETRACTED</span>' : '';
     return `
       <div class="abc-link ${strength}">
         <span class="abc-link-label">${escapeHtml(l.link || '')}</span>
         <div class="abc-link-body">
-          <div class="abc-link-claim">${escapeHtml(l.claim || '')}</div>
-          <div class="abc-link-source">${escapeHtml(l.source || '')}</div>
+          <div class="abc-link-claim">${escapeHtml(l.claim || '')}${retTag ? ' ' + retTag : ''}</div>
+          <div class="abc-link-source">${escapeHtml(l.source || '')} ${srcTag}</div>
         </div>
         <span class="abc-link-strength ${strength}">${strength.toUpperCase()}</span>
       </div>`;
@@ -2114,6 +2314,14 @@ async function loadMetricsPanel() {
         <div class="metrics-card"><div class="m-value">${blocked}</div><div class="m-label">Blocked</div></div>
       </div>
 
+      <div class="metrics-section-title">Cube &amp; Collisions</div>
+      <div class="metrics-grid">
+        <div class="metrics-card"><div class="m-value">${m.total_golden_collisions || 0}</div><div class="m-label">Golden Collisions</div></div>
+        <div class="metrics-card"><div class="m-value">${m.cube_generation || 0}</div><div class="m-label">Cube Generation</div></div>
+        <div class="metrics-card"><div class="m-value">${m.cube_papers || 0}</div><div class="m-label">Cube Papers</div></div>
+        <div class="metrics-card"><div class="m-value">${m.retraction_enriched || 0}</div><div class="m-label">Retracted Found</div></div>
+      </div>
+
       <div class="metrics-section-title">Cost</div>
       <div class="cost-row">Today: <span class="cost-val">$${(m.estimated_cost_today || 0).toFixed(2)}</span> (${m.api_calls_today || 0} calls)</div>
       <div class="cost-row">Total: <span class="cost-val">$${(m.estimated_cost_total || 0).toFixed(2)}</span> (${m.api_calls_total || 0} calls)</div>
@@ -2260,22 +2468,35 @@ function renderFindings() {
       ? `<div class="gap-hypothesis">${escapeHtml(content)}</div>`
       : `<div class="finding-content">${escapeHtml(content)}</div>`;
 
+    // Golden Collision data (discoveries with collision info)
+    const goldenHtml = renderGoldenCollision(f);
+
+    // Source tags for discovery papers
+    const sourceTags = (f.sources && f.sources.length)
+      ? `<span style="margin-left:4px;">${f.sources.map(s => getSourceTag(s)).join('')}</span>` : '';
+
+    // ClinicalTrials.gov link in validation
+    const ctTrialLinks = (valData && valData.ctGovTrials && valData.ctGovTrials.trials && valData.ctGovTrials.trials.length)
+      ? `<div style="margin-top:6px;font-size:10px;"><span style="color:#666;font-family:'Space Mono',monospace;letter-spacing:1px;">CLINICALTRIALS.GOV:</span> ${valData.ctGovTrials.trials.slice(0, 3).map(t => `<a href="https://clinicaltrials.gov/study/${t.nctId}" target="_blank" style="color:var(--orange);font-family:'Space Mono',monospace;font-size:9px;margin-left:4px;">${t.nctId}</a>`).join('')}</div>` : '';
+
     return `
       <div class="finding-item ${typeClass} ${isHighNovelty ? 'high-novelty' : ''}">
         <div class="finding-meta">
           <span class="finding-type ${typeClass}">${typeIcon} ${typeLabel}</span>
           <span class="finding-agents">${agentLinks}</span>
-          <span class="finding-cell">\u2192 ${escapeHtml(cellInfo)}</span>
+          <span class="finding-cell">\u2192 ${escapeHtml(cellInfo)}${sourceTags}</span>
           <span class="finding-tick">tick ${f.tick}</span>
         </div>
         ${contentHtml}
         ${source}
         ${badges}
+        ${goldenHtml}
         ${hypothesis}
         ${gapPacketHtml}
         ${ddHtml}
         ${verifHtml}
         ${valHtml}
+        ${ctTrialLinks}
         ${kwHtml}
         ${ratingHtml}
       </div>
@@ -2305,12 +2526,14 @@ async function loadDiscoveries() {
       const valData = validationCache[d.id];
       const isGapPacket = d.abc_chain && d.abc_chain.length > 0;
       const gapHtml = isGapPacket ? renderGapPacket(d) : '';
+      const goldenHtml = renderGoldenCollision(d);
       return `
       <div class="discovery-item ${d.novelty === 'high' ? 'high-novelty' : ''}">
         <div class="discovery-domains">\uD83D\uDCA1 ${d.agentDomains ? d.agentDomains.join(' \u00D7 ') : 'Cross-domain'}</div>
         ${isGapPacket
-          ? `<div class="gap-hypothesis">${escapeHtml(d.hypothesis || d.connection || '')}</div>${gapHtml}`
+          ? `<div class="gap-hypothesis">${escapeHtml(d.hypothesis || d.connection || '')}</div>${goldenHtml}${gapHtml}`
           : `<div class="discovery-connection">${escapeHtml(d.connection || '')}</div>
+             ${goldenHtml}
              ${d.evidence ? `<div class="discovery-evidence"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}${d.source ? ` \u2014 <em>${escapeHtml(d.source)}</em>` : ''}</div>` : ''}
              ${d.hypothesis ? `<div class="discovery-hypothesis">\uD83D\uDCA1 ${escapeHtml(d.hypothesis)}</div>` : ''}`
         }

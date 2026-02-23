@@ -1,94 +1,117 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 
-function readJson(p) {
+const ROOT = path.join(__dirname, '..');
+const DATA = path.join(ROOT, 'data');
+
+function loadJson(p, fallback) {
   try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch (e) {
-    return null;
+    console.error(`[HEALTH] Failed to read ${path.basename(p)}: ${e.message}`);
   }
+  return fallback;
 }
 
-const dataDir = path.join(__dirname, '..', 'data');
-const stateFile = path.join(dataDir, 'state.json');
-const metricsFile = path.join(dataDir, 'metrics.json');
-const findingsFile = path.join(dataDir, 'findings.json');
-const lockFile = path.join(dataDir, '.tick.lock');
+const state = loadJson(path.join(DATA, 'state.json'), {});
+const metrics = loadJson(path.join(DATA, 'metrics.json'), {});
+const findingsData = loadJson(path.join(DATA, 'findings.json'), { findings: [] });
+const verifs = loadJson(path.join(DATA, 'verifications.json'), { verifications: [] });
+const findings = Array.isArray(findingsData.findings) ? findingsData.findings : [];
 
-const state = readJson(stateFile) || {};
-const metrics = readJson(metricsFile) || {};
-const findingsData = readJson(findingsFile) || { findings: [] };
-const findings = findingsData.findings || [];
-
-const types = {};
+const typeCounts = {};
 for (const f of findings) {
-  const t = f.type || '?';
-  types[t] = (types[t] || 0) + 1;
+  const t = f.type || 'unknown';
+  typeCounts[t] = (typeCounts[t] || 0) + 1;
 }
 
 const attempts = findings.filter(f => f.type === 'attempt');
-const countAttempts = attempts.length;
-const countNoGap = attempts.filter(a => a.result && a.result.outcome === 'no_gap').length;
-const countDiscoveries = findings.filter(f => f.type === 'discovery').length;
+const discoveries = findings.filter(f => f.type === 'discovery');
+const noGap = attempts.filter(a => a.result && a.result.outcome === 'no_gap');
 
-const gptReviewed = typeof metrics.gpt_reviewed === 'number' ? metrics.gpt_reviewed : 0;
-
-const lockExists = fs.existsSync(lockFile);
-
-console.log(`tick: ${state.tick || 0}`);
-console.log(`types: ${JSON.stringify(types)}`);
-console.log(`attempts: ${countAttempts} discoveries: ${countDiscoveries} no_gap: ${countNoGap}`);
-console.log(`gpt_reviewed: ${gptReviewed}`);
-console.log(`tick_lock: ${lockExists ? 'present' : 'absent'}`);
-
-let ok = true;
-const issues = [];
-
-if (countAttempts < (countDiscoveries + countNoGap)) {
-  ok = false;
-  issues.push('attempts < discoveries + no_gap');
-}
-
-if (typeof metrics.gap_rate === 'number') {
-  if (metrics.gap_rate < 0 || metrics.gap_rate > 100) {
-    ok = false;
-    issues.push('gap_rate out of range');
-  }
-}
-
-// High-value discoveries must have speculation_leaps <= 1 if present
-for (const d of findings) {
-  if (d.type !== 'discovery') continue;
+let highValue = 0;
+let confirmed = 0;
+let needsWork = 0;
+let lowPriority = 0;
+for (const d of discoveries) {
   const v = (d.verdict && d.verdict.verdict) || d.verdict || '';
-  if (v === 'HIGH-VALUE GAP' && d.speculation_index && typeof d.speculation_index.leaps === 'number') {
-    if (d.speculation_index.leaps > 1) {
-      ok = false;
-      issues.push(`high_value_leaps>1 id=${d.id}`);
-      break;
-    }
+  if (v === 'HIGH-VALUE GAP') highValue++;
+  else if (v === 'CONFIRMED DIRECTION') confirmed++;
+  else if (v === 'NEEDS WORK') needsWork++;
+  else if (v === 'LOW PRIORITY') lowPriority++;
+}
+
+const lockFile = path.join(DATA, '.tick.lock');
+let lockInfo = 'absent';
+if (fs.existsSync(lockFile)) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
+    const ageSec = Math.round((Date.now() - (raw.ts || 0)) / 1000);
+    lockInfo = `present age=${ageSec}s pid=${raw.pid || 'n/a'}`;
+  } catch (e) {
+    lockInfo = 'present (unreadable)';
   }
 }
 
-// Metrics totals match ground truth counts (subset)
-if (typeof metrics.total_discovery_attempts === 'number' && metrics.total_discovery_attempts !== countAttempts) {
-  ok = false;
-  issues.push('metrics.total_discovery_attempts mismatch');
-}
-if (typeof metrics.total_discoveries === 'number' && metrics.total_discoveries !== countDiscoveries) {
-  ok = false;
-  issues.push('metrics.total_discoveries mismatch');
-}
-if (typeof metrics.total_no_gap === 'number' && metrics.total_no_gap !== countNoGap) {
-  ok = false;
-  issues.push('metrics.total_no_gap mismatch');
+console.log(`[HEALTH] tick=${state.tick ?? 'n/a'} agents=${(state.agents && Object.keys(state.agents).length) || 'n/a'}`);
+console.log(`[HEALTH] counts_by_type=${JSON.stringify(typeCounts)}`);
+console.log(`[HEALTH] attempts=${attempts.length} discoveries=${discoveries.length} no_gap=${noGap.length}`);
+console.log(`[HEALTH] gpt_reviewed=${(verifs.verifications || []).length}`);
+console.log(`[HEALTH] tick_lock=${lockInfo}`);
+
+const errors = [];
+
+// Invariant 1: attempts >= discoveries + no_gap
+if (attempts.length < discoveries.length + noGap.length) {
+  errors.push(`attempts < discoveries + no_gap (${attempts.length} < ${discoveries.length + noGap.length})`);
 }
 
-if (!ok) {
-  console.log(`healthcheck: FAIL (${issues.join('; ')})`);
+// Invariant 2: gap_rate 0..100
+const gapRate = metrics.gap_rate;
+if (typeof gapRate === 'number' && (gapRate < 0 || gapRate > 100)) {
+  errors.push(`gap_rate out of bounds: ${gapRate}`);
+}
+
+// Invariant 3: HIGH-VALUE discoveries should have low speculation_leaps if present
+for (const d of discoveries) {
+  const v = (d.verdict && d.verdict.verdict) || d.verdict || '';
+  const leaps = d.speculation_index && typeof d.speculation_index.leaps === 'number' ? d.speculation_index.leaps : null;
+  if (v === 'HIGH-VALUE GAP' && leaps !== null && leaps > 1) {
+    errors.push(`HIGH-VALUE discovery ${d.id} has speculation_leaps=${leaps}`);
+    break;
+  }
+}
+
+// Invariant 4: metrics totals match ground truth
+const mismatches = [];
+function checkMetric(key, actual) {
+  if (typeof metrics[key] === 'number' && metrics[key] !== actual) {
+    mismatches.push(`${key}=${metrics[key]} (expected ${actual})`);
+  }
+}
+checkMetric('total_discovery_attempts', attempts.length);
+checkMetric('total_discoveries', discoveries.length);
+checkMetric('total_no_gap', noGap.length);
+checkMetric('total_high_value', highValue);
+checkMetric('total_confirmed_direction', confirmed);
+checkMetric('total_needs_work', needsWork);
+checkMetric('total_low_priority', lowPriority);
+checkMetric('total_cell_findings', typeCounts.cell || 0);
+if (Array.isArray(verifs.verifications)) {
+  checkMetric('gpt_reviewed', verifs.verifications.length);
+}
+if (mismatches.length > 0) {
+  errors.push(`metrics_mismatch: ${mismatches.join('; ')}`);
+}
+
+if (errors.length > 0) {
+  console.error('[HEALTH] FAIL');
+  for (const e of errors) console.error(`- ${e}`);
   process.exit(1);
 }
 
-console.log('healthcheck: OK');
+console.log('[HEALTH] OK');
 process.exit(0);

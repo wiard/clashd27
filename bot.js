@@ -99,12 +99,26 @@ const channels = {};
 const QUEUES_FILE = require('path').join(__dirname, 'data', 'queues.json');
 const TICK_LOCK_FILE = require('path').join(__dirname, 'data', '.tick.lock');
 const TICK_LOCK_STALE_MS = 10 * 60 * 1000; // 10 minutes
+function normalizeDeepDiveQueue(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map(item => {
+    if (item && item.discovery) {
+      return {
+        discovery: item.discovery,
+        attempts: item.attempts || 0,
+        last_error: item.last_error || null
+      };
+    }
+    return { discovery: item, attempts: 0, last_error: null };
+  }).filter(item => item && item.discovery);
+}
+
 function loadQueues() {
   try {
     const raw = require('fs').readFileSync(QUEUES_FILE, 'utf8');
     const q = JSON.parse(raw);
     return {
-      deepDive: Array.isArray(q.deepDive) ? q.deepDive : [],
+      deepDive: normalizeDeepDiveQueue(q.deepDive),
       verification: Array.isArray(q.verification) ? q.verification : [],
       validation: Array.isArray(q.validation) ? q.validation : [],
     };
@@ -121,6 +135,18 @@ let verificationQueue = _savedQueues.verification;
 let validationQueue = _savedQueues.validation;
 if (deepDiveQueue.length || verificationQueue.length || validationQueue.length) {
   console.log(`[QUEUES] Restored: deepDive=${deepDiveQueue.length}, verification=${verificationQueue.length}, validation=${validationQueue.length}`);
+}
+
+function recordDeepDiveFailure(item, message) {
+  item.attempts = (item.attempts || 0) + 1;
+  item.last_error = message || 'unknown';
+  if (item.attempts >= 3) {
+    console.warn(`[DEEP-DIVE] Dropping ${item.discovery.id} after ${item.attempts} failures: ${item.last_error}`);
+    deepDiveQueue.shift();
+  } else {
+    console.warn(`[DEEP-DIVE] Will retry ${item.discovery.id} (${item.attempts}/3): ${item.last_error}`);
+  }
+  saveQueues();
 }
 
 // --- Tick lock (cross-process overlap guard) ---
@@ -457,6 +483,19 @@ function logMetrics(tickNum) {
   if ((m.estimated_cost_today || 0) > 0) {
     console.log(`[COST] Today: $${(m.estimated_cost_today || 0).toFixed(2)} (${m.api_calls_today || 0} calls) | Total: $${(m.estimated_cost_total || 0).toFixed(2)} (${m.api_calls_total || 0} calls)`);
   }
+}
+
+function recomputeMetricsNow(reason) {
+  try {
+    recomputeMetricsFromFindings();
+    if (reason) console.log(`[METRICS] Recompute triggered: ${reason}`);
+  } catch (e) {
+    console.error(`[METRICS] Recompute failed: ${e.message}`);
+  }
+}
+
+function safeMetricCategory(cat) {
+  return String(cat || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '_');
 }
 
 function getAgentKeywords(agent) {
@@ -896,6 +935,7 @@ async function _tickInner() {
             result: { outcome: 'pending', reason: '', discovery_id: null }
           };
           appendFinding(attemptRecord);
+          recomputeMetricsNow('attempt_recorded');
 
           try {
             const discovery = await investigateDiscovery({
@@ -915,54 +955,24 @@ async function _tickInner() {
               goldenCollision: goldenMeta
             });
 
-            updateMetrics({ total_discovery_attempts: 1 });
-
             // Attach golden collision metadata to discovery
             if (discovery && goldenMeta) {
               discovery.goldenCollision = goldenMeta;
               if (goldenMeta.golden) {
-                updateMetrics({ goldenCollisions: 1 });
+                updateMetrics({ total_golden_collisions: 1 });
               }
             }
 
             if (discovery) {
               // Handle no_gap responses
               if (discovery.type === 'no_gap') {
-                updateMetrics({ total_no_gap: 1 });
                 updateFindingById(attemptId, { result: { outcome: 'no_gap', reason: discovery.reason || 'insufficient evidence', discovery_id: null }, completed_at: new Date().toISOString() });
+                recomputeMetricsNow('no_gap_recorded');
               } else {
                 // Track by type
                 if (discovery.type === 'discovery') {
                   dataAgent.discoveriesCount = (dataAgent.discoveriesCount || 0) + 1;
                   hypoAgent.discoveriesCount = (hypoAgent.discoveriesCount || 0) + 1;
-                  updateMetrics({ total_discoveries: 1 });
-
-                  // Track by verdict
-                  const vStr = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
-                  if (vStr === 'HIGH-VALUE GAP') updateMetrics({ total_high_value: 1 });
-                  else if (vStr === 'CONFIRMED DIRECTION') updateMetrics({ total_confirmed_direction: 1 });
-                  else if (vStr === 'NEEDS WORK') updateMetrics({ total_needs_work: 1 });
-                  else if (vStr === 'LOW PRIORITY') updateMetrics({ total_low_priority: 1 });
-
-                  // Track scores for averages
-                  if (discovery.scores) {
-                    updateMetrics({
-                      _score_sum: discovery.scores.total || 0,
-                      _score_count: 1,
-                      _bridge_sum: discovery.scores.bridge || 0,
-                      _bridge_count: 1
-                    });
-                  }
-                  if (discovery.speculation_index) {
-                    updateMetrics({
-                      _spec_sum: discovery.speculation_index.leaps || 0,
-                      _spec_count: 1
-                    });
-                  }
-                } else if (discovery.type === 'draft') {
-                  updateMetrics({ total_drafts: 1 });
-                } else if (discovery.type === 'duplicate') {
-                  updateMetrics({ total_duplicates: 1, total_reproduced: 1 });
                 }
 
                 dataAgent.bondsWithFindings = (dataAgent.bondsWithFindings || 0) + 1;
@@ -979,6 +989,7 @@ async function _tickInner() {
                 const vFinal = (discovery.verdict && discovery.verdict.verdict) || discovery.verdict || '';
                 const outcomeMap = { 'HIGH-VALUE GAP': 'high_value', 'CONFIRMED DIRECTION': 'confirmed_direction', 'NEEDS WORK': 'needs_work', 'LOW PRIORITY': 'low_priority' };
                 updateFindingById(attemptId, { result: { outcome: outcomeMap[vFinal] || 'discovery', reason: vFinal, discovery_id: discovery.id }, completed_at: new Date().toISOString() });
+                recomputeMetricsNow('discovery_recorded');
 
                 // Queue follow-up questions from this discovery
                 if (discovery.type === 'discovery') {
@@ -1005,7 +1016,7 @@ async function _tickInner() {
                       if (satResult.field_saturation_score >= 60) {
                         discovery.verdict = { verdict: 'CONFIRMED DIRECTION', reason: `Saturation downgrade (score ${satResult.field_saturation_score}): ${satResult.reasoning}` };
                         verdictStr = 'CONFIRMED DIRECTION';
-                        updateMetrics({ total_high_value: -1, total_confirmed_direction: 1, saturation_downgrades: 1 });
+                        updateMetrics({ saturation_downgrades: 1 });
                         console.log(`[SATURATION] ${discovery.id} DOWNGRADED to CONFIRMED DIRECTION (saturation=${satResult.field_saturation_score})`);
                       } else if (satResult.field_saturation_score >= 40) {
                         if (discovery.scores && typeof discovery.scores.novelty === 'number') {
@@ -1037,7 +1048,7 @@ async function _tickInner() {
 
                 // Queue for deep dive if HIGH-VALUE GAP verdict or high impact discovery
                 if (discovery.type === 'discovery' && (verdictStr === 'HIGH-VALUE GAP' || discovery.impact === 'high')) {
-                  deepDiveQueue.push(discovery);
+                  deepDiveQueue.push({ discovery, attempts: 0, last_error: null });
                   saveQueues();
                   console.log(`[DEEP-DIVE] Queued ${discovery.id} for deep dive (queue: ${deepDiveQueue.length})`);
                 }
@@ -1045,11 +1056,13 @@ async function _tickInner() {
             } else {
               // discovery returned null/undefined — finalize as error
               updateFindingById(attemptId, { result: { outcome: 'error', reason: 'investigateDiscovery returned null', discovery_id: null }, completed_at: new Date().toISOString() });
+              recomputeMetricsNow('discovery_error');
             }
             apiUsed = true;
           } catch (err) {
             console.error(`[RESEARCH] Discovery investigation error: ${err.message}`);
             updateFindingById(attemptId, { result: { outcome: 'error', reason: err.message, discovery_id: null }, completed_at: new Date().toISOString() });
+            recomputeMetricsNow('discovery_exception');
           }
         }
       } else {
@@ -1092,12 +1105,12 @@ async function _tickInner() {
           packName
         });
 
-        if (cellFinding && cellFinding.keywords) {
-          updateAgentKeywords(leadAgent, cellFinding.keywords);
-          leadAgent.findingsCount = (leadAgent.findingsCount || 0) + 1;
-          updateMetrics({ total_cell_findings: 1 });
-          console.log(`[RESEARCH] ${cellFinding.id} | CELL | ${label}`);
-        }
+          if (cellFinding && cellFinding.keywords) {
+            updateAgentKeywords(leadAgent, cellFinding.keywords);
+            leadAgent.findingsCount = (leadAgent.findingsCount || 0) + 1;
+            recomputeMetricsNow('cell_finding_recorded');
+            console.log(`[RESEARCH] ${cellFinding.id} | CELL | ${label}`);
+          }
       } catch (err) {
         console.error(`[RESEARCH] Cell investigation error: ${err.message}`);
       }
@@ -1108,21 +1121,27 @@ async function _tickInner() {
 
   // === DEEP DIVE (max 1 per tick, with timeout) ===
   if (deepDiveQueue.length > 0 && !lowSpendMode && (Date.now() - _tickStartedAt) < TICK_TIME_BUDGET_MS) {
-    const ddDiscovery = deepDiveQueue.shift();
-    saveQueues();
+    const ddItem = deepDiveQueue[0];
+    const ddDiscovery = ddItem.discovery;
     console.log(`[DEEP-DIVE] Starting deep dive on ${ddDiscovery.id} (${deepDiveQueue.length} remaining)`);
     try {
       const ddResult = await withTimeout(deepDive(ddDiscovery), QUEUE_TIMEOUT_MS, 'deep-dive');
       if (ddResult) {
+        deepDiveQueue.shift();
+        saveQueues();
         console.log(`[DEEP-DIVE] ${ddDiscovery.id} complete: ${ddResult.verdict} (${ddResult.scores.total}/100)`);
         if (ddResult.verdict === 'HIGH-VALUE GAP') {
           verificationQueue.push({ discovery: ddDiscovery, deepDive: ddResult });
           saveQueues();
           console.log(`[VERIFIER] QUEUED ${ddDiscovery.id} for GPT-4o adversarial review (queue: ${verificationQueue.length})`);
         }
+      } else {
+        recordDeepDiveFailure(ddItem, 'deepDive returned null');
       }
     } catch (err) {
-      console.error(`[DEEP-DIVE] ${err.message.startsWith('timeout:') ? 'TIMEOUT' : 'Error'}: ${err.message}`);
+      const msg = `${err.message.startsWith('timeout:') ? 'TIMEOUT' : 'Error'}: ${err.message}`;
+      console.error(`[DEEP-DIVE] ${msg}`);
+      recordDeepDiveFailure(ddItem, msg);
     }
   }
 
@@ -1186,11 +1205,7 @@ async function _tickInner() {
 
             console.log(`[VERIFIER] RESULT ${vItem.discovery.id} | Claude: ${claudeTotal} → GPT: -${totalAdjustment} → Final: ${finalScore} | verdict=${finalVerdict}${vItem.discovery.adversarial_adjustment.downgraded ? ' (DOWNGRADED)' : ''}`);
 
-            updateMetrics({ gpt_reviewed: 1 });
-            const gptV = (vResult.gpt_verdict || '').toUpperCase();
-            if (gptV === 'CONFIRMED') updateMetrics({ gpt_confirmed: 1 });
-            else if (gptV === 'WEAKENED') updateMetrics({ gpt_weakened: 1 });
-            else if (gptV === 'KILLED') updateMetrics({ gpt_killed: 1 });
+            recomputeMetricsNow('gpt_verification_saved');
 
             if (vResult.survives_scrutiny && vResult.gpt_verdict === 'CONFIRMED') {
               validationQueue.push(vItem.discovery);
@@ -1200,13 +1215,27 @@ async function _tickInner() {
           } else if (vResult && vResult.error) {
             verificationQueue.shift();
             saveQueues();
-            updateMetrics({ gpt_errors: 1, last_error: `Verifier error: ${vResult.error}`, last_error_at: new Date().toISOString() });
-            console.error(`[VERIFIER] Failed: ${vResult.error}`);
+            const cat = safeMetricCategory(vResult.category || 'unknown');
+            updateMetrics({
+              gpt_errors: 1,
+              [`gpt_errors_${cat}`]: 1,
+              last_error_category: cat,
+              last_error: `Verifier error: ${vResult.error}`,
+              last_error_at: new Date().toISOString()
+            });
+            console.error(`[VERIFIER] Failed (${cat}): ${vResult.error}`);
           }
           // null means rate-limited — keep in queue for next tick
         } catch (err) {
           console.error(`[VERIFIER] Error: ${err.message}`);
-          updateMetrics({ gpt_errors: 1, last_error: `Verifier error: ${err.message}`, last_error_at: new Date().toISOString() });
+          const cat = safeMetricCategory(err.code || err.name || 'unknown');
+          updateMetrics({
+            gpt_errors: 1,
+            [`gpt_errors_${cat}`]: 1,
+            last_error_category: cat,
+            last_error: `Verifier error: ${err.message}`,
+            last_error_at: new Date().toISOString()
+          });
           verificationQueue.shift();
           saveQueues();
         }
@@ -1483,6 +1512,34 @@ client.once('ready', async () => {
   console.log(`[BOT] ${client.user.tag} online`);
   const guild = client.guilds.cache.first();
   if (guild) await cacheChannels(guild);
+
+  // === v2.0 Anomaly Magnet: Initialize open data sources ===
+  if (process.env.USE_CUBE === 'true') {
+    console.log('[BOOT] Initializing v2.0 Anomaly Magnet data sources...');
+
+    // Retraction enricher (background init — downloads/caches retraction data)
+    try {
+      const { init: initRetractions } = require('./lib/retraction-enricher');
+      initRetractions().then(() => {
+        console.log('[BOOT] Retraction enricher ready');
+      }).catch(e => {
+        console.warn(`[BOOT] Retraction enricher init failed (non-fatal): ${e.message}`);
+      });
+    } catch (e) {
+      console.warn(`[BOOT] Retraction enricher load failed: ${e.message}`);
+    }
+
+    // OpenAlex cache prune
+    try {
+      const { pruneCache } = require('./lib/openalex');
+      pruneCache();
+    } catch (e) {
+      console.warn(`[BOOT] OpenAlex cache prune failed: ${e.message}`);
+    }
+
+    console.log('[BOOT] v2.0 data source init dispatched (async, non-blocking)');
+  }
+
   console.log(`[CLOCK] Interval: ${TICK_INTERVAL / 1000}s`);
   clockTimer = setInterval(tick, TICK_INTERVAL);
   const activeCell = state.tick % 27;

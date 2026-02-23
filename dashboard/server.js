@@ -394,7 +394,9 @@ app.get('/api/discoveries', (req, res) => {
         clinical_relevance: f.clinical_relevance,
         verdict: f.verdict,
         feasibility: f.feasibility,
-        impact: f.impact
+        impact: f.impact,
+        goldenCollision: f.goldenCollision || null,
+        sources: f.sources || []
       });
     }
   }
@@ -766,6 +768,13 @@ app.get('/api/metrics', (req, res) => {
       delete clean._spec_sum;
       delete clean._spec_count;
       delete clean._cost_date;
+      // Augment with cube data
+      const cube = readCube();
+      if (cube) {
+        clean.cube_generation = cube.generation || 0;
+        clean.cube_papers = cube.totalPapers || 0;
+        clean.retraction_enriched = cube.retractionEnriched || 0;
+      }
       res.json(clean);
     } else {
       res.json({});
@@ -949,16 +958,33 @@ app.get('/api/cube', (req, res) => {
     totalPapers: cube.totalPapers,
     axisLabels: cube.axisLabels,
     distribution: cube.distribution,
+    sourceBreakdown: cube.sourceBreakdown || {},
+    retractionEnriched: cube.retractionEnriched || 0,
+    shuffleDurationMs: cube.shuffleDurationMs || 0,
     cells: {}
   };
   for (const [key, cell] of Object.entries(cube.cells || {})) {
+    // Count sources per cell
+    const sourceCounts = {};
+    let retractedCount = 0;
+    for (const p of (cell.papers || [])) {
+      const src = p.source || 'unknown';
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+      if (p.isRetracted) retractedCount++;
+    }
+
     overview.cells[key] = {
       x: cell.x, y: cell.y, z: cell.z,
       methodLabel: cell.methodLabel,
       surpriseLabel: cell.surpriseLabel,
       clusterLabel: cell.clusterLabel,
       paperCount: cell.paperCount,
-      topPapers: (cell.papers || []).slice(0, 3).map(p => ({ title: p.title, year: p.year, citationCount: p.citationCount }))
+      sourceCounts,
+      retractedCount,
+      topPapers: (cell.papers || []).slice(0, 3).map(p => ({
+        title: p.title, year: p.year, citationCount: p.citationCount,
+        source: p.source || 'unknown', isRetracted: p.isRetracted || false
+      }))
     };
   }
   res.json(overview);
