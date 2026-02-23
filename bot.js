@@ -624,7 +624,7 @@ async function tick() {
 
                 dataAgent.bondsWithFindings = (dataAgent.bondsWithFindings || 0) + 1;
                 hypoAgent.bondsWithFindings = (hypoAgent.bondsWithFindings || 0) + 1;
-                console.log(`[RESEARCH] ${discovery.id} | ${(discovery.type || 'discovery').toUpperCase()} | ${dataLabel} x ${hypoLabel} | verdict=${discovery.verdict || 'none'}`);
+                console.log(`[RESEARCH] ${discovery.id} | ${(discovery.type || 'discovery').toUpperCase()} | ${dataLabel} x ${hypoLabel} | verdict=${discovery.verdict?.verdict || discovery.verdict || 'none'}`);
 
                 // Queue follow-up questions from this discovery
                 if (discovery.type === 'discovery') {
