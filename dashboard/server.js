@@ -1010,14 +1010,17 @@ app.get('/api/cube/golden/:cellA/:cellB', (req, res) => {
   if (!a || !b) return res.status(404).json({ error: 'Cell not found' });
 
   const methodDistance = Math.abs(a.x - b.x) / 2;
-  const surpriseProduct = (a.y * b.y) / 4;
+  const yA = a.y / 2;
+  const yB = b.y / 2;
+  const surprisePair = 0.2 + 0.8 * (0.6 * ((yA + yB) / 2) + 0.4 * Math.sqrt(yA * yB));
   const semanticDistance = a.z !== b.z ? 1.0 : 0.3;
-  const score = Math.round(methodDistance * surpriseProduct * semanticDistance * 1000) / 1000;
+  const raw = (0.45 * methodDistance) + (0.35 * surprisePair) + (0.20 * semanticDistance);
+  const score = Math.round(Math.max(0, Math.min(1, raw)) * 1000) / 1000;
 
   res.json({
     score,
     golden: score > 0.5,
-    components: { methodDistance, surpriseProduct, semanticDistance },
+    components: { methodDistance, surprisePair: Math.round(surprisePair * 100) / 100, semanticDistance },
     cellA: { cell: parseInt(req.params.cellA), method: a.methodLabel, surprise: a.surpriseLabel, cluster: a.clusterLabel, papers: a.paperCount },
     cellB: { cell: parseInt(req.params.cellB), method: b.methodLabel, surprise: b.surpriseLabel, cluster: b.clusterLabel, papers: b.paperCount }
   });

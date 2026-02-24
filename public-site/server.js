@@ -59,6 +59,18 @@ function readCube() {
   return readJSON(path.join(DATA_DIR, 'cube.json'));
 }
 
+function readGapIndex() {
+  return readJSON(path.join(DATA_DIR, 'gaps', 'index.json')) || { gaps: [], total: 0, date: null };
+}
+
+function readGapById(id) {
+  return readJSON(path.join(DATA_DIR, 'gaps', `${id}.json`));
+}
+
+function readSurpriseDist() {
+  return readJSON(path.join(DATA_DIR, 'surprise-dist.json')) || { days: {} };
+}
+
 function listPacks() {
   try {
     return fs.readdirSync(PACKS_DIR)
@@ -132,10 +144,8 @@ function enrichDiscoveries(findings) {
 }
 
 function getValidatedGaps() {
-  const findings = readFindings();
-  const discoveries = findings.filter(f => f.type === 'discovery' || f.type === 'draft');
-  return enrichDiscoveries(discoveries)
-    .sort((a, b) => (b.gapQualityScore || 0) - (a.gapQualityScore || 0));
+  const idx = readGapIndex();
+  return idx.gaps || [];
 }
 
 // --- Static files ---
@@ -161,7 +171,11 @@ app.get('/gaps/domain/:slug', (req, res) => {
 
 // --- JSON API ---
 app.get('/api/gaps', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60');
   const domain = req.query.domain || null;
+  const method = req.query.method || null;
+  const surprise = req.query.surprise || null;
+  const source = req.query.source || null;
   const sort = req.query.sort || 'score';
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
@@ -170,19 +184,28 @@ app.get('/api/gaps', (req, res) => {
   let gaps = getValidatedGaps();
 
   if (domain) {
-    gaps = gaps.filter(g => g.pack === domain);
+    gaps = gaps.filter(g => (g.corridor || '').toLowerCase().includes(domain.toLowerCase()));
+  }
+  if (method) {
+    gaps = gaps.filter(g => (g.methodAxis || '') === method);
+  }
+  if (surprise) {
+    gaps = gaps.filter(g => (g.surpriseBucket || '') === surprise);
+  }
+  if (source) {
+    gaps = gaps.filter(g => (g.sources || []).includes(source));
   }
   if (search) {
     gaps = gaps.filter(g => {
-      const text = `${g.hypothesis || ''} ${g.discovery || ''} ${(g.cellLabels || []).join(' ')}`.toLowerCase();
+      const text = `${g.claim || ''} ${g.corridor || ''}`.toLowerCase();
       return text.includes(search);
     });
   }
 
   if (sort === 'date') {
-    gaps.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    gaps.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   } else if (sort === 'domain') {
-    gaps.sort((a, b) => (a.pack || '').localeCompare(b.pack || ''));
+    gaps.sort((a, b) => (a.corridor || '').localeCompare(b.corridor || ''));
   }
   // default: already sorted by score
 
@@ -195,38 +218,45 @@ app.get('/api/gaps', (req, res) => {
 });
 
 app.get('/api/gaps/:id', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=120');
   const id = req.params.id;
-  const gaps = getValidatedGaps();
-  const gap = gaps.find(g => g.id === id);
+  const gap = readGapById(id);
   if (!gap) return res.status(404).json({ error: 'Gap not found' });
   res.json(gap);
 });
 
 app.get('/api/stats', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=30');
   const gaps = getValidatedGaps();
   const metrics = readMetrics();
   const state = readState();
   const cube = readCube();
   const packs = listPacks();
+  const dist = readSurpriseDist();
+  const dayKeys = Object.keys(dist.days || {}).sort().slice(-7);
+  const papers7d = dayKeys.reduce((sum, k) => {
+    const d = dist.days[k];
+    return sum + ((d?.y0 || 0) + (d?.y1 || 0) + (d?.y2 || 0));
+  }, 0);
+  const corridorsCovered = new Set(gaps.map(g => g.corridor || 'unknown')).size;
 
   const byDomain = {};
   for (const g of gaps) {
-    const domain = g.pack || 'unknown';
+    const domain = g.corridor || 'unknown';
     byDomain[domain] = (byDomain[domain] || 0) + 1;
   }
 
   const avgScore = gaps.length > 0
-    ? Math.round(gaps.reduce((s, g) => s + (g.gapQualityScore || 0), 0) / gaps.length)
+    ? Math.round(gaps.reduce((s, g) => s + (g.score || 0), 0) / gaps.length)
     : 0;
-
-  const researchReady = gaps.filter(g => g.researchReady).length;
 
   res.json({
     totalGaps: gaps.length,
     domains: packs.length,
     byDomain,
     avgGapQuality: avgScore,
-    researchReady,
+    papers7d,
+    corridorsCovered,
     tick: state?.tick || 0,
     cubePapers: cube?.totalPapers || 0,
     cubeGeneration: cube?.generation || 0,

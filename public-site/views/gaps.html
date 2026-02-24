@@ -216,6 +216,15 @@ body {
 <div class="controls">
   <input type="text" class="search-input" id="search" placeholder="Zoek gaps...">
   <button class="filter-btn active" data-domain="">ALLE</button>
+  <select class="sort-select" id="filter-method">
+    <option value="">Method Axis</option>
+  </select>
+  <select class="sort-select" id="filter-surprise">
+    <option value="">Surprise Bucket</option>
+  </select>
+  <select class="sort-select" id="filter-source">
+    <option value="">Source</option>
+  </select>
   <select class="sort-select" id="sort">
     <option value="score">Score (hoog-laag)</option>
     <option value="date">Datum (nieuw-oud)</option>
@@ -233,6 +242,9 @@ body {
 <script>
 let currentPage = 1;
 let currentDomain = '';
+let currentMethod = '';
+let currentSurprise = '';
+let currentSource = '';
 let currentSort = 'score';
 let currentSearch = '';
 let domainSlug = null;
@@ -258,6 +270,9 @@ async function loadGaps() {
     sort: currentSort
   });
   if (currentDomain) params.set('domain', currentDomain);
+  if (currentMethod) params.set('method', currentMethod);
+  if (currentSurprise) params.set('surprise', currentSurprise);
+  if (currentSource) params.set('source', currentSource);
   if (currentSearch) params.set('search', currentSearch);
 
   try {
@@ -272,28 +287,21 @@ async function loadGaps() {
     }
 
     container.innerHTML = data.gaps.map(g => {
-      const domains = g.cellLabels ? g.cellLabels.join(' &times; ') : 'Cross-domain';
-      const score = g.gapQualityScore || 0;
-      const cred = g.sourceCredibilityScore || 0;
-      const ready = g.researchReady;
-      const highQ = score >= 70;
-      const verdict = g.verdict?.verdict || g.verdict || '';
+      const domains = g.corridor || 'Cross-domain';
+      const score = g.score || 0;
+      const highQ = score >= 75;
+      const seeded = (g.sources || []).includes('seeded') || (g.id || '').startsWith('seed-');
 
-      return `<a href="/gaps/${encodeURIComponent(g.id)}" class="gap-card${ready ? ' research-ready' : highQ ? ' high-quality' : ''}">
+      return `<a href="/gaps/${encodeURIComponent(g.id)}" class="gap-card${highQ ? ' high-quality' : ''}">
         <div class="gap-domains">${escapeHtml(domains)}</div>
-        <div class="gap-hypo">${escapeHtml(g.hypothesis || g.discovery || '')}</div>
+        <div class="gap-hypo">${escapeHtml(g.claim || '')}</div>
         <div class="gap-meta">
           <span class="score-bar">
-            <span class="gap-score">Q ${score}%</span>
+            <span class="gap-score">S ${score}%</span>
             <span class="score-bar-track"><span class="score-bar-fill" style="width:${score}%"></span></span>
           </span>
-          <span class="score-bar">
-            <span>CRED ${cred}%</span>
-            <span class="score-bar-track"><span class="score-bar-fill" style="width:${cred}%;background:var(--green)"></span></span>
-          </span>
-          ${ready ? '<span class="gap-badge gold">RESEARCH-READY</span>' : ''}
-          ${verdict ? '<span>' + escapeHtml(verdict) + '</span>' : ''}
-          <span>${g.pack || ''}</span>
+          ${seeded ? '<span class="gap-badge gold">SEEDED</span>' : ''}
+          <span>${g.date || ''}</span>
         </div>
       </a>`;
     }).join('');
@@ -326,9 +334,9 @@ function goPage(p) {
 async function loadFilters() {
   try {
     const stats = await fetch('/api/stats').then(r => r.json());
+    const all = await fetch('/api/gaps?limit=5000').then(r => r.json()).catch(() => ({ gaps: [] }));
     const container = document.querySelector('.controls');
     const existingBtns = container.querySelectorAll('.filter-btn[data-domain]');
-    // Keep the ALL button, add domain buttons after it
     const allBtn = existingBtns[0];
 
     if (stats.byDomain) {
@@ -344,6 +352,22 @@ async function loadFilters() {
         allBtn.classList.remove('active');
       }
     }
+
+    const methodSet = new Set();
+    const surpriseSet = new Set();
+    const sourceSet = new Set();
+    (all.gaps || []).forEach(g => {
+      if (g.methodAxis) methodSet.add(g.methodAxis);
+      if (g.surpriseBucket) surpriseSet.add(g.surpriseBucket);
+      if (Array.isArray(g.sources)) g.sources.forEach(s => sourceSet.add(s));
+    });
+
+    document.getElementById('filter-method').innerHTML =
+      '<option value=\"\">Method Axis</option>' + [...methodSet].map(m => `<option value=\"${m}\">${m}</option>`).join('');
+    document.getElementById('filter-surprise').innerHTML =
+      '<option value=\"\">Surprise Bucket</option>' + [...surpriseSet].map(s => `<option value=\"${s}\">${s}</option>`).join('');
+    document.getElementById('filter-source').innerHTML =
+      '<option value=\"\">Source</option>' + [...sourceSet].map(s => `<option value=\"${s}\">${s}</option>`).join('');
   } catch (e) {}
 }
 
@@ -355,6 +379,24 @@ function filterDomain(domain) {
   });
   loadGaps();
 }
+
+document.getElementById('filter-method').addEventListener('change', (e) => {
+  currentMethod = e.target.value || '';
+  currentPage = 1;
+  loadGaps();
+});
+
+document.getElementById('filter-surprise').addEventListener('change', (e) => {
+  currentSurprise = e.target.value || '';
+  currentPage = 1;
+  loadGaps();
+});
+
+document.getElementById('filter-source').addEventListener('change', (e) => {
+  currentSource = e.target.value || '';
+  currentPage = 1;
+  loadGaps();
+});
 
 // Event listeners
 document.getElementById('search').addEventListener('input', (e) => {

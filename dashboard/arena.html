@@ -1592,7 +1592,7 @@ function renderGoldenCollision(f) {
       <span class="golden-badge ${cls}">${isGolden ? '\u2728 GOLDEN COLLISION' : 'COLLISION'} &mdash; ${gc.score}</span>
       <div class="golden-components">
         <div class="golden-component"><span class="golden-component-label">Method \u0394</span><span class="golden-component-val">${c.methodDistance || 0}</span></div>
-        <div class="golden-component"><span class="golden-component-label">Surprise \u00D7</span><span class="golden-component-val">${c.surpriseProduct || 0}</span></div>
+        <div class="golden-component"><span class="golden-component-label">Surprise</span><span class="golden-component-val">${c.surprisePair || 0}</span></div>
         <div class="golden-component"><span class="golden-component-label">Semantic \u0394</span><span class="golden-component-val">${c.semanticDistance || 0}</span></div>
       </div>
       ${gc.cellA ? `<div style="font-size:9px;color:#888;margin-top:4px;">[${gc.cellA.method}, ${gc.cellA.surprise}] \u00D7 [${gc.cellB.method}, ${gc.cellB.surprise}]</div>` : ''}

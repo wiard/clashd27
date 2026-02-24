@@ -198,6 +198,20 @@ body {
   display: block;
 }
 .gap-card:hover { border-left-color: #ff6a33; background: #1a1a1a; }
+.featured-gap {
+  border: 1px solid #222;
+  background: linear-gradient(135deg, rgba(255,69,0,0.12), rgba(20,20,20,0.9));
+  padding: 24px;
+  margin-top: 24px;
+}
+.featured-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
 .gap-card.research-ready { border-left-color: #ffd700; }
 .gap-domains {
   font-family: 'JetBrains Mono', monospace;
@@ -320,24 +334,20 @@ footer {
   <div class="scan-line"></div>
   <div class="hero-overlay">
     <h1 class="hero-title">CLASHD27</h1>
-    <p class="hero-subtitle">Vindt wat wetenschap mist</p>
-    <p class="hero-desc">Een 3&times;3&times;3 kubus die papers uit ongerelateerde domeinen tegen elkaar laat botsen om onontdekte research gaps te vinden</p>
-    <div class="hero-stats">
+    <p class="hero-subtitle">We publish the missing experiments in AI — daily.</p>
+    <p class="hero-desc">A 3&times;3&times;3 collision engine that surfaces testable gaps across AI subfields, updated every day.</p>
+  <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-papers7d">--</span>
+        <span class="hero-stat-label"><span class="live-dot"></span>PAPERS (7D)</span>
+      </div>
       <div class="hero-stat">
         <span class="hero-stat-val" id="stat-gaps">--</span>
-        <span class="hero-stat-label"><span class="live-dot"></span>GAPS FOUND</span>
+        <span class="hero-stat-label">GAPS PUBLISHED</span>
       </div>
       <div class="hero-stat">
-        <span class="hero-stat-val" id="stat-domains">--</span>
-        <span class="hero-stat-label">DOMAINS</span>
-      </div>
-      <div class="hero-stat">
-        <span class="hero-stat-val" id="stat-avg">--</span>
-        <span class="hero-stat-label">AVG QUALITY</span>
-      </div>
-      <div class="hero-stat">
-        <span class="hero-stat-val" id="stat-ready">--</span>
-        <span class="hero-stat-label">RESEARCH-READY</span>
+        <span class="hero-stat-val" id="stat-corridors">--</span>
+        <span class="hero-stat-label">CORRIDORS</span>
       </div>
     </div>
   </div>
@@ -349,6 +359,7 @@ footer {
   <div class="section">
     <h2 class="section-heading">Recent ontdekte gaps</h2>
     <p class="section-text">De kubus draait 24/7. Elke 5 minuten selecteert de klok een nieuwe cel. Agents botsen, hypotheses worden gegenereerd, en een meerlaags verificatiesysteem filtert tot alleen de sterkste gaps overblijven.</p>
+    <div id="featured-gap" class="featured-gap"></div>
     <div class="top-gaps" id="top-gaps-list">
       <div style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Laden...</div>
     </div>
@@ -418,10 +429,9 @@ async function loadData() {
   try {
     const stats = await fetch('/api/stats').then(r => r.json()).catch(() => null);
     if (stats) {
+      document.getElementById('stat-papers7d').textContent = stats.papers7d || 0;
       document.getElementById('stat-gaps').textContent = stats.totalGaps || 0;
-      document.getElementById('stat-domains').textContent = stats.domains || 0;
-      document.getElementById('stat-avg').textContent = (stats.avgGapQuality || 0) + '%';
-      document.getElementById('stat-ready').textContent = stats.researchReady || 0;
+      document.getElementById('stat-corridors').textContent = stats.corridorsCovered || 0;
       document.getElementById('cs-papers').textContent = stats.cubePapers || '--';
       document.getElementById('cs-domains').textContent = stats.domains || '--';
       document.getElementById('cs-tick').textContent = (stats.tick || 0).toLocaleString();
@@ -434,21 +444,41 @@ async function loadData() {
       // Render top gaps
       if (stats.topGaps && stats.topGaps.length > 0) {
         const container = document.getElementById('top-gaps-list');
+        const featured = stats.topGaps[0];
+        const featuredEl = document.getElementById('featured-gap');
+        if (featuredEl && featured) {
+          const seeded = (featured.sources || []).includes('seeded') || (featured.id || '').startsWith('seed-');
+          featuredEl.innerHTML = `
+            <div class="featured-label">Featured Gap</div>
+            <a href="/gaps/${encodeURIComponent(featured.id)}" class="gap-card">
+              <div class="gap-domains">${escapeHtml(featured.corridor || 'Cross-domain')}</div>
+              <div class="gap-hypo">${escapeHtml(featured.claim || '')}</div>
+              <div class="gap-meta">
+                <span class="gap-score">SCORE ${featured.score || 0}%</span>
+                ${seeded ? '<span class="gap-badge gold">SEEDED</span>' : ''}
+                <span>${featured.date || ''}</span>
+              </div>
+            </a>`;
+        }
         container.innerHTML = stats.topGaps.map(g => {
-          const domains = g.cellLabels ? g.cellLabels.join(' &times; ') : 'Cross-domain';
-          const score = g.gapQualityScore || 0;
-          const ready = g.researchReady;
-          return `<a href="/gaps/${encodeURIComponent(g.id)}" class="gap-card${ready ? ' research-ready' : ''}">
+          const domains = g.corridor || 'Cross-domain';
+          const score = g.score || 0;
+          const seeded = (g.sources || []).includes('seeded') || (g.id || '').startsWith('seed-');
+          return `<a href="/gaps/${encodeURIComponent(g.id)}" class="gap-card">
             <div class="gap-domains">${escapeHtml(domains)}</div>
-            <div class="gap-hypo">${escapeHtml(g.hypothesis || g.discovery || '')}</div>
+            <div class="gap-hypo">${escapeHtml(g.claim || '')}</div>
             <div class="gap-meta">
-              <span class="gap-score">QUALITY ${score}%</span>
-              ${ready ? '<span class="gap-badge">RESEARCH-READY</span>' : ''}
-              <span>${g.pack || ''}</span>
+              <span class="gap-score">SCORE ${score}%</span>
+              ${seeded ? '<span class="gap-badge gold">SEEDED</span>' : ''}
+              <span>${g.date || ''}</span>
             </div>
           </a>`;
         }).join('');
       } else {
+        const featuredEl = document.getElementById('featured-gap');
+        if (featuredEl) {
+          featuredEl.innerHTML = '<div class="featured-label">Featured Gap</div><div style="color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;">No gaps published yet today.</div>';
+        }
         document.getElementById('top-gaps-list').innerHTML =
           '<div style="color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;">De kubus draait. Nog geen gaps gevonden.</div>';
       }

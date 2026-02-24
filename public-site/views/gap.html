@@ -279,233 +279,85 @@ async function loadGap() {
       return r.json();
     });
 
-    document.title = 'CLASHD27 — ' + (gap.hypothesis || gap.discovery || 'Gap').substring(0, 60);
+    document.title = 'CLASHD27 — ' + (gap.claim || 'Gap').substring(0, 60);
 
-    const domains = gap.cellLabels || [];
-    const score = gap.gapQualityScore || 0;
-    const cred = gap.sourceCredibilityScore || 0;
-    const ready = gap.researchReady;
-    const verdict = gap.verdict?.verdict || gap.verdict || '';
-    const gptVerdict = gap.gptVerdict || '';
-    const goldenScore = gap.goldenCollision?.score || gap.goldenCollision || 0;
-
-    // Determine cell indices for cube highlight
-    const cellA = gap.cell !== undefined ? gap.cell : null;
-    let cellB = null;
-    // If bond, use the second cell
-    if (gap.cellB !== undefined) cellB = gap.cellB;
+    const score = gap.scoring?.finalScore || 0;
+    const corridor = gap.corridor || 'Cross-domain';
+    const collision = gap.scoring?.collision || 0;
+    const methodDistance = gap.scoring?.methodDistance ?? null;
+    const semanticDistance = gap.scoring?.semanticDistance ?? null;
+    const surpriseScore = gap.scoring?.surpriseScore ?? null;
+    const seeded = (gap.sources || []).includes('seeded') || (gap.id || '').startsWith('seed-');
 
     let html = `<div class="main">
       <div class="left">
         <div class="gap-domains-tag">
-          ${domains.map(d => `<span class="domain-chip">${escapeHtml(d)}</span>`).join('<span style="color:var(--muted)">&times;</span>')}
-          ${ready ? '<span class="badge badge-ready">RESEARCH-READY</span>' : ''}
-          ${verdict.includes('HIGH') ? '<span class="badge badge-gap">HIGH-VALUE GAP</span>' : ''}
+          <span class="domain-chip">${escapeHtml(corridor)}</span>
+          ${seeded ? '<span class="badge badge-gap">SEEDED</span>' : ''}
+          ${score >= 75 ? '<span class="badge badge-gap">PUBLISHABLE</span>' : ''}
         </div>
-        <h1 class="gap-title">${escapeHtml(gap.hypothesis || gap.discovery || '')}</h1>
+        <h1 class="gap-title">${escapeHtml(gap.claim || '')}</h1>
 
         <div class="scores-row">
           <div class="score-card">
-            <div class="score-label">Gap Quality</div>
+            <div class="score-label">Final Score</div>
             <div class="score-val" style="color:${score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--yellow)' : 'var(--muted)'}">${score}%</div>
             <div class="score-bar-full"><div class="score-bar-fill" style="width:${score}%;background:${score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--yellow)' : 'var(--muted)'}"></div></div>
           </div>
-          <div class="score-card">
-            <div class="score-label">Source Credibility</div>
-            <div class="score-val" style="color:${cred >= 70 ? 'var(--green)' : cred >= 40 ? 'var(--yellow)' : 'var(--muted)'}">${cred}%</div>
-            <div class="score-bar-full"><div class="score-bar-fill" style="width:${cred}%;background:${cred >= 70 ? 'var(--green)' : cred >= 40 ? 'var(--yellow)' : 'var(--muted)'}"></div></div>
-          </div>
-          ${goldenScore ? `<div class="score-card">
-            <div class="score-label">Golden Collision</div>
-            <div class="score-val" style="color:var(--yellow)">${typeof goldenScore === 'number' ? goldenScore.toFixed(3) : goldenScore}</div>
+          ${collision ? `<div class="score-card">
+            <div class="score-label">Collision</div>
+            <div class="score-val" style="color:var(--yellow)">${typeof collision === 'number' ? collision.toFixed(3) : collision}</div>
           </div>` : ''}
         </div>`;
 
-    // ABC Chain
-    if (gap.abc_chain && gap.abc_chain.length > 0) {
+    if (gap.evidence && gap.evidence.length > 0) {
       html += `<div class="detail-section">
-        <div class="detail-heading">Evidence Chain</div>
-        <div class="abc-chain">
-          ${gap.abc_chain.map((link, i) => `<div class="abc-link">
-            <div class="abc-claim">${escapeHtml(link.claim || link.link || '')}</div>
-            <div class="abc-source">${escapeHtml(link.source || '')}</div>
-          </div>`).join('')}
+        <div class="detail-heading">Evidence</div>
+        <div class="source-list">
+          ${gap.evidence.map(e => `<div class="source-item source-supporting">• ${escapeHtml(e)}</div>`).join('')}
         </div>
       </div>`;
     }
 
-    // Bridge
-    if (gap.bridge && gap.bridge.claim) {
+    if (gap.proposed_experiment) {
       html += `<div class="detail-section">
-        <div class="detail-heading">Bridge Hypothesis</div>
-        <div class="detail-text">${escapeHtml(gap.bridge.claim)}</div>
-        ${gap.bridge.source ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;">${escapeHtml(gap.bridge.source)}</div>` : ''}
+        <div class="detail-heading">Proposed Experiment</div>
+        <div class="detail-text">${escapeHtml(gap.proposed_experiment)}</div>
       </div>`;
     }
 
-    // Kill test
-    if (gap.kill_test) {
+    if (gap.risks && gap.risks.length > 0) {
       html += `<div class="detail-section">
-        <div class="detail-heading">Kill Test</div>
-        <div class="detail-text">${escapeHtml(gap.kill_test)}</div>
+        <div class="detail-heading">Risks / Limitations</div>
+        <div class="source-list">
+          ${gap.risks.map(r => `<div class="source-item source-limiting">• ${escapeHtml(r)}</div>`).join('')}
+        </div>
       </div>`;
     }
 
-    // Cheapest validation
-    if (gap.cheapest_validation) {
+    if (gap.references && gap.references.length > 0) {
       html += `<div class="detail-section">
-        <div class="detail-heading">Cheapest Validation</div>
-        <div class="detail-text">${escapeHtml(gap.cheapest_validation)}</div>
+        <div class="detail-heading">References</div>
+        <div class="source-list">
+          ${gap.references.map(r => `<div class="source-item">• ${escapeHtml(r)}</div>`).join('')}
+        </div>
       </div>`;
-    }
-
-    // Clinical relevance
-    if (gap.clinical_relevance) {
-      html += `<div class="detail-section">
-        <div class="detail-heading">Clinical Relevance</div>
-        <div class="detail-text">${escapeHtml(gap.clinical_relevance)}</div>
-      </div>`;
-    }
-
-    // Sources
-    if ((gap.supporting_sources && gap.supporting_sources.length) || (gap.limiting_sources && gap.limiting_sources.length)) {
-      html += `<div class="detail-section">
-        <div class="detail-heading">Sources</div>
-        <div class="source-list">`;
-      if (gap.supporting_sources) {
-        gap.supporting_sources.forEach(s => {
-          html += `<div class="source-item source-supporting">+ ${escapeHtml(typeof s === 'string' ? s : s.source || JSON.stringify(s))}</div>`;
-        });
-      }
-      if (gap.limiting_sources) {
-        gap.limiting_sources.forEach(s => {
-          html += `<div class="source-item source-limiting">- ${escapeHtml(typeof s === 'string' ? s : s.source || JSON.stringify(s))}</div>`;
-        });
-      }
-      html += `</div></div>`;
-    }
-
-    // Deep dive summary
-    if (gap.deepDive) {
-      const dd = gap.deepDive;
-      html += `<div class="detail-section">
-        <div class="detail-heading">Deep Dive</div>
-        <div class="detail-text">`;
-      if (dd.existence_check) html += `<strong>Existence:</strong> ${escapeHtml(dd.existence_check.summary || JSON.stringify(dd.existence_check))}<br>`;
-      if (dd.actionability) html += `<strong>Actionability:</strong> ${escapeHtml(dd.actionability.summary || JSON.stringify(dd.actionability))}<br>`;
-      if (dd.scores) html += `<strong>Score:</strong> ${dd.scores.total || 0}/100`;
-      html += `</div></div>`;
-    }
-
-    // Verification (adversarial review)
-    if (gap.verification) {
-      const ver = gap.verification;
-      html += `<div class="detail-section">
-        <div class="detail-heading">Adversarial Review (GPT-4o)</div>
-        <div class="detail-text">`;
-      if (ver.gpt_verdict || ver.verdict) html += `<strong>Verdict:</strong> ${escapeHtml(ver.gpt_verdict || ver.verdict)}<br>`;
-      if (ver.reasoning) html += `${escapeHtml(ver.reasoning)}`;
-      html += `</div></div>`;
     }
 
     html += `</div><!-- /left -->
 
     <div class="sidebar">
-      <div class="sidebar-card" id="mini-cube-container">
-        <canvas id="mini-cube"></canvas>
-      </div>`;
-
-    // Verdict
-    if (verdict) {
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">Verdict</div>
-        <div class="sidebar-val${verdict.includes('HIGH') ? ' confirmed' : verdict.includes('WEAK') ? ' weakened' : ''}">${escapeHtml(verdict)}</div>
-      </div>`;
-    }
-
-    // GPT verdict
-    if (gptVerdict) {
-      const verdictClass = gptVerdict === 'CONFIRMED' ? 'confirmed' : gptVerdict === 'WEAKENED' ? 'weakened' : gptVerdict === 'KILLED' ? 'killed' : '';
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">GPT-4o Verdict</div>
-        <div class="sidebar-val ${verdictClass}">${escapeHtml(gptVerdict)}</div>
-      </div>`;
-    }
-
-    // Pack/Domain
-    if (gap.pack) {
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">Domain Pack</div>
-        <div class="sidebar-val">${escapeHtml(gap.pack)}</div>
-      </div>`;
-    }
-
-    // Tick
-    if (gap.tick !== undefined) {
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">Discovery Tick</div>
-        <div class="sidebar-val">#${gap.tick}</div>
-      </div>`;
-    }
-
-    // Impact
-    if (gap.impact) {
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">Impact</div>
-        <div class="sidebar-val">${escapeHtml(gap.impact)}</div>
-      </div>`;
-    }
-
-    // NIH Funding
-    if (gap.nihFunding) {
-      const nih = gap.nihFunding;
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">NIH Funding</div>
-        <div class="sidebar-val">${nih.total_projects_found || 0} projects found<br>${nih.cross_domain_projects || 0} cross-domain</div>
-      </div>`;
-    }
-
-    // EU Funding
-    if (gap.euFunding) {
-      const eu = gap.euFunding;
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">EU/Intl Funding</div>
-        <div class="sidebar-val">${eu.total_found || 0} papers found<br>${eu.eu_funded_count || 0} EU-funded</div>
-      </div>`;
-    }
-
-    // MeSH terms
-    if (gap.mesh_terms && gap.mesh_terms.length > 0) {
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">MeSH Terms</div>
-        <div class="sidebar-val">${gap.mesh_terms.map(t => escapeHtml(t)).join(', ')}</div>
-      </div>`;
-    }
-
-    // Feasibility
-    if (gap.feasibility) {
-      html += `<div class="sidebar-card">
-        <div class="sidebar-heading">Feasibility</div>
-        <div class="sidebar-val">${escapeHtml(typeof gap.feasibility === 'object' ? JSON.stringify(gap.feasibility) : String(gap.feasibility))}</div>
-      </div>`;
-    }
-
-    html += `</div><!-- /sidebar -->
-    </div><!-- /main -->`;
+      <div class="sidebar-card">
+        <div class="sidebar-heading">Scoring Breakdown</div>
+        <div class="sidebar-val">Method distance: ${methodDistance !== null ? methodDistance : 'n/a'}</div>
+        <div class="sidebar-val">Semantic distance: ${semanticDistance !== null ? semanticDistance : 'n/a'}</div>
+        <div class="sidebar-val">Surprise score: ${surpriseScore !== null ? surpriseScore : 'n/a'}</div>
+        <div class="sidebar-val">Final score: ${score}</div>
+      </div>
+    </div></div>`;
 
     document.getElementById('content').innerHTML = html;
     document.getElementById('content').classList.remove('loading');
-
-    // Init mini cube with collision highlight
-    setTimeout(() => {
-      const miniCube = new CubeVisual('mini-cube', {
-        interactive: true,
-        autoRotate: true,
-        showEdges: true,
-        highlightA: cellA,
-        highlightB: cellB
-      });
-    }, 100);
 
   } catch (e) {
     document.getElementById('content').innerHTML = '<div class="loading">Gap niet gevonden.</div>';
