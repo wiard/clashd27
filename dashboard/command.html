@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-light: #111111;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --yellow: #ffd700;
+  --red: #ff4444;
+  --text: #e0e0e0;
+  --muted: #666;
+  --dim: #333;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding: 16px;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1a1a1a;
+  margin-bottom: 16px;
+}
+.header-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--orange);
+  letter-spacing: 3px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--green);
+}
+.live-dot {
+  width: 8px; height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.paused .live-dot { background: var(--red); animation: none; }
+.paused .live-indicator { color: var(--red); }
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+  50% { opacity: 0.3; }
+}
+.last-update {
+  font-size: 10px;
+  color: var(--dim);
+}
+
+/* ── GRID LAYOUT ── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ── PANELS ── */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid #1a1a1a;
+  padding: 16px;
+}
+.panel-heading {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1a1a1a;
+}
+.panel-full { grid-column: 1 / -1; }
+
+/* ── ENGINE STATUS ── */
+.status-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+}
+.status-label { color: var(--muted); }
+.status-val { color: var(--text); }
+.status-val.accent { color: var(--orange); }
+.status-val.green { color: var(--green); }
+.status-val.warn { color: var(--yellow); }
+
+/* ── FUNNEL ── */
+.funnel-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 8px;
+}
+.funnel-label {
+  width: 90px;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: right;
+  flex-shrink: 0;
+  letter-spacing: 1px;
+}
+.funnel-track {
+  flex: 1;
+  height: 20px;
+  background: #1a1a1a;
+  position: relative;
+}
+.funnel-fill {
+  height: 100%;
+  transition: width 0.8s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+}
+.funnel-num {
+  font-size: 10px;
+  color: #fff;
+}
+
+/* ── PACKS ── */
+.pack-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pack-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.pack-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+}
+.pack-dot.active { background: var(--green); }
+.pack-name { flex: 1; font-size: 12px; }
+.pack-btn {
+  background: none;
+  border: 1px solid #333;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.pack-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ── HITS ── */
+.hit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hit-item {
+  padding: 8px;
+  border-left: 3px solid var(--dim);
+}
+.hit-item.high { border-left-color: var(--yellow); }
+.hit-item.medium { border-left-color: var(--orange); }
+.hit-score {
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.hit-score.high { color: var(--yellow); }
+.hit-score.medium { color: var(--orange); }
+.hit-hypo {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.5;
+}
+
+/* ── STATS ── */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #111;
+}
+.stat-row:last-child { border-bottom: none; }
+
+/* ── QUICK ACTIONS ── */
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.action-btn {
+  background: var(--bg-card);
+  border: 1px solid #333;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+.action-btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.action-btn.danger:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.action-btn.active {
+  border-color: var(--green);
+  color: var(--green);
+}
+.action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── NOTIFICATIONS ── */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  padding: 10px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header" id="header">
+  <div class="header-title">CLASHD27 COMMAND CENTER</div>
+  <div class="header-right">
+    <div class="live-indicator" id="live-indicator">
+      <span class="live-dot"></span>
+      <span id="live-text">LIVE</span>
+    </div>
+    <span class="last-update" id="last-update"></span>
+  </div>
+</div>
+
+<div class="grid">
+  <!-- ENGINE STATUS -->
+  <div class="panel">
+    <div class="panel-heading">Engine Status</div>
+    <div class="status-grid">
+      <span class="status-label">Tick</span>
+      <span class="status-val accent" id="e-tick">--</span>
+      <span class="status-label">Pack</span>
+      <span class="status-val" id="e-pack">--</span>
+      <span class="status-label">Budget</span>
+      <span class="status-val" id="e-budget">--</span>
+      <span class="status-label">Cube Gen</span>
+      <span class="status-val" id="e-cube">--</span>
+      <span class="status-label">Papers</span>
+      <span class="status-val" id="e-papers">--</span>
+      <span class="status-label">Agents</span>
+      <span class="status-val" id="e-agents">--</span>
+      <span class="status-label">Bonds</span>
+      <span class="status-val" id="e-bonds">--</span>
+      <span class="status-label">Status</span>
+      <span class="status-val green" id="e-status">--</span>
+    </div>
+  </div>
+
+  <!-- PIPELINE FUNNEL -->
+  <div class="panel">
+    <div class="panel-heading">Pipeline Funnel</div>
+    <div id="funnel">
+      <div class="funnel-row"><span class="funnel-label">PAPERS</span><div class="funnel-track"><div class="funnel-fill" id="f-papers" style="width:0;background:var(--blue)"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">CLASSIFIED</span><div class="funnel-track"><div class="funnel-fill" id="f-classified" style="width:0;background:var(--blue)"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">GOLDEN</span><div class="funnel-track"><div class="funnel-fill" id="f-golden" style="width:0;background:var(--yellow)"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">INVESTIGATED</span><div class="funnel-track"><div class="funnel-fill" id="f-investigated" style="width:0;background:var(--orange)"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">SCORE&#8805;75</span><div class="funnel-track"><div class="funnel-fill" id="f-highscore" style="width:0;background:var(--orange)"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">DEEP-DIVED</span><div class="funnel-track"><div class="funnel-fill" id="f-dived" style="width:0;background:#cc44ff"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">VERIFIED</span><div class="funnel-track"><div class="funnel-fill" id="f-verified" style="width:0;background:var(--green)"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">VALIDATED</span><div class="funnel-track"><div class="funnel-fill" id="f-validated" style="width:0;background:var(--green)"></div></div></div>
+    </div>
+  </div>
+
+  <!-- ACTIVE PACKS -->
+  <div class="panel">
+    <div class="panel-heading">Active Packs</div>
+    <div class="pack-list" id="pack-list">
+      <div style="color:var(--muted)">Laden...</div>
+    </div>
+  </div>
+
+  <!-- TODAY'S HITS -->
+  <div class="panel">
+    <div class="panel-heading">Recent Hits</div>
+    <div class="hit-list" id="hit-list">
+      <div style="color:var(--muted)">Laden...</div>
+    </div>
+  </div>
+
+  <!-- CREDIBILITY STATS -->
+  <div class="panel">
+    <div class="panel-heading">Credibility Stats</div>
+    <div id="cred-stats">
+      <div class="stat-row"><span class="status-label">Avg Gap Quality</span><span class="status-val" id="c-avgq">--</span></div>
+      <div class="stat-row"><span class="status-label">High Quality (&#8805;70)</span><span class="status-val green" id="c-high">--</span></div>
+      <div class="stat-row"><span class="status-label">Medium (40-69)</span><span class="status-val warn" id="c-mid">--</span></div>
+      <div class="stat-row"><span class="status-label">Low (&lt;40)</span><span class="status-val" id="c-low">--</span></div>
+      <div class="stat-row"><span class="status-label">Total Scored</span><span class="status-val" id="c-total">--</span></div>
+      <div class="stat-row"><span class="status-label">Research-Ready</span><span class="status-val green" id="c-ready">--</span></div>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="panel">
+    <div class="panel-heading">Discovery Metrics</div>
+    <div id="metrics-panel">
+      <div class="stat-row"><span class="status-label">Total Discoveries</span><span class="status-val accent" id="m-disc">--</span></div>
+      <div class="stat-row"><span class="status-label">High-Value Gaps</span><span class="status-val warn" id="m-hvg">--</span></div>
+      <div class="stat-row"><span class="status-label">GPT Survived</span><span class="status-val green" id="m-gpt">--</span></div>
+      <div class="stat-row"><span class="status-label">Rejection Rate</span><span class="status-val" id="m-reject">--</span></div>
+      <div class="stat-row"><span class="status-label">Precision@5</span><span class="status-val" id="m-p5">--</span></div>
+      <div class="stat-row"><span class="status-label">Precision@10</span><span class="status-val" id="m-p10">--</span></div>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="panel panel-full">
+    <div class="panel-heading">Quick Actions</div>
+    <div class="actions">
+      <select id="pack-select" class="action-btn" style="min-width:160px;">
+        <option value="">Switch Pack...</option>
+      </select>
+      <button class="action-btn" onclick="forceShuffle()">Force Shuffle</button>
+      <button class="action-btn" id="btn-pause" onclick="togglePause()">Pause Engine</button>
+      <button class="action-btn" onclick="exportGaps()">Export All Gaps</button>
+      <a class="action-btn" href="/" style="text-decoration:none">Dashboard</a>
+      <a class="action-btn" href="/arena.html" style="text-decoration:none">Arena</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let enginePaused = false;
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+function setFunnel(id, value, maxValue) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const pct = maxValue > 0 ? Math.max((value / maxValue) * 100, value > 0 ? 3 : 0) : 0;
+  el.style.width = pct + '%';
+  el.innerHTML = `<span class="funnel-num">${value.toLocaleString()}</span>`;
+}
+
+async function loadAll() {
+  try {
+    const [engine, funnel, packs, findings, credibility] = await Promise.all([
+      fetch('/api/engine/status').then(r => r.json()).catch(() => null),
+      fetch('/api/pipeline/funnel').then(r => r.json()).catch(() => null),
+      fetch('/api/packs').then(r => r.json()).catch(() => null),
+      fetch('/api/findings?type=discovery&limit=5').then(r => r.json()).catch(() => null),
+      fetch('/api/credibility/stats').then(r => r.json()).catch(() => null)
+    ]);
+
+    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+
+    // Engine status
+    if (engine) {
+      enginePaused = engine.paused;
+      document.getElementById('e-tick').textContent = engine.tick.toLocaleString();
+      document.getElementById('e-pack').textContent = engine.pack ? engine.pack.name : 'none';
+      document.getElementById('e-budget').textContent = `$${engine.budget_today.toFixed(2)} / $${engine.budget_limit.toFixed(2)}`;
+      document.getElementById('e-budget').className = 'status-val' + (engine.budget_today / engine.budget_limit > 0.8 ? ' warn' : ' green');
+      document.getElementById('e-cube').textContent = `gen ${engine.cube_generation}`;
+      document.getElementById('e-papers').textContent = engine.cube_papers.toLocaleString();
+      document.getElementById('e-agents').textContent = `${engine.agents_alive}/${engine.agents_total} alive`;
+      document.getElementById('e-bonds').textContent = engine.total_bonds;
+      document.getElementById('e-status').textContent = engine.paused ? 'PAUSED' : 'RUNNING';
+      document.getElementById('e-status').className = 'status-val ' + (engine.paused ? 'warn' : 'green');
+
+      // Update header
+      const header = document.getElementById('header');
+      const liveText = document.getElementById('live-text');
+      if (engine.paused) {
+        header.classList.add('paused');
+        liveText.textContent = 'PAUSED';
+      } else {
+        header.classList.remove('paused');
+        liveText.textContent = 'LIVE';
+      }
+
+      // Pause button text
+      document.getElementById('btn-pause').textContent = engine.paused ? 'Resume Engine' : 'Pause Engine';
+      document.getElementById('btn-pause').className = engine.paused ? 'action-btn active' : 'action-btn danger';
+
+      // Metrics
+      const m = engine.metrics || {};
+      document.getElementById('m-disc').textContent = m.total_discoveries || 0;
+      document.getElementById('m-hvg').textContent = m.total_high_value || 0;
+      document.getElementById('m-gpt').textContent = m.gpt_survived || 0;
+      const rejected = m.total_rejected || 0;
+      const total = (m.total_discoveries || 0) + rejected;
+      document.getElementById('m-reject').textContent = total > 0 ? Math.round((rejected / total) * 100) + '%' : '--';
+      document.getElementById('m-p5').textContent = m.precision_at_5 !== null && m.precision_at_5 !== undefined ? m.precision_at_5 : (m.precision_at_5_status || '--');
+      document.getElementById('m-p10').textContent = m.precision_at_10 !== null && m.precision_at_10 !== undefined ? m.precision_at_10 : (m.precision_at_10_status || '--');
+    }
+
+    // Funnel
+    if (funnel) {
+      const max = Math.max(funnel.papers || 1, 1);
+      setFunnel('f-papers', funnel.papers || 0, max);
+      setFunnel('f-classified', funnel.classified || 0, max);
+      setFunnel('f-golden', funnel.golden || 0, max);
+      setFunnel('f-investigated', funnel.investigated || 0, max);
+      setFunnel('f-highscore', funnel.high_score || 0, max);
+      setFunnel('f-dived', funnel.deep_dived || 0, max);
+      setFunnel('f-verified', funnel.verified || 0, max);
+      setFunnel('f-validated', funnel.validated || 0, max);
+    }
+
+    // Packs
+    if (packs && packs.packs) {
+      const container = document.getElementById('pack-list');
+      const select = document.getElementById('pack-select');
+      container.innerHTML = packs.packs.map(p => {
+        const active = p.id === packs.active;
+        return `<div class="pack-item">
+          <span class="pack-dot${active ? ' active' : ''}"></span>
+          <span class="pack-name">${p.name}</span>
+          ${active ? '<span style="color:var(--green);font-size:10px">[ON]</span>' : '<span style="color:var(--dim);font-size:10px">[--]</span>'}
+        </div>`;
+      }).join('');
+
+      // Populate select
+      select.innerHTML = '<option value="">Switch Pack...</option>';
+      packs.packs.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        if (p.id === packs.active) opt.disabled = true;
+        select.appendChild(opt);
+      });
+    }
+
+    // Recent hits
+    if (findings && findings.findings) {
+      const container = document.getElementById('hit-list');
+      if (findings.findings.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted)">Nog geen discoveries.</div>';
+      } else {
+        container.innerHTML = findings.findings.map(f => {
+          const score = f.scores?.total || 0;
+          const high = score >= 75;
+          const hypo = (f.hypothesis || f.discovery || '').substring(0, 120);
+          const domains = (f.cellLabels || []).join(' x ');
+          return `<div class="hit-item${high ? ' high' : score >= 50 ? ' medium' : ''}">
+            <div class="hit-score${high ? ' high' : score >= 50 ? ' medium' : ''}">Score ${score} | ${domains}</div>
+            <div class="hit-hypo">${escapeHtml(hypo)}</div>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // Credibility
+    if (credibility) {
+      document.getElementById('c-avgq').textContent = (credibility.average_gap_quality_score || 0) + '%';
+      document.getElementById('c-high').textContent = credibility.distribution?.high || 0;
+      document.getElementById('c-mid').textContent = credibility.distribution?.medium || 0;
+      document.getElementById('c-low').textContent = credibility.distribution?.low || 0;
+      document.getElementById('c-total').textContent = credibility.total_scored || 0;
+      // Research-ready count from high quality
+      document.getElementById('c-ready').textContent = credibility.distribution?.high || 0;
+    }
+
+  } catch (e) {
+    console.error('Load error:', e);
+  }
+}
+
+function escapeHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+async function forceShuffle() {
+  try {
+    const resp = await fetch('/api/shuffle/force', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await resp.json();
+    toast(data.message || 'Shuffle queued');
+  } catch (e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+async function togglePause() {
+  const endpoint = enginePaused ? '/api/engine/resume' : '/api/engine/pause';
+  try {
+    const resp = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await resp.json();
+    toast(data.message || 'OK');
+    setTimeout(loadAll, 500);
+  } catch (e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+function exportGaps() {
+  window.open('/api/export/gaps', '_blank');
+}
+
+// Pack switch
+document.getElementById('pack-select').addEventListener('change', async (e) => {
+  const packId = e.target.value;
+  if (!packId) return;
+  try {
+    const resp = await fetch('/api/pack/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ packId })
+    });
+    const data = await resp.json();
+    toast(`Pack loaded: ${data.name || packId}`);
+    e.target.value = '';
+    setTimeout(loadAll, 500);
+  } catch (e) {
+    toast('Error loading pack');
+  }
+});
+
+// Initial load + polling
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>

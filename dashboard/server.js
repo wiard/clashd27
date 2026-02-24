@@ -1160,6 +1160,155 @@ app.get('/api/credibility/stats', (req, res) => {
   }
 });
 
+// --- API: Engine Control (Command Center) ---
+const BUDGET_FILE = path.join(__dirname, '..', 'data', 'budget.json');
+const ENGINE_CMD_FILE = path.join(__dirname, '..', 'data', '.engine-cmd.json');
+const CUBE_FILE_ENGINE = path.join(__dirname, '..', 'data', 'cube.json');
+
+// Engine status: read from data files since engine runs in a separate process
+app.get('/api/engine/status', (req, res) => {
+  const state = readState();
+  const metrics = readJSON(METRICS_FILE);
+  const budgetData = readJSON(BUDGET_FILE);
+  const cube = readJSON(CUBE_FILE_ENGINE);
+  const cmdState = readJSON(ENGINE_CMD_FILE);
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const budgetToday = (budgetData && budgetData.date === today) ? budgetData.spent || 0 : 0;
+  const budgetLimit = parseFloat(process.env.DAILY_BUDGET_USD || '2.00');
+
+  res.json({
+    running: !(cmdState && cmdState.paused),
+    paused: !!(cmdState && cmdState.paused),
+    tick: state ? state.tick : 0,
+    pack: activePack ? { id: activePack.id, name: activePack.name } : null,
+    budget_today: Math.round(budgetToday * 100) / 100,
+    budget_limit: budgetLimit,
+    cube_generation: cube ? cube.generation || 0 : 0,
+    cube_papers: cube ? cube.totalPapers || 0 : 0,
+    cube_timestamp: cube ? cube.timestamp || null : null,
+    agents_total: state ? Object.keys(state.agents || {}).length : 0,
+    agents_alive: state ? Object.values(state.agents || {}).filter(a => a.alive).length : 0,
+    total_bonds: state ? (state.bonds || []).length : 0,
+    metrics: metrics || {}
+  });
+});
+
+// Pipeline funnel: aggregate counts from findings
+app.get('/api/pipeline/funnel', (req, res) => {
+  const findings = readFindings();
+  const dives = readDeepDives();
+  const verifications = readVerifications();
+  const validations = readValidationsData();
+  const metrics = readJSON(METRICS_FILE);
+
+  const cube = readJSON(CUBE_FILE_ENGINE);
+  const papers = cube ? cube.totalPapers || 0 : 0;
+
+  const classified = papers; // all papers in cube are classified
+  const allFindings = findings.length;
+  const discoveries = findings.filter(f => f.type === 'discovery' || f.type === 'draft').length;
+  const attempts = findings.filter(f => f.type === 'attempt' || f.type === 'duplicate').length;
+
+  // Golden collisions (discoveries that had a golden collision score)
+  const golden = findings.filter(f =>
+    (f.type === 'discovery' || f.type === 'draft') &&
+    f.goldenCollision && (typeof f.goldenCollision === 'number' ? f.goldenCollision > 0.5 : f.goldenCollision?.score > 0.5)
+  ).length;
+
+  // Investigated = total findings minus duplicates
+  const investigated = findings.filter(f => f.type !== 'duplicate').length;
+
+  // High-score = discoveries with score >= 75
+  const highScore = findings.filter(f =>
+    (f.type === 'discovery' || f.type === 'draft') &&
+    f.scores && f.scores.total >= 75
+  ).length;
+
+  const deepDived = dives.length;
+  const verified = verifications.length;
+  const validated = validations.length;
+
+  res.json({
+    papers,
+    classified,
+    findings: allFindings,
+    golden: golden || metrics?.golden_collisions || 0,
+    investigated,
+    discoveries,
+    attempts,
+    high_score: highScore || metrics?.total_high_value || 0,
+    deep_dived: deepDived,
+    verified,
+    validated
+  });
+});
+
+// Force shuffle: write command file for engine to pick up
+app.post('/api/shuffle/force', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.forceShuffle = true;
+    cmd.forceShuffleAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Shuffle command queued' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Pause engine: write pause signal
+app.post('/api/engine/pause', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.paused = true;
+    cmd.pausedAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Engine pause signal sent' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Resume engine: clear pause signal
+app.post('/api/engine/resume', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.paused = false;
+    cmd.resumedAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Engine resume signal sent' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Export all gaps as JSON download
+app.get('/api/export/gaps', (req, res) => {
+  const findings = readFindings();
+  const discoveries = findings.filter(f => f.type === 'discovery' || f.type === 'draft');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="clashd27-gaps.json"');
+  res.json({ exported_at: new Date().toISOString(), gaps: discoveries });
+});
+
+// Helper for new endpoints
+function readJSON(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+  } catch (e) { }
+  return null;
+}
+
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
 
