@@ -3,15 +3,40 @@
 // Do NOT inject keys here — it causes stale-env bugs on pm2 restart.
 
 module.exports = {
-  apps: [{
-    name: 'clashd27-bot',
-    script: 'bot.js',
-    cwd: '/home/greenbanaanas/clashd27',
-    watch: false,
-    restart_delay: 5000,
-    max_restarts: 10,
-    env: {
-      NODE_ENV: 'production'
+  apps: [
+    {
+      name: 'clashd27-bot',
+      script: 'bot.js',
+      cwd: '/home/greenbanaanas/clashd27',
+      watch: false,
+      restart_delay: 5000,
+      max_restarts: 10,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'clashd27-dashboard',
+      script: 'dashboard/server.js',
+      cwd: '/home/greenbanaanas/clashd27',
+      watch: false,
+      restart_delay: 5000,
+      max_restarts: 10,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'clashd27-public',
+      script: 'public-site/server.js',
+      cwd: '/home/greenbanaanas/clashd27',
+      watch: false,
+      restart_delay: 5000,
+      max_restarts: 10,
+      env: {
+        NODE_ENV: 'production',
+        PUBLIC_PORT: 3028
+      }
     }
-  }]
+  ]
 };
