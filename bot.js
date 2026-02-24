@@ -169,14 +169,15 @@ engine.on('cycleEnd', async ({ summary }) => {
   await sendToChannel('leaderboard', { embeds: [leaderboardEmbed()] });
 });
 
-engine.on('log', ({ level, msg }) => {
-  if (level === 'error') console.error(msg);
-  else if (level === 'warn') console.warn(msg);
-  else console.log(msg);
+engine.on('log', ({ level, msg, ctx }) => {
+  const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+  if (ctx) fn(`${msg} ${JSON.stringify(ctx)}`);
+  else fn(msg);
 });
 
-engine.on('error', ({ phase, error }) => {
-  console.error(`[ENGINE:${phase}] ${error.message}`);
+engine.on('error', ({ phase, error, ctx }) => {
+  if (ctx) console.error(`[ENGINE:${phase}] ${error.message} ${JSON.stringify(ctx)}`);
+  else console.error(`[ENGINE:${phase}] ${error.message}`);
 });
 
 // ---------------------------------------------------------------------------
