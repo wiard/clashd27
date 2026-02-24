@@ -15,6 +15,22 @@ const PACKS_DIR = path.join(__dirname, '..', 'packs');
 
 app.use(express.json());
 
+// --- Admin Auth ---
+const ADMIN_TOKEN = process.env.DASHBOARD_ADMIN_TOKEN || process.env.ADMIN_TOKEN || '';
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({ error: 'Admin token not configured' });
+  }
+  const headerToken = req.headers['x-admin-token'];
+  const authHeader = req.headers.authorization || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const token = headerToken || bearer;
+  if (!token || token !== ADMIN_TOKEN) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  return next();
+}
+
 // --- State ---
 function readState() {
   try {
@@ -1300,6 +1316,31 @@ app.get('/api/export/gaps', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', 'attachment; filename="clashd27-gaps.json"');
   res.json({ exported_at: new Date().toISOString(), gaps: discoveries });
+});
+
+// --- Leaderboard ---
+app.get('/api/leaderboard', requireAdmin, (req, res) => {
+  try {
+    const { computeLeaderboard } = require('../lib/leaderboard');
+    res.json(computeLeaderboard());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/gap/:id/status', requireAdmin, (req, res) => {
+  try {
+    const status = req.body?.status;
+    if (!['posted', 'resolved'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    const { updateGapStatus } = require('../lib/gap-recorder');
+    const result = updateGapStatus(req.params.id, status);
+    if (!result.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Helper for new endpoints
