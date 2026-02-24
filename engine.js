@@ -76,6 +76,10 @@ engine.on('validationComplete', ({ discoveryId, result }) => {
   console.log(`[VALIDATOR] ${discoveryId} | feasibility=${result.overall_feasibility}`);
 });
 
+engine.on('screenReject', ({ tick, agents, domains, reason, goldenScore }) => {
+  console.log(`[SCREEN] REJECT tick=${tick} | ${domains.join(' x ')} | agents=${agents.join(', ')} | reason=${reason}${goldenScore ? ` | score=${goldenScore}` : ''}`);
+});
+
 engine.on('shuffle', ({ generation, totalPapers, durationMs }) => {
   console.log(`[SHUFFLE] generation=${generation} papers=${totalPapers} (${durationMs}ms)`);
 });

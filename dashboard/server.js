@@ -1023,6 +1023,93 @@ app.get('/api/cube/golden/:cellA/:cellB', (req, res) => {
   });
 });
 
+// --- API: Funding & Enrichment ---
+
+app.get('/api/findings/:id/funding', (req, res) => {
+  const id = req.params.id;
+  const validations = readValidationsData();
+  const validation = validations.find(v => v.discovery_id === id);
+  if (!validation) return res.status(404).json({ error: 'No funding data for this finding' });
+  res.json({
+    discovery_id: id,
+    nih_funding: validation.nih_funding || null,
+    eu_funding: validation.eu_funding || null
+  });
+});
+
+app.get('/api/funding/stats', (req, res) => {
+  const validations = readValidationsData();
+  let nihTotal = 0, nihCross = 0, euTotal = 0, euFunded = 0;
+  let withNih = 0, withEu = 0;
+
+  for (const v of validations) {
+    if (v.nih_funding) {
+      withNih++;
+      nihTotal += v.nih_funding.total_projects_found || 0;
+      nihCross += v.nih_funding.cross_domain_projects || 0;
+    }
+    if (v.eu_funding) {
+      withEu++;
+      euTotal += v.eu_funding.total_found || 0;
+      euFunded += v.eu_funding.eu_funded_count || 0;
+    }
+  }
+
+  res.json({
+    validations_with_funding: { nih: withNih, eu: withEu, total: validations.length },
+    nih: { total_projects: nihTotal, cross_domain: nihCross },
+    eu: { total_papers: euTotal, eu_funded: euFunded }
+  });
+});
+
+app.get('/api/findings/:id/brief', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const { enrichGapBrief } = require('../lib/brief-enricher');
+    const brief = await enrichGapBrief(finding);
+    res.json({ finding_id: id, ...brief });
+  } catch (e) {
+    res.status(500).json({ error: `Enrichment failed: ${e.message}` });
+  }
+});
+
+app.get('/api/credibility/stats', (req, res) => {
+  const findings = readFindings();
+  const discoveries = findings.filter(f => f.type === 'discovery');
+
+  try {
+    const { scoreCredibility } = require('../lib/brief-enricher');
+    const scores = discoveries.map(d => {
+      const c = scoreCredibility(d);
+      return { id: d.id, score: c.score, passed: c.passed, total: c.total };
+    });
+
+    const avg = scores.length > 0
+      ? Math.round(scores.reduce((s, c) => s + c.score, 0) / scores.length)
+      : 0;
+
+    const distribution = { high: 0, medium: 0, low: 0 };
+    for (const s of scores) {
+      if (s.score >= 70) distribution.high++;
+      else if (s.score >= 40) distribution.medium++;
+      else distribution.low++;
+    }
+
+    res.json({
+      total_scored: scores.length,
+      average_score: avg,
+      distribution,
+      recent: scores.slice(-20).reverse()
+    });
+  } catch (e) {
+    res.status(500).json({ error: `Credibility scoring failed: ${e.message}` });
+  }
+});
+
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
 

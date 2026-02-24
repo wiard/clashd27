@@ -175,6 +175,10 @@ engine.on('log', ({ level, msg, ctx }) => {
   else fn(msg);
 });
 
+engine.on('screenReject', ({ tick, agents, domains, reason }) => {
+  console.log(`[SCREEN] REJECT tick=${tick} | ${domains.join(' x ')} | agents=${agents.join(', ')} | ${reason}`);
+});
+
 engine.on('error', ({ phase, error, ctx }) => {
   if (ctx) console.error(`[ENGINE:${phase}] ${error.message} ${JSON.stringify(ctx)}`);
   else console.error(`[ENGINE:${phase}] ${error.message}`);
