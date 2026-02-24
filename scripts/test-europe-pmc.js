@@ -40,7 +40,8 @@ async function main() {
   console.log();
   for (const p of papers.slice(0, 5)) {
     console.log(`  ${p.pmid || p.id} | ${p.title.slice(0, 80)}`);
-    console.log(`    ${p.journal} (${p.year}) | cited: ${p.citedByCount} | OA: ${p.isOpenAccess} | Funded: ${p.hasRecognizedFunding}`);
+    const funded = p.hasRecognizedFunding ?? (p.grantsList || []).some(g => g.agency && require('../lib/europe-pmc').isRecognizedAgency(g.agency));
+    console.log(`    ${p.journal} (${p.year}) | cited: ${p.citedByCount} | OA: ${p.isOpenAccess} | Funded: ${funded}`);
     if (p.grantsList.length > 0) {
       console.log(`    Grants: ${p.grantsList.map(g => `${g.agency}:${g.grantId}`).join(', ')}`);
     }
