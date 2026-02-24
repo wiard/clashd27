@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Method</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --text: #e0e0e0;
+  --muted: #666;
+  --border: #1a1a1a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.header-nav a { color: var(--muted); text-decoration: none; }
+.header-nav a:hover { color: var(--orange); }
+.main {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 32px;
+}
+h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin: 32px 0 12px;
+}
+p {
+  color: #999;
+  line-height: 1.9;
+  margin-bottom: 16px;
+}
+p strong { color: var(--text); font-weight: 600; }
+.step-grid {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 4px 16px;
+  margin: 20px 0;
+}
+.step-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--orange);
+  text-align: right;
+  padding-top: 2px;
+}
+.step-body {
+  padding: 8px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.step-body:last-child { border-bottom: none; }
+.step-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.step-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.sources-list {
+  list-style: none;
+  padding: 0;
+}
+.sources-list li {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sources-list li:last-child { border-bottom: none; }
+.sources-list li strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <span class="header-nav"><a href="/">Home</a> / Method</span>
+</div>
+
+<div class="main">
+  <h1>How CLASHD27 finds gaps</h1>
+
+  <p>CLASHD27 is a collision engine that discovers <strong>untested connections</strong> between AI research subfields. It runs continuously, scanning new papers and producing scored, verifiable gap reports.</p>
+
+  <h2>Pipeline</h2>
+
+  <div class="step-grid">
+    <div class="step-num">01</div>
+    <div class="step-body">
+      <div class="step-title">Sample</div>
+      <div class="step-desc">Papers are ingested daily from arXiv, Semantic Scholar, OpenAlex, and PubMed/EuropePMC. Each paper is classified by method (observational, computational, experimental), surprise level, and semantic domain.</div>
+    </div>
+    <div class="step-num">02</div>
+    <div class="step-body">
+      <div class="step-title">Cube</div>
+      <div class="step-desc">A 3&times;3&times;3 cube topology organizes papers into 27 cells. A clock selects one cell every 5 minutes. Autonomous agents traverse the cube, forming bonds when they meet in the same cell.</div>
+    </div>
+    <div class="step-num">03</div>
+    <div class="step-body">
+      <div class="step-title">Collide</div>
+      <div class="step-desc">When agents bond across layers, the engine generates golden collisions &mdash; pairs of papers from maximally distant cells. These are scored for collision strength, method distance, semantic distance, and surprise.</div>
+    </div>
+    <div class="step-num">04</div>
+    <div class="step-body">
+      <div class="step-title">Screen &amp; Verify</div>
+      <div class="step-desc">Collisions pass through red-flag screening, satisfaction scoring, structure validation, and multi-source verification (PubMed, clinical trials, NIH grants). Only gaps scoring above threshold survive.</div>
+    </div>
+    <div class="step-num">05</div>
+    <div class="step-body">
+      <div class="step-title">Deep Dive</div>
+      <div class="step-desc">High-scoring gaps (score &ge; 75) trigger deep-dive investigations that cross-reference additional databases and compute credibility scores.</div>
+    </div>
+    <div class="step-num">06</div>
+    <div class="step-body">
+      <div class="step-title">Publish</div>
+      <div class="step-desc">Surviving gaps are published with full evidence chains, proposed experiments, risk assessments, and scoring breakdowns. All state is append-only and reproducible.</div>
+    </div>
+  </div>
+
+  <h2>Data Sources</h2>
+  <ul class="sources-list">
+    <li><strong>arXiv</strong> &mdash; Preprints across CS, physics, math, biology</li>
+    <li><strong>Semantic Scholar</strong> &mdash; Academic graph with citation context</li>
+    <li><strong>OpenAlex</strong> &mdash; Open catalog of scholarly works</li>
+    <li><strong>PubMed / EuropePMC</strong> &mdash; Biomedical literature</li>
+    <li><strong>ClinicalTrials.gov</strong> &mdash; Trial registry for validation</li>
+    <li><strong>NIH Reporter</strong> &mdash; Funded grant verification</li>
+  </ul>
+
+  <h2>Design Principles</h2>
+  <p><strong>Budget-capped:</strong> Every API call is metered. The engine enforces daily limits to stay reproducible and cost-efficient.</p>
+  <p><strong>Append-only:</strong> State files are never overwritten destructively. Each gap, finding, and verification is recorded permanently.</p>
+  <p><strong>Reproducible:</strong> Given the same input data and the same tick, the pipeline produces the same output.</p>
+</div>
+</body>
+</html>
