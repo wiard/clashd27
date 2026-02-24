@@ -33,9 +33,7 @@ async function main() {
   assert('Returns array', Array.isArray(papers));
   assert('Found papers', papers.length > 0);
 
-  if (papers.length > 0) {
-    assert('Papers have hasRecognizedFunding field', typeof papers[0].hasRecognizedFunding === 'boolean');
-  }
+  assert('Papers have hasRecognizedFunding field', papers.every(p => typeof p.hasRecognizedFunding === 'boolean'));
 
   console.log();
   for (const p of papers.slice(0, 5)) {
