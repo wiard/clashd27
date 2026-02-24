@@ -1483,6 +1483,36 @@
   </div>
 </div>
 
+<!-- GitHub Activity Feed -->
+<div class="card" id="github-section" style="margin: 16px 40px;">
+  <h2 style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:16px;">&#128025;</span> GitHub Activity Feed
+    <span id="github-status" style="font-size:9px;color:#666;margin-left:auto;font-weight:400;">checking...</span>
+  </h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="github-grid">
+    <!-- Trending repos -->
+    <div>
+      <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--orange);margin-bottom:8px;">Trending AI Repos</h3>
+      <div id="github-trending" style="font-size:12px;color:#666;">Loading...</div>
+    </div>
+    <!-- Watchlist -->
+    <div>
+      <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--orange);margin-bottom:8px;">Watchlist Status</h3>
+      <div id="github-watchlist" style="font-size:12px;color:#666;">Loading...</div>
+    </div>
+  </div>
+  <!-- Paper-Code Gaps -->
+  <div style="margin-top:16px;">
+    <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#cc2222;margin-bottom:8px;">Paper &harr; Code Gaps</h3>
+    <div id="github-gaps" style="font-size:12px;color:#666;">Loading...</div>
+  </div>
+  <!-- Dependency Collisions -->
+  <div style="margin-top:16px;">
+    <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#2244cc;margin-bottom:8px;">Dependency Collisions</h3>
+    <div id="github-collisions" style="font-size:12px;color:#666;">Loading...</div>
+  </div>
+</div>
+
 <div class="vision">
   <div class="vision-inner">
     <div class="vision-label">— What This Is —</div>
@@ -2695,6 +2725,156 @@ async function submitLabel() {
   }
 }
 
+// === GitHub Activity Feed ===
+async function loadGitHubStatus() {
+  try {
+    const res = await fetch('/api/github/status');
+    const data = await res.json();
+    const el = document.getElementById('github-status');
+    if (data.enabled) {
+      el.textContent = 'ACTIVE';
+      el.style.color = '#22cc22';
+    } else {
+      el.textContent = data.has_token ? 'DISABLED' : 'NO TOKEN';
+      el.style.color = '#cc2222';
+      document.getElementById('github-trending').innerHTML = '<span style="color:#666;">GitHub monitor not configured. Add GITHUB_TOKEN to .env</span>';
+      document.getElementById('github-watchlist').innerHTML = '';
+      document.getElementById('github-gaps').innerHTML = '';
+      document.getElementById('github-collisions').innerHTML = '';
+      return;
+    }
+    loadGitHubTrending();
+    loadGitHubWatchlist();
+    loadGitHubGaps();
+    loadGitHubCollisions();
+  } catch (e) {
+    document.getElementById('github-status').textContent = 'ERROR';
+    document.getElementById('github-status').style.color = '#cc2222';
+  }
+}
+
+async function loadGitHubTrending() {
+  try {
+    const res = await fetch('/api/github/trending');
+    const data = await res.json();
+    const el = document.getElementById('github-trending');
+    if (!data.repos || data.repos.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No trending repos yet</span>';
+      return;
+    }
+    el.innerHTML = data.repos.slice(0, 8).map(r => `
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--mid);">
+        <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--orange);min-width:50px;">&#9733; ${formatNum(r.github_stars || r.citationCount || 0)}</span>
+        <a href="${r.github_url || '#'}" target="_blank" style="font-size:12px;color:var(--text);text-decoration:none;font-weight:600;">${r.github_repo || r.title}</a>
+        <span style="font-size:10px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(r.abstract || '').slice(0, 60)}</span>
+        ${(r.github_languages || []).map(l => '<span style="font-size:9px;background:#f0f0f0;padding:1px 4px;border-radius:2px;">'+l+'</span>').join('')}
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('github-trending').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+async function loadGitHubWatchlist() {
+  try {
+    const res = await fetch('/api/github/watchlist');
+    const data = await res.json();
+    const el = document.getElementById('github-watchlist');
+    if (!data.repos || data.repos.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No watchlist data</span>';
+      return;
+    }
+    el.innerHTML = data.repos.slice(0, 8).map(r => {
+      const lastCommit = r.github_last_commit ? timeAgo(new Date(r.github_last_commit)) : '?';
+      const releases = (r.recent_releases || []);
+      const latestRelease = releases.length > 0 ? releases[0].tag : 'none';
+      return `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--mid);">
+          <span style="font-size:9px;color:#888;min-width:140px;font-family:'Space Mono',monospace;">${r.github_repo || r.title}</span>
+          <span style="font-size:9px;background:#fff3ee;color:var(--orange);padding:1px 4px;border-radius:2px;">${r.watchlist_label || ''}</span>
+          <span style="font-size:9px;color:#666;margin-left:auto;">&#128338; ${lastCommit}</span>
+          <span style="font-size:9px;color:#2244cc;">v${latestRelease}</span>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('github-watchlist').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+async function loadGitHubGaps() {
+  try {
+    const res = await fetch('/api/github/gaps?limit=5');
+    const data = await res.json();
+    const el = document.getElementById('github-gaps');
+    if (!data.gaps || data.gaps.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No paper&#8596;code gaps detected yet. Run a full cycle first.</span>';
+      return;
+    }
+    el.innerHTML = data.gaps.slice(0, 5).map(g => {
+      const badge = g.type === 'A'
+        ? '<span style="background:#cc8800;color:#000;font-size:8px;padding:1px 4px;border-radius:2px;font-family:monospace;">UNIMPLEMENTED</span>'
+        : '<span style="background:#2244cc;color:#fff;font-size:8px;padding:1px 4px;border-radius:2px;font-family:monospace;">UNDOCUMENTED</span>';
+      const title = g.paper ? g.paper.title : (g.repo ? g.repo.name : 'Unknown');
+      const score = g.score || 0;
+      return `
+        <div style="padding:6px 0;border-bottom:1px solid var(--mid);">
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${badge}
+            <span style="font-size:12px;font-weight:600;">${title.slice(0, 80)}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);margin-left:auto;">${score}/100</span>
+          </div>
+          <div style="font-size:10px;color:#888;margin-top:2px;">${g.gap_type}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('github-gaps').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+async function loadGitHubCollisions() {
+  try {
+    const res = await fetch('/api/github/collisions');
+    const data = await res.json();
+    const el = document.getElementById('github-collisions');
+    if (!data.collisions || data.collisions.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No cross-domain dependency collisions yet.</span>';
+      return;
+    }
+    el.innerHTML = data.collisions.slice(0, 5).map(c => `
+      <div style="padding:6px 0;border-bottom:1px solid var(--mid);">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-family:'Space Mono',monospace;font-size:11px;color:#2244cc;font-weight:700;">${c.dependency}</span>
+          <span style="font-size:9px;color:#888;">${c.domains.join(' &#8596; ')}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);margin-left:auto;">${c.score}/100</span>
+        </div>
+        <div style="font-size:10px;color:#666;margin-top:2px;">
+          ${c.repos.slice(0, 3).map(r => r.name).join(', ')}${c.repos.length > 3 ? ' +' + (c.repos.length - 3) + ' more' : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('github-collisions').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+function formatNum(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function timeAgo(date) {
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
 // Countdown timer
 const TICK_INTERVAL = 120000; // 2 minutes
 function updateCountdown() {
@@ -2715,12 +2895,14 @@ loadPack().then(() => {
   loadVerifications();
   loadValidations();
   loadReviewQueue();
+  loadGitHubStatus();
   setInterval(refresh, 15000);
   setInterval(loadDiscoveries, 30000);
   setInterval(loadDeepDives, 30000);
   setInterval(loadVerifications, 60000);
   setInterval(loadValidations, 60000);
   setInterval(loadReviewQueue, 60000);
+  setInterval(loadGitHubStatus, 300000); // refresh GitHub every 5 min
   updateCountdown();
   setInterval(updateCountdown, 1000);
 });

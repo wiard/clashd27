@@ -1312,6 +1312,89 @@ function readJSON(filePath) {
   return null;
 }
 
+// --- GitHub Monitor API ---
+app.get('/api/github/trending', async (req, res) => {
+  try {
+    const { scanTrending, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, repos: [], message: 'GitHub monitor disabled or no token' });
+    }
+    const repos = await scanTrending();
+    res.json({ enabled: true, count: repos.length, repos: repos.slice(0, 20) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/watchlist', async (req, res) => {
+  try {
+    const { checkWatchlist, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, repos: [], message: 'GitHub monitor disabled or no token' });
+    }
+    const repos = await checkWatchlist();
+    res.json({ enabled: true, count: repos.length, repos });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/gaps', (req, res) => {
+  try {
+    const { getPersistedGaps } = require('../lib/paper-code-matcher');
+    const limit = parseInt(req.query.limit || '50', 10);
+    const type = req.query.type || null;
+    const gaps = getPersistedGaps({ limit, type });
+    res.json({ count: gaps.length, gaps });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/collisions', (req, res) => {
+  try {
+    const { readCollisions } = require('../lib/dependency-graph');
+    const data = readCollisions();
+    res.json({
+      count: data.total || 0,
+      updated: data.updated,
+      collisions: (data.collisions || []).slice(0, 50)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/issues', async (req, res) => {
+  try {
+    const { mineIssues, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, issues: [] });
+    }
+    const maxPerRepo = parseInt(req.query.max || '5', 10);
+    const issues = await mineIssues({ maxPerRepo });
+    res.json({ count: issues.length, issues: issues.slice(0, 50) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/status', (req, res) => {
+  try {
+    const { ENABLED, WATCHLIST } = require('../lib/github-monitor');
+    const hasToken = !!process.env.GITHUB_TOKEN;
+    res.json({
+      enabled: ENABLED && hasToken,
+      has_token: hasToken,
+      watchlist_count: WATCHLIST.length,
+      scan_interval: parseInt(process.env.GITHUB_SCAN_INTERVAL || '3600000', 10),
+      watchlist_interval: parseInt(process.env.GITHUB_WATCHLIST_INTERVAL || '1800000', 10),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
 
