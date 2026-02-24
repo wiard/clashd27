@@ -169,6 +169,12 @@ engine.on('cycleEnd', async ({ summary }) => {
   await sendToChannel('leaderboard', { embeds: [leaderboardEmbed()] });
 });
 
+engine.on('log', ({ level, msg }) => {
+  if (level === 'error') console.error(msg);
+  else if (level === 'warn') console.warn(msg);
+  else console.log(msg);
+});
+
 engine.on('error', ({ phase, error }) => {
   console.error(`[ENGINE:${phase}] ${error.message}`);
 });

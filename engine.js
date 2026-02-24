@@ -84,6 +84,12 @@ engine.on('budgetPaused', ({ todaySpent }) => {
   console.log(`[BUDGET] Paused — $${todaySpent.toFixed(2)} spent today`);
 });
 
+engine.on('log', ({ level, msg }) => {
+  if (level === 'error') console.error(msg);
+  else if (level === 'warn') console.warn(msg);
+  else console.log(msg);
+});
+
 engine.on('error', ({ phase, error }) => {
   console.error(`[${phase}] ${error.message}`);
 });
