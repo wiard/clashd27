@@ -12,8 +12,10 @@ const app = express();
 const PORT = 3027;
 const STATE_FILE = path.join(__dirname, '..', 'data', 'state.json');
 const PACKS_DIR = path.join(__dirname, '..', 'packs');
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 app.use(express.json());
+app.use('/public', express.static(PUBLIC_DIR));
 
 // --- Admin Auth ---
 const ADMIN_TOKEN = process.env.DASHBOARD_ADMIN_TOKEN || process.env.ADMIN_TOKEN || '';
@@ -1318,11 +1320,26 @@ app.get('/api/export/gaps', (req, res) => {
   res.json({ exported_at: new Date().toISOString(), gaps: discoveries });
 });
 
-// --- Leaderboard ---
-app.get('/api/leaderboard', requireAdmin, (req, res) => {
+// --- Gap Leaderboard ---
+app.get('/api/leaderboard', (req, res) => {
   try {
-    const { computeLeaderboard } = require('../lib/leaderboard');
+    const { computeLeaderboard } = require('../lib/gap-leaderboard');
     res.json(computeLeaderboard());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/leaderboard/:repo', (req, res) => {
+  try {
+    const { getGapsForRepo } = require('../lib/gap-index');
+    const { generateDraft } = require('../lib/x-post-generator');
+    const { repo, gaps } = getGapsForRepo(req.params.repo);
+    const sorted = gaps.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const latest = sorted[0] || null;
+    const repoInfo = latest ? (latest.repos || []).find(r => r.repo === repo) : null;
+    const draft = latest ? generateDraft(latest, repoInfo) : null;
+    res.json({ repo, gaps: sorted, latest_draft: draft });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1331,10 +1348,10 @@ app.get('/api/leaderboard', requireAdmin, (req, res) => {
 app.post('/api/gap/:id/status', requireAdmin, (req, res) => {
   try {
     const status = req.body?.status;
-    if (!['posted', 'resolved'].includes(status)) {
+    if (!['open', 'posted', 'responded', 'resolved'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
-    const { updateGapStatus } = require('../lib/gap-recorder');
+    const { updateGapStatus } = require('../lib/gap-index');
     const result = updateGapStatus(req.params.id, status);
     if (!result.ok) return res.status(404).json(result);
     res.json(result);
@@ -1438,6 +1455,10 @@ app.get('/api/github/status', (req, res) => {
 
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
+
+app.get('/leaderboard', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'leaderboard.html'));
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));

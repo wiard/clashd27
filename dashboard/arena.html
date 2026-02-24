@@ -313,6 +313,80 @@
     border-radius: 2px;
     border: 1px solid #333;
   }
+  .gap-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #222;
+  }
+  .gap-row:last-child { border-bottom: none; }
+  .gap-repo {
+    color: #ff6b35;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .gap-meta {
+    font-size: 10px;
+    color: #777;
+  }
+  .gap-btn {
+    background: #222;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 4px 8px;
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-family: 'Space Mono', monospace;
+  }
+  .gap-btn:hover { border-color: #ff6b35; color: #ff6b35; }
+  .draft-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+  .draft-modal.active { display: flex; }
+  .draft-modal-content {
+    width: min(680px, 90vw);
+    background: #0f1318;
+    border: 1px solid #333;
+    padding: 16px;
+    border-radius: 4px;
+  }
+  .draft-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .draft-text {
+    width: 100%;
+    min-height: 160px;
+    background: #0b0f14;
+    border: 1px solid #333;
+    color: #ddd;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 8px;
+    resize: vertical;
+  }
+  .draft-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .draft-close {
+    background: transparent;
+    color: #bbb;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+  }
   .finding-footer {
     display: flex;
     justify-content: flex-end;
@@ -1480,6 +1554,10 @@
       <h2>🏆 Leaderboard</h2>
       <div id="leaderboard"></div>
     </div>
+    <div class="card">
+      <h2>🏆 Gap Leaderboard</h2>
+      <div id="gap-leaderboard" style="font-size:12px;color:#bbb;">Loading gap leaderboard...</div>
+    </div>
   </div>
 </div>
 
@@ -1551,8 +1629,22 @@
       <div class="challenge-cta">Deploy your agent. Join the cube. Prove your coordination strategy.</div>
       <div class="attribution">Numbers → <strong>@rodarmor</strong> · Place → <strong>@blockamoto</strong> · Mass → <strong>CLASHD27</strong></div>
     </div>
-    <div class="credits">
-      Protocol by <a href="#">@blockapunk</a> · Live at <a href="https://clashd27.com">clashd27.com</a> · Built on Bitcoin Ordinals &amp; Bitmap
+<div class="credits">
+  Protocol by <a href="#">@blockapunk</a> · Live at <a href="https://clashd27.com">clashd27.com</a> · Built on Bitcoin Ordinals &amp; Bitmap
+</div>
+  </div>
+</div>
+
+<div class="draft-modal" id="draft-modal">
+  <div class="draft-modal-content">
+    <div class="draft-modal-header">
+      <div style="font-size:12px;color:#bbb;">X Draft</div>
+      <button class="draft-close" onclick="closeDraftModal()">&times;</button>
+    </div>
+    <textarea class="draft-text" id="draft-text" readonly></textarea>
+    <div class="draft-actions">
+      <button class="gap-btn" onclick="copyDraft()">Copy</button>
+      <span id="draft-status" style="font-size:10px;color:#777;"></span>
     </div>
   </div>
 </div>
@@ -1865,7 +1957,73 @@ async function refresh(){
     } catch (e) {
       console.error('Failed to fetch findings:', e);
     }
+
+    // Fetch and render gap leaderboard
+    try {
+      await loadGapLeaderboard();
+    } catch (e) {
+      console.error('Failed to fetch gap leaderboard:', e);
+    }
   }catch(e){document.getElementById('refresh-bar').textContent='Connection error — retrying...';}
+}
+
+let gapLeaderboard = [];
+
+async function loadGapLeaderboard() {
+  const res = await fetch('/api/leaderboard');
+  const data = await res.json();
+  gapLeaderboard = data || [];
+  renderGapLeaderboard(gapLeaderboard);
+}
+
+function renderGapLeaderboard(data) {
+  const el = document.getElementById('gap-leaderboard');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<div style="color:#777;font-size:11px;">No gap data yet.</div>';
+    return;
+  }
+  const rows = data.slice(0, 8).map(item => {
+    return `
+      <div class="gap-row">
+        <div>
+          <div class="gap-repo">${item.repo}</div>
+          <div class="gap-meta">resolved ${item.resolved} · responded ${item.responded} · open ${item.open}</div>
+        </div>
+        <button class="gap-btn" onclick="openDraftModal('${item.repo}')">Generate X Draft</button>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = rows;
+}
+
+async function openDraftModal(repo) {
+  try {
+    const res = await fetch(`/api/leaderboard/${encodeURIComponent(repo)}`);
+    const data = await res.json();
+    const draft = data.latest_draft ? data.latest_draft.text : '';
+    const text = draft || 'No draft available for this repo yet.';
+    document.getElementById('draft-text').value = text;
+    document.getElementById('draft-status').textContent = draft ? `Template: ${data.latest_draft.template}` : '';
+    document.getElementById('draft-modal').classList.add('active');
+  } catch (e) {
+    document.getElementById('draft-text').value = 'Failed to load draft.';
+    document.getElementById('draft-modal').classList.add('active');
+  }
+}
+
+function closeDraftModal() {
+  document.getElementById('draft-modal').classList.remove('active');
+  document.getElementById('draft-status').textContent = '';
+}
+
+function copyDraft() {
+  const text = document.getElementById('draft-text').value || '';
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('draft-status').textContent = 'Copied.';
+  }).catch(() => {
+    document.getElementById('draft-status').textContent = 'Copy failed.';
+  });
 }
 
 let currentFindingsFilter = 'all';

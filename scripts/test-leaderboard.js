@@ -4,13 +4,15 @@ const path = require('path');
 const tmpDir = path.join('/tmp', `clashd27-leaderboard-test-${Date.now()}`);
 fs.mkdirSync(tmpDir, { recursive: true });
 
-process.env.GAPS_INDEX_FILE = path.join(tmpDir, 'gaps-index.json');
-process.env.FINDINGS_FILE = path.join(tmpDir, 'findings.json');
-process.env.GITHUB_CACHE_FILE = path.join(tmpDir, 'github-cache.json');
-process.env.GITHUB_USAGE_FILE = path.join(tmpDir, 'github-usage.json');
+const gapsFile = path.join(tmpDir, 'gaps-index.json');
+const findingsFile = path.join(tmpDir, 'findings.json');
+process.env.GAPS_INDEX_FILE = gapsFile;
+process.env.FINDINGS_FILE = findingsFile;
+process.env.GITHUB_TOKEN = '';
 
-const { recordGap, updateGapStatus, safeWriteJSON } = require('../lib/gap-recorder');
-const { computeLeaderboard } = require('../lib/leaderboard');
+const { computeLeaderboard } = require('../lib/gap-leaderboard');
+const { updateGapStatus, recordGap } = require('../lib/gap-index');
+const { generateDraft } = require('../lib/x-post-generator');
 
 function assert(name, condition) {
   if (!condition) {
@@ -20,58 +22,65 @@ function assert(name, condition) {
   console.log(`[PASS] ${name}`);
 }
 
-function makeFinding(id, score, repo, paper) {
-  return {
-    id,
-    type: 'discovery',
-    timestamp: new Date().toISOString(),
-    scores: { total: score },
-    cellLabels: ['LLMs', 'FormalVerification'],
-    supporting_sources: [paper],
-    source: `https://github.com/${repo}`
-  };
+function writeJSON(filePath, data) {
+  const tmp = filePath + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  fs.renameSync(tmp, filePath);
 }
 
-(async () => {
-  const findings = [
-    makeFinding('gap-1', 90, 'owner1/repo1', 'Paper A'),
-    makeFinding('gap-2', 80, 'owner1/repo1', 'Paper B'),
-    makeFinding('gap-3', 70, 'owner2/repo2', 'Paper C'),
-    makeFinding('gap-4', 60, 'owner2/repo2', 'Paper D'),
-    makeFinding('gap-5', 50, 'owner2/repo2', 'Paper E'),
-    makeFinding('gap-6', 40, 'owner3/repo3', 'Paper F'),
-    makeFinding('gap-7', 30, 'owner3/repo3', 'Paper G'),
-    makeFinding('gap-8', 20, 'owner1/repo1', 'Paper H'),
-    makeFinding('gap-9', 10, 'owner1/repo1', 'Paper I'),
-    // Duplicate by hash (same paper + repo as gap-1)
-    makeFinding('gap-10', 95, 'owner1/repo1', 'Paper A')
-  ];
-
-  safeWriteJSON(process.env.FINDINGS_FILE, { findings });
-  safeWriteJSON(process.env.GAPS_INDEX_FILE, { gaps: [] });
-
-  for (const finding of findings) {
-    await recordGap({ discovery_id: finding.id, timestamp: finding.timestamp });
+function seedIndex() {
+  const gaps = [];
+  const now = new Date().toISOString();
+  const repos = ['owner1/repo1', 'owner2/repo2', 'owner3/repo3'];
+  for (let i = 0; i < 10; i += 1) {
+    const repo = repos[i % repos.length];
+    gaps.push({
+      id: `gap-${i + 1}`,
+      createdAt: now,
+      claim: `Gap ${i + 1}`,
+      score: 50 + i,
+      corridor: 'LLMs×FormalVerification',
+      sources: ['Paper A'],
+      repos: [{ repo, maintainer_x_handle: '@handle' }],
+      status: i < 2 ? 'resolved' : i < 4 ? 'responded' : 'open'
+    });
   }
+  writeJSON(gapsFile, { gaps });
+}
 
-  const gapsIndex = JSON.parse(fs.readFileSync(process.env.GAPS_INDEX_FILE, 'utf8'));
-  assert('Dedupes duplicate gap by hash', gapsIndex.gaps.length === 9);
+async function run() {
+  writeJSON(findingsFile, { findings: [
+    {
+      id: 'gap-1',
+      discovery: 'Test gap claim',
+      scores: { total: 90 },
+      cellLabels: ['LLMs', 'FormalVerification'],
+      supporting_sources: ['https://github.com/owner1/repo1'],
+      timestamp: new Date().toISOString()
+    }
+  ]});
 
-  updateGapStatus('gap-2', 'posted');
-  updateGapStatus('gap-3', 'resolved');
-  updateGapStatus('gap-4', 'resolved');
+  writeJSON(gapsFile, { gaps: [] });
+  await recordGap({ discovery_id: 'gap-1', source: 'https://github.com/owner1/repo1' });
+  await recordGap({ discovery_id: 'gap-1', source: 'https://github.com/owner1/repo1' });
+  const index = JSON.parse(fs.readFileSync(gapsFile, 'utf8'));
+  assert('Dedupes by id', index.gaps.length === 1);
 
+  seedIndex();
   const leaderboard = computeLeaderboard();
   assert('Leaderboard returns 3 repos', leaderboard.length === 3);
+  assert('Sorting prefers resolved', leaderboard[0].resolved >= leaderboard[1].resolved);
 
-  const top = leaderboard[0];
-  assert('Top repo sorted by openCount desc', top.repo === 'owner2/repo2');
+  const statusResult = updateGapStatus('gap-1', 'posted');
+  assert('Status update works', statusResult.ok === true);
 
-  const second = leaderboard[1];
-  assert('Second repo sorted by openCount + score', second.repo === 'owner1/repo1');
-
-  const third = leaderboard[2];
-  assert('Third repo is remaining', third.repo === 'owner3/repo3');
+  const draft = generateDraft(
+    { id: 'gap-1', claim: 'Test gap claim' },
+    { repo: 'owner1/repo1', maintainer_x_handle: '@handle' }
+  );
+  assert('Draft <= 280', draft.char_count <= 280);
 
   console.log('[DONE] Leaderboard tests passed.');
-})();
+}
+
+run();
