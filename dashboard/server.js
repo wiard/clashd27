@@ -12,8 +12,26 @@ const app = express();
 const PORT = 3027;
 const STATE_FILE = path.join(__dirname, '..', 'data', 'state.json');
 const PACKS_DIR = path.join(__dirname, '..', 'packs');
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 app.use(express.json());
+app.use('/public', express.static(PUBLIC_DIR));
+
+// --- Admin Auth ---
+const ADMIN_TOKEN = process.env.DASHBOARD_ADMIN_TOKEN || process.env.ADMIN_TOKEN || '';
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({ error: 'Admin token not configured' });
+  }
+  const headerToken = req.headers['x-admin-token'];
+  const authHeader = req.headers.authorization || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const token = headerToken || bearer;
+  if (!token || token !== ADMIN_TOKEN) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  return next();
+}
 
 // --- State ---
 function readState() {
@@ -394,7 +412,9 @@ app.get('/api/discoveries', (req, res) => {
         clinical_relevance: f.clinical_relevance,
         verdict: f.verdict,
         feasibility: f.feasibility,
-        impact: f.impact
+        impact: f.impact,
+        goldenCollision: f.goldenCollision || null,
+        sources: f.sources || []
       });
     }
   }
@@ -766,6 +786,13 @@ app.get('/api/metrics', (req, res) => {
       delete clean._spec_sum;
       delete clean._spec_count;
       delete clean._cost_date;
+      // Augment with cube data
+      const cube = readCube();
+      if (cube) {
+        clean.cube_generation = cube.generation || 0;
+        clean.cube_papers = cube.totalPapers || 0;
+        clean.retraction_enriched = cube.retractionEnriched || 0;
+      }
       res.json(clean);
     } else {
       res.json({});
@@ -923,8 +950,515 @@ app.get('/api/labels', (req, res) => {
   res.json(readLabels());
 });
 
+// --- API: Cube (Anomaly Magnet v2.0) ---
+const CUBE_FILE = path.join(__dirname, '..', 'data', 'cube.json');
+
+function readCube() {
+  try {
+    if (fs.existsSync(CUBE_FILE)) {
+      return JSON.parse(fs.readFileSync(CUBE_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[CUBE] Read failed:', e.message);
+  }
+  return null;
+}
+
+app.get('/api/cube', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.json({ active: false });
+  // Return cube without full paper arrays (just counts) for overview
+  const overview = {
+    active: true,
+    generation: cube.generation,
+    createdAtTick: cube.createdAtTick,
+    timestamp: cube.timestamp,
+    totalPapers: cube.totalPapers,
+    axisLabels: cube.axisLabels,
+    distribution: cube.distribution,
+    sourceBreakdown: cube.sourceBreakdown || {},
+    retractionEnriched: cube.retractionEnriched || 0,
+    shuffleDurationMs: cube.shuffleDurationMs || 0,
+    cells: {}
+  };
+  for (const [key, cell] of Object.entries(cube.cells || {})) {
+    // Count sources per cell
+    const sourceCounts = {};
+    let retractedCount = 0;
+    for (const p of (cell.papers || [])) {
+      const src = p.source || 'unknown';
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+      if (p.isRetracted) retractedCount++;
+    }
+
+    overview.cells[key] = {
+      x: cell.x, y: cell.y, z: cell.z,
+      methodLabel: cell.methodLabel,
+      surpriseLabel: cell.surpriseLabel,
+      clusterLabel: cell.clusterLabel,
+      paperCount: cell.paperCount,
+      sourceCounts,
+      retractedCount,
+      topPapers: (cell.papers || []).slice(0, 3).map(p => ({
+        title: p.title, year: p.year, citationCount: p.citationCount,
+        source: p.source || 'unknown', isRetracted: p.isRetracted || false
+      }))
+    };
+  }
+  res.json(overview);
+});
+
+app.get('/api/cube/cell/:id', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.status(404).json({ error: 'No cube active' });
+  const cell = cube.cells[req.params.id];
+  if (!cell) return res.status(404).json({ error: 'Cell not found' });
+  res.json({
+    cellId: parseInt(req.params.id),
+    ...cell,
+    generation: cube.generation
+  });
+});
+
+app.get('/api/cube/golden/:cellA/:cellB', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.status(404).json({ error: 'No cube active' });
+  const a = cube.cells[req.params.cellA];
+  const b = cube.cells[req.params.cellB];
+  if (!a || !b) return res.status(404).json({ error: 'Cell not found' });
+
+  const methodDistance = Math.abs(a.x - b.x) / 2;
+  const yA = a.y / 2;
+  const yB = b.y / 2;
+  const surprisePair = 0.2 + 0.8 * (0.6 * ((yA + yB) / 2) + 0.4 * Math.sqrt(yA * yB));
+  const semanticDistance = a.z !== b.z ? 1.0 : 0.3;
+  const raw = (0.45 * methodDistance) + (0.35 * surprisePair) + (0.20 * semanticDistance);
+  const score = Math.round(Math.max(0, Math.min(1, raw)) * 1000) / 1000;
+
+  res.json({
+    score,
+    golden: score > 0.5,
+    components: { methodDistance, surprisePair: Math.round(surprisePair * 100) / 100, semanticDistance },
+    cellA: { cell: parseInt(req.params.cellA), method: a.methodLabel, surprise: a.surpriseLabel, cluster: a.clusterLabel, papers: a.paperCount },
+    cellB: { cell: parseInt(req.params.cellB), method: b.methodLabel, surprise: b.surpriseLabel, cluster: b.clusterLabel, papers: b.paperCount }
+  });
+});
+
+// --- API: PubMed & Trials (per finding, live enrichment) ---
+
+app.get('/api/findings/:id/pubmed', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const pubmed = require('../lib/pubmed');
+    const refs = await pubmed.enrichWithReferences(finding);
+    res.json({
+      finding_id: id,
+      pubmed_references: refs,
+      mesh_terms: finding.mesh_terms || [],
+      total: refs.length
+    });
+  } catch (e) {
+    res.status(500).json({ error: `PubMed enrichment failed: ${e.message}` });
+  }
+});
+
+app.get('/api/findings/:id/trials', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const clinicaltrials = require('../lib/clinicaltrials');
+    const trials = await clinicaltrials.searchTrials(finding);
+    const assessment = clinicaltrials.assessTrialOverlap(finding, trials);
+    res.json({
+      finding_id: id,
+      ...assessment
+    });
+  } catch (e) {
+    res.status(500).json({ error: `ClinicalTrials check failed: ${e.message}` });
+  }
+});
+
+// --- API: Funding & Enrichment ---
+
+app.get('/api/findings/:id/funding', (req, res) => {
+  const id = req.params.id;
+  const validations = readValidationsData();
+  const validation = validations.find(v => v.discovery_id === id);
+  if (!validation) return res.status(404).json({ error: 'No funding data for this finding' });
+  res.json({
+    discovery_id: id,
+    nih_funding: validation.nih_funding || null,
+    eu_funding: validation.eu_funding || null
+  });
+});
+
+app.get('/api/funding/stats', (req, res) => {
+  const validations = readValidationsData();
+  let nihTotal = 0, nihCross = 0, euTotal = 0, euFunded = 0;
+  let withNih = 0, withEu = 0;
+
+  for (const v of validations) {
+    if (v.nih_funding) {
+      withNih++;
+      nihTotal += v.nih_funding.total_projects_found || 0;
+      nihCross += v.nih_funding.cross_domain_projects || 0;
+    }
+    if (v.eu_funding) {
+      withEu++;
+      euTotal += v.eu_funding.total_found || 0;
+      euFunded += v.eu_funding.eu_funded_count || 0;
+    }
+  }
+
+  res.json({
+    validations_with_funding: { nih: withNih, eu: withEu, total: validations.length },
+    nih: { total_projects: nihTotal, cross_domain: nihCross },
+    eu: { total_papers: euTotal, eu_funded: euFunded }
+  });
+});
+
+app.get('/api/findings/:id/brief', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const { enrichGapBrief } = require('../lib/brief-enricher');
+    const brief = await enrichGapBrief(finding);
+    res.json({ finding_id: id, ...brief });
+  } catch (e) {
+    res.status(500).json({ error: `Enrichment failed: ${e.message}` });
+  }
+});
+
+app.get('/api/credibility/stats', (req, res) => {
+  const findings = readFindings();
+  const discoveries = findings.filter(f => f.type === 'discovery');
+
+  try {
+    const { scoreGapQuality } = require('../lib/brief-enricher');
+    const scores = discoveries.map(d => {
+      const gq = scoreGapQuality(d);
+      return {
+        id: d.id,
+        gap_quality_score: gq.score,
+        gap_quality_passed: gq.passed,
+        gap_quality_total: gq.total,
+        // source_credibility_score requires live API calls, so only gap_quality is shown here
+        score: gq.score  // backward-compatible
+      };
+    });
+
+    const avg = scores.length > 0
+      ? Math.round(scores.reduce((s, c) => s + c.gap_quality_score, 0) / scores.length)
+      : 0;
+
+    const distribution = { high: 0, medium: 0, low: 0 };
+    for (const s of scores) {
+      if (s.gap_quality_score >= 70) distribution.high++;
+      else if (s.gap_quality_score >= 40) distribution.medium++;
+      else distribution.low++;
+    }
+
+    res.json({
+      total_scored: scores.length,
+      average_gap_quality_score: avg,
+      average_score: avg,  // backward-compatible
+      distribution,
+      note: 'source_credibility_score requires live API enrichment via /api/findings/:id/brief',
+      recent: scores.slice(-20).reverse()
+    });
+  } catch (e) {
+    res.status(500).json({ error: `Credibility scoring failed: ${e.message}` });
+  }
+});
+
+// --- API: Engine Control (Command Center) ---
+const BUDGET_FILE = path.join(__dirname, '..', 'data', 'budget.json');
+const ENGINE_CMD_FILE = path.join(__dirname, '..', 'data', '.engine-cmd.json');
+const CUBE_FILE_ENGINE = path.join(__dirname, '..', 'data', 'cube.json');
+
+// Engine status: read from data files since engine runs in a separate process
+app.get('/api/engine/status', (req, res) => {
+  const state = readState();
+  const metrics = readJSON(METRICS_FILE);
+  const budgetData = readJSON(BUDGET_FILE);
+  const cube = readJSON(CUBE_FILE_ENGINE);
+  const cmdState = readJSON(ENGINE_CMD_FILE);
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const budgetToday = (budgetData && budgetData.date === today) ? budgetData.spent || 0 : 0;
+  const budgetLimit = parseFloat(process.env.DAILY_BUDGET_USD || '2.00');
+
+  res.json({
+    running: !(cmdState && cmdState.paused),
+    paused: !!(cmdState && cmdState.paused),
+    tick: state ? state.tick : 0,
+    pack: activePack ? { id: activePack.id, name: activePack.name } : null,
+    budget_today: Math.round(budgetToday * 100) / 100,
+    budget_limit: budgetLimit,
+    cube_generation: cube ? cube.generation || 0 : 0,
+    cube_papers: cube ? cube.totalPapers || 0 : 0,
+    cube_timestamp: cube ? cube.timestamp || null : null,
+    agents_total: state ? Object.keys(state.agents || {}).length : 0,
+    agents_alive: state ? Object.values(state.agents || {}).filter(a => a.alive).length : 0,
+    total_bonds: state ? (state.bonds || []).length : 0,
+    metrics: metrics || {}
+  });
+});
+
+// Pipeline funnel: aggregate counts from findings
+app.get('/api/pipeline/funnel', (req, res) => {
+  const findings = readFindings();
+  const dives = readDeepDives();
+  const verifications = readVerifications();
+  const validations = readValidationsData();
+  const metrics = readJSON(METRICS_FILE);
+
+  const cube = readJSON(CUBE_FILE_ENGINE);
+  const papers = cube ? cube.totalPapers || 0 : 0;
+
+  const classified = papers; // all papers in cube are classified
+  const allFindings = findings.length;
+  const discoveries = findings.filter(f => f.type === 'discovery' || f.type === 'draft').length;
+  const attempts = findings.filter(f => f.type === 'attempt' || f.type === 'duplicate').length;
+
+  // Golden collisions (discoveries that had a golden collision score)
+  const golden = findings.filter(f =>
+    (f.type === 'discovery' || f.type === 'draft') &&
+    f.goldenCollision && (typeof f.goldenCollision === 'number' ? f.goldenCollision > 0.5 : f.goldenCollision?.score > 0.5)
+  ).length;
+
+  // Investigated = total findings minus duplicates
+  const investigated = findings.filter(f => f.type !== 'duplicate').length;
+
+  // High-score = discoveries with score >= 75
+  const highScore = findings.filter(f =>
+    (f.type === 'discovery' || f.type === 'draft') &&
+    f.scores && f.scores.total >= 75
+  ).length;
+
+  const deepDived = dives.length;
+  const verified = verifications.length;
+  const validated = validations.length;
+
+  res.json({
+    papers,
+    classified,
+    findings: allFindings,
+    golden: golden || metrics?.golden_collisions || 0,
+    investigated,
+    discoveries,
+    attempts,
+    high_score: highScore || metrics?.total_high_value || 0,
+    deep_dived: deepDived,
+    verified,
+    validated
+  });
+});
+
+// Force shuffle: write command file for engine to pick up
+app.post('/api/shuffle/force', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.forceShuffle = true;
+    cmd.forceShuffleAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Shuffle command queued' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Pause engine: write pause signal
+app.post('/api/engine/pause', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.paused = true;
+    cmd.pausedAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Engine pause signal sent' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Resume engine: clear pause signal
+app.post('/api/engine/resume', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.paused = false;
+    cmd.resumedAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Engine resume signal sent' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Export all gaps as JSON download
+app.get('/api/export/gaps', (req, res) => {
+  const findings = readFindings();
+  const discoveries = findings.filter(f => f.type === 'discovery' || f.type === 'draft');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="clashd27-gaps.json"');
+  res.json({ exported_at: new Date().toISOString(), gaps: discoveries });
+});
+
+// --- Gap Leaderboard ---
+app.get('/api/leaderboard', (req, res) => {
+  try {
+    const { computeLeaderboard } = require('../lib/gap-leaderboard');
+    res.json(computeLeaderboard());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/leaderboard/:repo', (req, res) => {
+  try {
+    const { getGapsForRepo } = require('../lib/gap-index');
+    const { generateDraft } = require('../lib/x-post-generator');
+    const { repo, gaps } = getGapsForRepo(req.params.repo);
+    const sorted = gaps.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const latest = sorted[0] || null;
+    const repoInfo = latest ? (latest.repos || []).find(r => r.repo === repo) : null;
+    const draft = latest ? generateDraft(latest, repoInfo) : null;
+    res.json({ repo, gaps: sorted, latest_draft: draft });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/gap/:id/status', requireAdmin, (req, res) => {
+  try {
+    const status = req.body?.status;
+    if (!['open', 'posted', 'responded', 'resolved'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    const { updateGapStatus } = require('../lib/gap-index');
+    const result = updateGapStatus(req.params.id, status);
+    if (!result.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Helper for new endpoints
+function readJSON(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+  } catch (e) { }
+  return null;
+}
+
+// --- GitHub Monitor API ---
+app.get('/api/github/trending', async (req, res) => {
+  try {
+    const { scanTrending, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, repos: [], message: 'GitHub monitor disabled or no token' });
+    }
+    const repos = await scanTrending();
+    res.json({ enabled: true, count: repos.length, repos: repos.slice(0, 20) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/watchlist', async (req, res) => {
+  try {
+    const { checkWatchlist, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, repos: [], message: 'GitHub monitor disabled or no token' });
+    }
+    const repos = await checkWatchlist();
+    res.json({ enabled: true, count: repos.length, repos });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/gaps', (req, res) => {
+  try {
+    const { getPersistedGaps } = require('../lib/paper-code-matcher');
+    const limit = parseInt(req.query.limit || '50', 10);
+    const type = req.query.type || null;
+    const gaps = getPersistedGaps({ limit, type });
+    res.json({ count: gaps.length, gaps });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/collisions', (req, res) => {
+  try {
+    const { readCollisions } = require('../lib/dependency-graph');
+    const data = readCollisions();
+    res.json({
+      count: data.total || 0,
+      updated: data.updated,
+      collisions: (data.collisions || []).slice(0, 50)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/issues', async (req, res) => {
+  try {
+    const { mineIssues, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, issues: [] });
+    }
+    const maxPerRepo = parseInt(req.query.max || '5', 10);
+    const issues = await mineIssues({ maxPerRepo });
+    res.json({ count: issues.length, issues: issues.slice(0, 50) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/status', (req, res) => {
+  try {
+    const { ENABLED, WATCHLIST } = require('../lib/github-monitor');
+    const hasToken = !!process.env.GITHUB_TOKEN;
+    res.json({
+      enabled: ENABLED && hasToken,
+      has_token: hasToken,
+      watchlist_count: WATCHLIST.length,
+      scan_interval: parseInt(process.env.GITHUB_SCAN_INTERVAL || '3600000', 10),
+      watchlist_interval: parseInt(process.env.GITHUB_WATCHLIST_INTERVAL || '1800000', 10),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // --- Static files & Dashboard ---
 app.use(express.static(__dirname));
+
+app.get('/leaderboard', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'leaderboard.html'));
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));

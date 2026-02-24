@@ -924,6 +924,31 @@ footer {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
+  // v2.0: Update cell colors/sizes from cube data (method DNA colors, paper count sizing)
+  const METHOD_COLORS = {
+    'imaging/observation': 0xFF3333, // red
+    'computational': 0x3366FF,       // blue
+    'experimental': 0x22CC44         // green
+  };
+  const SURPRISE_OPACITY = {
+    'confirmatory': 0.3,
+    'deviation': 0.55,
+    'anomalous': 0.85
+  };
+  window._cubeSetData = function(cubeData) {
+    if (!cubeData || !cubeData.cells) return;
+    for (let i = 0; i < 27; i++) {
+      const cell = cubeData.cells[i];
+      if (!cell || i === activeCell) continue;
+      const color = METHOD_COLORS[cell.methodLabel] || LAYER_COLORS[Math.floor(i / 9)];
+      cellMeshes[i].material.color.setHex(color);
+      cellMeshes[i].material.opacity = SURPRISE_OPACITY[cell.surpriseLabel] || 0.4;
+      // Scale by paper count (min 0.8, max 2.0)
+      const paperScale = Math.min(2.0, Math.max(0.8, (cell.paperCount || 0) / 50));
+      cellMeshes[i].scale.setScalar(paperScale);
+    }
+  };
+
   // Expose for data updates
   window._cubeSetActive = updateActiveCell;
   window._cubeSetAgents = function(positions) {
@@ -986,10 +1011,11 @@ function escapeHtml(t) {
 
 async function loadStats() {
   try {
-    const [state, fStats, metrics] = await Promise.all([
+    const [state, fStats, metrics, cubeData] = await Promise.all([
       fetch('/api/state').then(r => r.json()).catch(() => null),
       fetch('/api/findings/stats').then(r => r.json()).catch(() => null),
-      fetch('/api/metrics').then(r => r.json()).catch(() => null)
+      fetch('/api/metrics').then(r => r.json()).catch(() => null),
+      fetch('/api/cube').then(r => r.json()).catch(() => null)
     ]);
 
     if (state) {
@@ -1000,6 +1026,11 @@ async function loadStats() {
         const positions = state.agents.map(a => a.currentCell);
         window._cubeSetAgents(positions);
       }
+    }
+
+    // v2.0: Update 3D cube with method DNA colors and paper count sizing
+    if (cubeData && cubeData.active && window._cubeSetData) {
+      window._cubeSetData(cubeData);
     }
 
     if (fStats) {

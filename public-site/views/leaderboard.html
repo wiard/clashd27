@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Gap Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --yellow: #ffd700;
+  --text: #e0e0e0;
+  --muted: #666;
+  --border: #1a1a1a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.header-nav a { color: var(--muted); text-decoration: none; }
+.header-nav a:hover { color: var(--orange); }
+.main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.table th, .table td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.table th {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 9px;
+}
+.repo { color: var(--orange); font-weight: 600; }
+.badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+.badge-open { color: var(--yellow); border: 1px solid rgba(255,215,0,0.3); }
+.badge-resolved { color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+.badge-responded { color: var(--blue); border: 1px solid rgba(68,136,255,0.3); }
+.loading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <span class="header-nav"><a href="/">Home</a> / <a href="/gaps">Gaps</a> / Leaderboard</span>
+</div>
+<div class="main">
+  <h1>Gap Leaderboard</h1>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Repository</th>
+        <th>Gaps</th>
+        <th>Open</th>
+        <th>Responded</th>
+        <th>Resolved</th>
+      </tr>
+    </thead>
+    <tbody id="lb-body">
+      <tr><td class="loading" colspan="5">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+<script>
+(function() {
+  fetch('/api/public/leaderboard?limit=20')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var body = document.getElementById('lb-body');
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        body.innerHTML = '<tr><td class="loading" colspan="5">No repository data yet.</td></tr>';
+        return;
+      }
+      body.innerHTML = data.map(function(r) {
+        return '<tr>' +
+          '<td class="repo">' + (r.repo || '') + '</td>' +
+          '<td>' + (r.gapCount || 0) + '</td>' +
+          '<td>' + (r.open > 0 ? '<span class="badge badge-open">' + r.open + '</span>' : '0') + '</td>' +
+          '<td>' + (r.responded > 0 ? '<span class="badge badge-responded">' + r.responded + '</span>' : '0') + '</td>' +
+          '<td>' + (r.resolved > 0 ? '<span class="badge badge-resolved">' + r.resolved + '</span>' : '0') + '</td>' +
+          '</tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('lb-body').innerHTML = '<tr><td class="loading" colspan="5">Failed to load.</td></tr>';
+    });
+})();
+</script>
+</body>
+</html>

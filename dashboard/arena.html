@@ -313,6 +313,80 @@
     border-radius: 2px;
     border: 1px solid #333;
   }
+  .gap-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #222;
+  }
+  .gap-row:last-child { border-bottom: none; }
+  .gap-repo {
+    color: #ff6b35;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .gap-meta {
+    font-size: 10px;
+    color: #777;
+  }
+  .gap-btn {
+    background: #222;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 4px 8px;
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-family: 'Space Mono', monospace;
+  }
+  .gap-btn:hover { border-color: #ff6b35; color: #ff6b35; }
+  .draft-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+  .draft-modal.active { display: flex; }
+  .draft-modal-content {
+    width: min(680px, 90vw);
+    background: #0f1318;
+    border: 1px solid #333;
+    padding: 16px;
+    border-radius: 4px;
+  }
+  .draft-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .draft-text {
+    width: 100%;
+    min-height: 160px;
+    background: #0b0f14;
+    border: 1px solid #333;
+    color: #ddd;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 8px;
+    resize: vertical;
+  }
+  .draft-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .draft-close {
+    background: transparent;
+    color: #bbb;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+  }
   .finding-footer {
     display: flex;
     justify-content: flex-end;
@@ -961,6 +1035,106 @@
   .gap-verdict-badge.low-priority { background: #666; color: #ccc; }
   .gap-verdict-badge.draft { background: #555; color: #ccc; }
 
+  /* GOLDEN COLLISION */
+  .golden-collision-panel {
+    margin: 8px 0;
+    padding: 10px 14px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+  .golden-collision-panel.golden {
+    background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04));
+    border-color: #ffd700;
+    box-shadow: 0 0 12px rgba(255,215,0,0.1);
+  }
+  .golden-collision-panel.normal {
+    background: rgba(255,255,255,0.03);
+    border-color: #333;
+  }
+  .golden-badge {
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+    font-size: 9px;
+    margin-bottom: 6px;
+  }
+  .golden-badge.golden { background: #ffd700; color: #000; }
+  .golden-badge.normal { background: #444; color: #999; }
+  .golden-components {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .golden-component {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+  }
+  .golden-component-label {
+    font-size: 8px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .golden-component-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd700;
+  }
+  .golden-collision-panel.normal .golden-component-val { color: #888; }
+
+  /* SOURCE INDICATORS */
+  .source-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    margin: 1px;
+    border: 1px solid;
+  }
+  .source-tag.openalex { background: rgba(66,133,244,0.15); color: #4285f4; border-color: #4285f4; }
+  .source-tag.biorxiv { background: rgba(204,102,0,0.15); color: #cc6600; border-color: #cc6600; }
+  .source-tag.medrxiv { background: rgba(0,136,136,0.15); color: #008888; border-color: #008888; }
+  .source-tag.arxiv { background: rgba(179,58,58,0.15); color: #b33a3a; border-color: #b33a3a; }
+  .source-tag.s2 { background: rgba(102,51,153,0.15); color: #663399; border-color: #663399; }
+  .source-tag.unknown { background: rgba(102,102,102,0.15); color: #666; border-color: #666; }
+  .retracted-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    background: rgba(204,34,34,0.2);
+    color: #cc2222;
+    border: 1px solid #cc2222;
+    letter-spacing: 0.5px;
+    display: inline-block;
+  }
+
+  /* CUBE SOURCE BREAKDOWN */
+  .cube-info-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border: 1px solid var(--mid);
+    border-radius: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #666;
+  }
+  .cube-info-item { display: flex; align-items: center; gap: 4px; }
+  .cube-info-val { color: var(--orange); font-weight: 700; }
+
   /* RED FLAG BADGES */
   .red-flag-list {
     display: flex;
@@ -1240,6 +1414,7 @@
       <span class="live-text">LIVE</span>
       <span class="live-countdown" id="countdown">—</span>
     </div>
+    <div id="cube-badge" style="display:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;padding:4px 10px;border-radius:3px;background:linear-gradient(135deg,#ff4500,#2244cc,#007755);color:#fff;font-weight:700;">CUBE MODE</div>
     <div class="tick-info">
       <div class="tick-number" id="tick">—</div>
       <div class="tick-sub">TICK · cycle <span id="cycle">—</span></div>
@@ -1253,18 +1428,19 @@
       <h2>🧊 The Cube — 3 Layers · 27 Cells</h2>
       <div class="cube-wrapper">
         <div class="layer-block layer-floor">
-          <div class="layer-title">Layer 0 — The Floor · Cells 0–8 · On-chain · Bitcoin Ordinals Parcels</div>
+          <div class="layer-title" id="layer0-title">Layer 0 — The Floor · Cells 0–8 · On-chain · Bitcoin Ordinals Parcels</div>
           <div class="cell-row" id="layer0"></div>
         </div>
         <div class="layer-block layer-nha">
-          <div class="layer-title">Layer 1 — No Hats Allowed · Cells 9–17 · Virtual · Where Agents Coordinate</div>
+          <div class="layer-title" id="layer1-title">Layer 1 — No Hats Allowed · Cells 9–17 · Virtual · Where Agents Coordinate</div>
           <div class="cell-row" id="layer1"></div>
         </div>
         <div class="layer-block layer-mod">
-          <div class="layer-title">Layer 2 — Mod 27 Zone · Cells 18–26 · Volatile · Highest Attention</div>
+          <div class="layer-title" id="layer2-title">Layer 2 — Mod 27 Zone · Cells 18–26 · Volatile · Highest Attention</div>
           <div class="cell-row" id="layer2"></div>
         </div>
       </div>
+      <div class="cube-info-bar" id="cube-info-bar" style="display:none;"></div>
     </div>
 
     <div class="card" style="margin-top:16px;">
@@ -1378,6 +1554,40 @@
       <h2>🏆 Leaderboard</h2>
       <div id="leaderboard"></div>
     </div>
+    <div class="card">
+      <h2>🏆 Gap Leaderboard</h2>
+      <div id="gap-leaderboard" style="font-size:12px;color:#bbb;">Loading gap leaderboard...</div>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub Activity Feed -->
+<div class="card" id="github-section" style="margin: 16px 40px;">
+  <h2 style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:16px;">&#128025;</span> GitHub Activity Feed
+    <span id="github-status" style="font-size:9px;color:#666;margin-left:auto;font-weight:400;">checking...</span>
+  </h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="github-grid">
+    <!-- Trending repos -->
+    <div>
+      <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--orange);margin-bottom:8px;">Trending AI Repos</h3>
+      <div id="github-trending" style="font-size:12px;color:#666;">Loading...</div>
+    </div>
+    <!-- Watchlist -->
+    <div>
+      <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--orange);margin-bottom:8px;">Watchlist Status</h3>
+      <div id="github-watchlist" style="font-size:12px;color:#666;">Loading...</div>
+    </div>
+  </div>
+  <!-- Paper-Code Gaps -->
+  <div style="margin-top:16px;">
+    <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#cc2222;margin-bottom:8px;">Paper &harr; Code Gaps</h3>
+    <div id="github-gaps" style="font-size:12px;color:#666;">Loading...</div>
+  </div>
+  <!-- Dependency Collisions -->
+  <div style="margin-top:16px;">
+    <h3 style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#2244cc;margin-bottom:8px;">Dependency Collisions</h3>
+    <div id="github-collisions" style="font-size:12px;color:#666;">Loading...</div>
   </div>
 </div>
 
@@ -1419,8 +1629,22 @@
       <div class="challenge-cta">Deploy your agent. Join the cube. Prove your coordination strategy.</div>
       <div class="attribution">Numbers → <strong>@rodarmor</strong> · Place → <strong>@blockamoto</strong> · Mass → <strong>CLASHD27</strong></div>
     </div>
-    <div class="credits">
-      Protocol by <a href="#">@blockapunk</a> · Live at <a href="https://clashd27.com">clashd27.com</a> · Built on Bitcoin Ordinals &amp; Bitmap
+<div class="credits">
+  Protocol by <a href="#">@blockapunk</a> · Live at <a href="https://clashd27.com">clashd27.com</a> · Built on Bitcoin Ordinals &amp; Bitmap
+</div>
+  </div>
+</div>
+
+<div class="draft-modal" id="draft-modal">
+  <div class="draft-modal-content">
+    <div class="draft-modal-header">
+      <div style="font-size:12px;color:#bbb;">X Draft</div>
+      <button class="draft-close" onclick="closeDraftModal()">&times;</button>
+    </div>
+    <textarea class="draft-text" id="draft-text" readonly></textarea>
+    <div class="draft-actions">
+      <button class="gap-btn" onclick="copyDraft()">Copy</button>
+      <span id="draft-status" style="font-size:10px;color:#777;"></span>
     </div>
   </div>
 </div>
@@ -1454,16 +1678,80 @@ let currentPack = null;
 let currentOccupancy = {};
 
 function ec(e){return e>=70?'e-hi':e>=40?'e-md':'e-lo';}
+// Cube mode color scheme: method DNA → hue, surprise → brightness
+const CUBE_METHOD_COLORS = {
+  'imaging/observation': { h: 0, s: 75 },    // red
+  'computational': { h: 220, s: 75 },         // blue
+  'experimental': { h: 140, s: 70 }           // green
+};
+const CUBE_SURPRISE_LIGHT = { 'confirmatory': 85, 'deviation': 65, 'anomalous': 45 };
+
+function getCubeCellStyle(cubeCell) {
+  if (!cubeCell) return '';
+  const mc = CUBE_METHOD_COLORS[cubeCell.methodLabel] || { h: 0, s: 0 };
+  const sl = CUBE_SURPRISE_LIGHT[cubeCell.surpriseLabel] || 80;
+  const bg = `hsl(${mc.h}, ${mc.s}%, ${sl}%)`;
+  const textColor = sl < 60 ? '#fff' : '#222';
+  const borderColor = `hsl(${mc.h}, ${mc.s}%, ${Math.max(20, sl - 25)}%)`;
+  return `background:${bg};color:${textColor};border-color:${borderColor};`;
+}
+
+function getSourceTag(source) {
+  const src = (source || 'unknown').toLowerCase();
+  const label = src === 'openalex' ? 'OA' : src === 'biorxiv' ? 'bioRxiv' : src === 'medrxiv' ? 'medRxiv' : src === 'arxiv' ? 'arXiv' : src === 's2' ? 'S2' : src;
+  const cls = src.includes('openalex') ? 'openalex' : src.includes('biorxiv') ? 'biorxiv' : src.includes('medrxiv') ? 'medrxiv' : src.includes('arxiv') ? 'arxiv' : src === 's2' ? 's2' : 'unknown';
+  return `<span class="source-tag ${cls}">${label}</span>`;
+}
+
+function renderGoldenCollision(f) {
+  if (!f || !f.goldenCollision) return '';
+  const gc = f.goldenCollision;
+  const isGolden = gc.golden || gc.score > 0.5;
+  const cls = isGolden ? 'golden' : 'normal';
+  const c = gc.components || {};
+  return `
+    <div class="golden-collision-panel ${cls}">
+      <span class="golden-badge ${cls}">${isGolden ? '\u2728 GOLDEN COLLISION' : 'COLLISION'} &mdash; ${gc.score}</span>
+      <div class="golden-components">
+        <div class="golden-component"><span class="golden-component-label">Method \u0394</span><span class="golden-component-val">${c.methodDistance || 0}</span></div>
+        <div class="golden-component"><span class="golden-component-label">Surprise</span><span class="golden-component-val">${c.surprisePair || 0}</span></div>
+        <div class="golden-component"><span class="golden-component-label">Semantic \u0394</span><span class="golden-component-val">${c.semanticDistance || 0}</span></div>
+      </div>
+      ${gc.cellA ? `<div style="font-size:9px;color:#888;margin-top:4px;">[${gc.cellA.method}, ${gc.cellA.surprise}] \u00D7 [${gc.cellB.method}, ${gc.cellB.surprise}]</div>` : ''}
+    </div>`;
+}
+
+let _cubeData = null;
+
 function renderLayer(id,start,active,occ,pack){
   const el=document.getElementById(id);el.innerHTML='';
   for(let i=start;i<start+9;i++){
     const agents=occ[i]||[];
     const isA=i===active,isO=agents.length>0;
-    const label=pack&&pack.cells&&pack.cells[i]?pack.cells[i].label:'';
+    const cubeCell = _cubeData && _cubeData.cells ? _cubeData.cells[i] : null;
+    const label = cubeCell
+      ? `${cubeCell.methodLabel.split('/')[0]} · ${cubeCell.surpriseLabel}`
+      : (pack&&pack.cells&&pack.cells[i]?pack.cells[i].label:'');
     const c=document.createElement('div');
     c.className='cube-cell'+(isA?' active':'')+(isO?' occupied':'');
-    c.title=`Cell ${i}${label?' — '+label:''}${agents.length?'\n'+agents.join(', '):''}`;
-    c.innerHTML=`<span class="cnum">${i}</span><span class="clabel">${label}</span><span class="cagents">${isO?agents.length:''}</span>`;
+
+    // Cube mode: color by method/surprise, tooltip with paper info
+    let cubeStyle = '';
+    let tooltip = `Cell ${i}${label?' — '+label:''}${agents.length?'\n'+agents.join(', '):''}`;
+    if (cubeCell) {
+      cubeStyle = getCubeCellStyle(cubeCell);
+      const papers = cubeCell.paperCount || 0;
+      tooltip = `Cell ${i} [${cubeCell.methodLabel}, ${cubeCell.surpriseLabel}, ${cubeCell.clusterLabel}]\n${papers} papers`;
+      if (cubeCell.topPapers && cubeCell.topPapers.length > 0) {
+        tooltip += '\n\nTop papers:\n' + cubeCell.topPapers.map(p => `• ${p.title} (${p.year})`).join('\n');
+      }
+      if (agents.length) tooltip += '\n\nAgents: ' + agents.join(', ');
+    }
+    c.title = tooltip;
+    if (cubeStyle && !isA) c.setAttribute('style', cubeStyle);
+
+    const paperBadge = cubeCell ? `<span class="cpapers" style="font-size:7px;opacity:0.7">${cubeCell.paperCount||0}p</span>` : '';
+    c.innerHTML=`<span class="cnum">${i}</span><span class="clabel">${label}</span>${paperBadge}<span class="cagents">${isO?agents.length:''}</span>`;
     c.onclick = () => openCellPopup(i);
     el.appendChild(c);
   }
@@ -1480,13 +1768,37 @@ async function openCellPopup(cellId) {
   document.getElementById('cell-popup-insights').innerHTML = '<span style="color:#666;font-size:12px;">Loading...</span>';
 
   try {
-    const [cellData, findingsData] = await Promise.all([
+    const fetchPromises = [
       fetch(`/api/cell/${cellId}`).then(r => r.json()),
       fetch(`/api/findings/cell/${cellId}?limit=5`).then(r => r.json())
-    ]);
+    ];
+    if (_cubeData) fetchPromises.push(fetch(`/api/cube/cell/${cellId}`).then(r => r.json()).catch(() => null));
+    const [cellData, findingsData, cubeCellData] = await Promise.all(fetchPromises);
 
-    document.getElementById('cell-popup-title').textContent = `Cell ${cellId} — ${cellData.label || 'Unknown'}`;
-    document.getElementById('cell-popup-desc').textContent = cellData.description || 'No description available.';
+    // In cube mode, show method/surprise/cluster labels
+    const cubeLabel = cubeCellData
+      ? `${cubeCellData.methodLabel} | ${cubeCellData.surpriseLabel} | ${cubeCellData.clusterLabel}`
+      : '';
+    const title = cubeCellData
+      ? `Cell ${cellId} — ${cubeLabel}`
+      : `Cell ${cellId} — ${cellData.label || 'Unknown'}`;
+    document.getElementById('cell-popup-title').textContent = title;
+
+    // Show cube paper details or fallback
+    let descText = cellData.description || 'No description available.';
+    if (cubeCellData) {
+      const pc = cubeCellData.paperCount || 0;
+      const srcCounts = {};
+      let retCount = 0;
+      for (const p of (cubeCellData.papers || [])) {
+        const s = p.source || 'unknown';
+        srcCounts[s] = (srcCounts[s] || 0) + 1;
+        if (p.isRetracted) retCount++;
+      }
+      const srcLine = Object.entries(srcCounts).map(([s, c]) => `${s}: ${c}`).join(', ');
+      descText = `${pc} papers · Sources: ${srcLine || 'none'}${retCount ? ` · ${retCount} retracted` : ''}`;
+    }
+    document.getElementById('cell-popup-desc').innerHTML = descText;
 
     // Show agents with their keywords
     const agents = cellData.occupants || [];
@@ -1507,22 +1819,44 @@ async function openCellPopup(cellId) {
       document.getElementById('cell-popup-agents').innerHTML = '<span style="color:#666;font-size:12px;">No agents currently here</span>';
     }
 
+    // Show top papers with source tags in cube mode
+    if (cubeCellData && cubeCellData.papers && cubeCellData.papers.length > 0) {
+      const insightsEl = document.getElementById('cell-popup-insights');
+      const papersHtml = cubeCellData.papers.slice(0, 8).map(p => {
+        const srcTag = getSourceTag(p.source);
+        const retTag = p.isRetracted ? ' <span class="retracted-tag">RETRACTED</span>' : '';
+        return `<div style="padding:6px 0;border-bottom:1px solid #222;font-size:12px;color:#bbb;">
+          ${srcTag}${retTag} <strong style="color:#ccc;">${escapeHtml(p.title || 'Untitled')}</strong>
+          <span style="color:#666;font-size:10px;"> (${p.year || '?'}) · ${p.citationCount || 0} cites</span>
+        </div>`;
+      }).join('');
+      insightsEl.innerHTML = `<div style="margin-bottom:12px;"><div style="font-family:'Space Mono',monospace;font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Top Papers</div>${papersHtml}</div>`;
+    }
+
     const findings = findingsData.findings || [];
-    document.getElementById('cell-popup-insights').innerHTML = findings.length
+    const insightsEl = document.getElementById('cell-popup-insights');
+    const existingPapers = insightsEl.innerHTML;
+    const findingsHtml = findings.length
       ? findings.map(f => {
           const icon = f.type === 'discovery' ? '💡' : f.type === 'bond' ? '🔗' : '🔬';
-          const agents = f.agents || (f.agent ? [f.agent] : []);
+          const fAgents = f.agents || (f.agent ? [f.agent] : []);
           const content = f.finding || f.connection || f.discovery || '';
-          const source = f.source ? `<div style="font-size:10px;color:#555;margin-top:4px;font-style:italic;">${escapeHtml(f.source)}</div>` : '';
+          const fSource = f.source ? `<div style="font-size:10px;color:#555;margin-top:4px;font-style:italic;">${escapeHtml(f.source)}</div>` : '';
           return `
           <div class="cell-popup-insight">
-            <div class="cell-popup-insight-meta">${icon} ${agents.join(', ')} · tick ${f.tick}</div>
+            <div class="cell-popup-insight-meta">${icon} ${fAgents.join(', ')} · tick ${f.tick}</div>
             <div class="cell-popup-insight-content">${escapeHtml(content.slice(0, 250))}${content.length > 250 ? '...' : ''}</div>
-            ${source}
+            ${fSource}
           </div>
         `;
         }).join('')
-      : '<span style="color:#666;font-size:12px;">No findings on this cell yet</span>';
+      : (cubeCellData ? '' : '<span style="color:#666;font-size:12px;">No findings on this cell yet</span>');
+    // Append findings after papers (if papers were shown)
+    if (cubeCellData && cubeCellData.papers && cubeCellData.papers.length > 0) {
+      insightsEl.innerHTML = existingPapers + (findingsHtml ? `<div style="font-family:'Space Mono',monospace;font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase;margin:8px 0 6px;">Recent Findings</div>${findingsHtml}` : '');
+    } else {
+      insightsEl.innerHTML = findingsHtml;
+    }
   } catch (e) {
     document.getElementById('cell-popup-desc').textContent = 'Failed to load cell data.';
   }
@@ -1543,10 +1877,44 @@ document.addEventListener('keydown', (e) => {
 });
 async function refresh(){
   try{
-    const [d,pack]=await Promise.all([
+    const [d,pack,cubeData]=await Promise.all([
       fetch('/api/state').then(r=>r.json()),
-      fetch('/api/pack').then(r=>r.json()).catch(()=>null)
+      fetch('/api/pack').then(r=>r.json()).catch(()=>null),
+      fetch('/api/cube').then(r=>r.json()).catch(()=>null)
     ]);
+    _cubeData = (cubeData && cubeData.active) ? cubeData : null;
+    // Show/hide cube mode badge
+    const cubeBadge = document.getElementById('cube-badge');
+    if (cubeBadge) {
+      cubeBadge.style.display = _cubeData ? 'block' : 'none';
+      if (_cubeData) cubeBadge.title = `Generation ${_cubeData.generation} · ${_cubeData.totalPapers} papers · ${new Date(_cubeData.timestamp).toLocaleString()}`;
+    }
+    // Cube info bar: source breakdown + generation info
+    const cubeInfoBar = document.getElementById('cube-info-bar');
+    if (_cubeData && cubeInfoBar) {
+      cubeInfoBar.style.display = 'flex';
+      const sb = _cubeData.sourceBreakdown || {};
+      const srcItems = Object.entries(sb).map(([src, count]) => `<span class="cube-info-item"><span class="source-tag ${src}">${src}</span> <span class="cube-info-val">${count}</span></span>`).join('');
+      cubeInfoBar.innerHTML = `
+        <span class="cube-info-item">GEN <span class="cube-info-val">${_cubeData.generation}</span></span>
+        <span class="cube-info-item">PAPERS <span class="cube-info-val">${_cubeData.totalPapers}</span></span>
+        <span class="cube-info-item">RETRACTED <span class="cube-info-val">${_cubeData.retractionEnriched || 0}</span></span>
+        ${_cubeData.shuffleDurationMs ? `<span class="cube-info-item">SHUFFLE <span class="cube-info-val">${(_cubeData.shuffleDurationMs / 1000).toFixed(1)}s</span></span>` : ''}
+        ${srcItems}
+      `;
+    } else if (cubeInfoBar) {
+      cubeInfoBar.style.display = 'none';
+    }
+    // Update layer titles in cube mode
+    if (_cubeData && _cubeData.axisLabels && _cubeData.axisLabels.z) {
+      const zLabels = _cubeData.axisLabels.z;
+      const l0 = document.getElementById('layer0-title');
+      const l1 = document.getElementById('layer1-title');
+      const l2 = document.getElementById('layer2-title');
+      if (l0) l0.textContent = `Z=0 — ${zLabels[0] || 'Cluster 0'} · Cells 0–8`;
+      if (l1) l1.textContent = `Z=1 — ${zLabels[1] || 'Cluster 1'} · Cells 9–17`;
+      if (l2) l2.textContent = `Z=2 — ${zLabels[2] || 'Cluster 2'} · Cells 18–26`;
+    }
     document.getElementById('tick').textContent=d.tick;
     document.getElementById('cycle').textContent=d.cycle;
     document.getElementById('active-num').textContent=d.activeCell;
@@ -1589,7 +1957,73 @@ async function refresh(){
     } catch (e) {
       console.error('Failed to fetch findings:', e);
     }
+
+    // Fetch and render gap leaderboard
+    try {
+      await loadGapLeaderboard();
+    } catch (e) {
+      console.error('Failed to fetch gap leaderboard:', e);
+    }
   }catch(e){document.getElementById('refresh-bar').textContent='Connection error — retrying...';}
+}
+
+let gapLeaderboard = [];
+
+async function loadGapLeaderboard() {
+  const res = await fetch('/api/leaderboard');
+  const data = await res.json();
+  gapLeaderboard = data || [];
+  renderGapLeaderboard(gapLeaderboard);
+}
+
+function renderGapLeaderboard(data) {
+  const el = document.getElementById('gap-leaderboard');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<div style="color:#777;font-size:11px;">No gap data yet.</div>';
+    return;
+  }
+  const rows = data.slice(0, 8).map(item => {
+    return `
+      <div class="gap-row">
+        <div>
+          <div class="gap-repo">${item.repo}</div>
+          <div class="gap-meta">resolved ${item.resolved} · responded ${item.responded} · open ${item.open}</div>
+        </div>
+        <button class="gap-btn" onclick="openDraftModal('${item.repo}')">Generate X Draft</button>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = rows;
+}
+
+async function openDraftModal(repo) {
+  try {
+    const res = await fetch(`/api/leaderboard/${encodeURIComponent(repo)}`);
+    const data = await res.json();
+    const draft = data.latest_draft ? data.latest_draft.text : '';
+    const text = draft || 'No draft available for this repo yet.';
+    document.getElementById('draft-text').value = text;
+    document.getElementById('draft-status').textContent = draft ? `Template: ${data.latest_draft.template}` : '';
+    document.getElementById('draft-modal').classList.add('active');
+  } catch (e) {
+    document.getElementById('draft-text').value = 'Failed to load draft.';
+    document.getElementById('draft-modal').classList.add('active');
+  }
+}
+
+function closeDraftModal() {
+  document.getElementById('draft-modal').classList.remove('active');
+  document.getElementById('draft-status').textContent = '';
+}
+
+function copyDraft() {
+  const text = document.getElementById('draft-text').value || '';
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('draft-status').textContent = 'Copied.';
+  }).catch(() => {
+    document.getElementById('draft-status').textContent = 'Copy failed.';
+  });
 }
 
 let currentFindingsFilter = 'all';
@@ -1615,12 +2049,14 @@ function renderGapPacket(f) {
   // ABC chain
   const chainHtml = f.abc_chain.map(l => {
     const strength = l.evidence_strength || 'weak';
+    const srcTag = l.paper_source ? getSourceTag(l.paper_source) : '';
+    const retTag = l.is_retracted ? '<span class="retracted-tag">RETRACTED</span>' : '';
     return `
       <div class="abc-link ${strength}">
         <span class="abc-link-label">${escapeHtml(l.link || '')}</span>
         <div class="abc-link-body">
-          <div class="abc-link-claim">${escapeHtml(l.claim || '')}</div>
-          <div class="abc-link-source">${escapeHtml(l.source || '')}</div>
+          <div class="abc-link-claim">${escapeHtml(l.claim || '')}${retTag ? ' ' + retTag : ''}</div>
+          <div class="abc-link-source">${escapeHtml(l.source || '')} ${srcTag}</div>
         </div>
         <span class="abc-link-strength ${strength}">${strength.toUpperCase()}</span>
       </div>`;
@@ -2066,6 +2502,14 @@ async function loadMetricsPanel() {
         <div class="metrics-card"><div class="m-value">${blocked}</div><div class="m-label">Blocked</div></div>
       </div>
 
+      <div class="metrics-section-title">Cube &amp; Collisions</div>
+      <div class="metrics-grid">
+        <div class="metrics-card"><div class="m-value">${m.total_golden_collisions || 0}</div><div class="m-label">Golden Collisions</div></div>
+        <div class="metrics-card"><div class="m-value">${m.cube_generation || 0}</div><div class="m-label">Cube Generation</div></div>
+        <div class="metrics-card"><div class="m-value">${m.cube_papers || 0}</div><div class="m-label">Cube Papers</div></div>
+        <div class="metrics-card"><div class="m-value">${m.retraction_enriched || 0}</div><div class="m-label">Retracted Found</div></div>
+      </div>
+
       <div class="metrics-section-title">Cost</div>
       <div class="cost-row">Today: <span class="cost-val">$${(m.estimated_cost_today || 0).toFixed(2)}</span> (${m.api_calls_today || 0} calls)</div>
       <div class="cost-row">Total: <span class="cost-val">$${(m.estimated_cost_total || 0).toFixed(2)}</span> (${m.api_calls_total || 0} calls)</div>
@@ -2212,22 +2656,35 @@ function renderFindings() {
       ? `<div class="gap-hypothesis">${escapeHtml(content)}</div>`
       : `<div class="finding-content">${escapeHtml(content)}</div>`;
 
+    // Golden Collision data (discoveries with collision info)
+    const goldenHtml = renderGoldenCollision(f);
+
+    // Source tags for discovery papers
+    const sourceTags = (f.sources && f.sources.length)
+      ? `<span style="margin-left:4px;">${f.sources.map(s => getSourceTag(s)).join('')}</span>` : '';
+
+    // ClinicalTrials.gov link in validation
+    const ctTrialLinks = (valData && valData.ctGovTrials && valData.ctGovTrials.trials && valData.ctGovTrials.trials.length)
+      ? `<div style="margin-top:6px;font-size:10px;"><span style="color:#666;font-family:'Space Mono',monospace;letter-spacing:1px;">CLINICALTRIALS.GOV:</span> ${valData.ctGovTrials.trials.slice(0, 3).map(t => `<a href="https://clinicaltrials.gov/study/${t.nctId}" target="_blank" style="color:var(--orange);font-family:'Space Mono',monospace;font-size:9px;margin-left:4px;">${t.nctId}</a>`).join('')}</div>` : '';
+
     return `
       <div class="finding-item ${typeClass} ${isHighNovelty ? 'high-novelty' : ''}">
         <div class="finding-meta">
           <span class="finding-type ${typeClass}">${typeIcon} ${typeLabel}</span>
           <span class="finding-agents">${agentLinks}</span>
-          <span class="finding-cell">\u2192 ${escapeHtml(cellInfo)}</span>
+          <span class="finding-cell">\u2192 ${escapeHtml(cellInfo)}${sourceTags}</span>
           <span class="finding-tick">tick ${f.tick}</span>
         </div>
         ${contentHtml}
         ${source}
         ${badges}
+        ${goldenHtml}
         ${hypothesis}
         ${gapPacketHtml}
         ${ddHtml}
         ${verifHtml}
         ${valHtml}
+        ${ctTrialLinks}
         ${kwHtml}
         ${ratingHtml}
       </div>
@@ -2257,12 +2714,14 @@ async function loadDiscoveries() {
       const valData = validationCache[d.id];
       const isGapPacket = d.abc_chain && d.abc_chain.length > 0;
       const gapHtml = isGapPacket ? renderGapPacket(d) : '';
+      const goldenHtml = renderGoldenCollision(d);
       return `
       <div class="discovery-item ${d.novelty === 'high' ? 'high-novelty' : ''}">
         <div class="discovery-domains">\uD83D\uDCA1 ${d.agentDomains ? d.agentDomains.join(' \u00D7 ') : 'Cross-domain'}</div>
         ${isGapPacket
-          ? `<div class="gap-hypothesis">${escapeHtml(d.hypothesis || d.connection || '')}</div>${gapHtml}`
+          ? `<div class="gap-hypothesis">${escapeHtml(d.hypothesis || d.connection || '')}</div>${goldenHtml}${gapHtml}`
           : `<div class="discovery-connection">${escapeHtml(d.connection || '')}</div>
+             ${goldenHtml}
              ${d.evidence ? `<div class="discovery-evidence"><strong>Evidence:</strong> ${escapeHtml(d.evidence)}${d.source ? ` \u2014 <em>${escapeHtml(d.source)}</em>` : ''}</div>` : ''}
              ${d.hypothesis ? `<div class="discovery-hypothesis">\uD83D\uDCA1 ${escapeHtml(d.hypothesis)}</div>` : ''}`
         }
@@ -2424,6 +2883,156 @@ async function submitLabel() {
   }
 }
 
+// === GitHub Activity Feed ===
+async function loadGitHubStatus() {
+  try {
+    const res = await fetch('/api/github/status');
+    const data = await res.json();
+    const el = document.getElementById('github-status');
+    if (data.enabled) {
+      el.textContent = 'ACTIVE';
+      el.style.color = '#22cc22';
+    } else {
+      el.textContent = data.has_token ? 'DISABLED' : 'NO TOKEN';
+      el.style.color = '#cc2222';
+      document.getElementById('github-trending').innerHTML = '<span style="color:#666;">GitHub monitor not configured. Add GITHUB_TOKEN to .env</span>';
+      document.getElementById('github-watchlist').innerHTML = '';
+      document.getElementById('github-gaps').innerHTML = '';
+      document.getElementById('github-collisions').innerHTML = '';
+      return;
+    }
+    loadGitHubTrending();
+    loadGitHubWatchlist();
+    loadGitHubGaps();
+    loadGitHubCollisions();
+  } catch (e) {
+    document.getElementById('github-status').textContent = 'ERROR';
+    document.getElementById('github-status').style.color = '#cc2222';
+  }
+}
+
+async function loadGitHubTrending() {
+  try {
+    const res = await fetch('/api/github/trending');
+    const data = await res.json();
+    const el = document.getElementById('github-trending');
+    if (!data.repos || data.repos.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No trending repos yet</span>';
+      return;
+    }
+    el.innerHTML = data.repos.slice(0, 8).map(r => `
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--mid);">
+        <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--orange);min-width:50px;">&#9733; ${formatNum(r.github_stars || r.citationCount || 0)}</span>
+        <a href="${r.github_url || '#'}" target="_blank" style="font-size:12px;color:var(--text);text-decoration:none;font-weight:600;">${r.github_repo || r.title}</a>
+        <span style="font-size:10px;color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(r.abstract || '').slice(0, 60)}</span>
+        ${(r.github_languages || []).map(l => '<span style="font-size:9px;background:#f0f0f0;padding:1px 4px;border-radius:2px;">'+l+'</span>').join('')}
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('github-trending').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+async function loadGitHubWatchlist() {
+  try {
+    const res = await fetch('/api/github/watchlist');
+    const data = await res.json();
+    const el = document.getElementById('github-watchlist');
+    if (!data.repos || data.repos.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No watchlist data</span>';
+      return;
+    }
+    el.innerHTML = data.repos.slice(0, 8).map(r => {
+      const lastCommit = r.github_last_commit ? timeAgo(new Date(r.github_last_commit)) : '?';
+      const releases = (r.recent_releases || []);
+      const latestRelease = releases.length > 0 ? releases[0].tag : 'none';
+      return `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--mid);">
+          <span style="font-size:9px;color:#888;min-width:140px;font-family:'Space Mono',monospace;">${r.github_repo || r.title}</span>
+          <span style="font-size:9px;background:#fff3ee;color:var(--orange);padding:1px 4px;border-radius:2px;">${r.watchlist_label || ''}</span>
+          <span style="font-size:9px;color:#666;margin-left:auto;">&#128338; ${lastCommit}</span>
+          <span style="font-size:9px;color:#2244cc;">v${latestRelease}</span>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('github-watchlist').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+async function loadGitHubGaps() {
+  try {
+    const res = await fetch('/api/github/gaps?limit=5');
+    const data = await res.json();
+    const el = document.getElementById('github-gaps');
+    if (!data.gaps || data.gaps.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No paper&#8596;code gaps detected yet. Run a full cycle first.</span>';
+      return;
+    }
+    el.innerHTML = data.gaps.slice(0, 5).map(g => {
+      const badge = g.type === 'A'
+        ? '<span style="background:#cc8800;color:#000;font-size:8px;padding:1px 4px;border-radius:2px;font-family:monospace;">UNIMPLEMENTED</span>'
+        : '<span style="background:#2244cc;color:#fff;font-size:8px;padding:1px 4px;border-radius:2px;font-family:monospace;">UNDOCUMENTED</span>';
+      const title = g.paper ? g.paper.title : (g.repo ? g.repo.name : 'Unknown');
+      const score = g.score || 0;
+      return `
+        <div style="padding:6px 0;border-bottom:1px solid var(--mid);">
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${badge}
+            <span style="font-size:12px;font-weight:600;">${title.slice(0, 80)}</span>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);margin-left:auto;">${score}/100</span>
+          </div>
+          <div style="font-size:10px;color:#888;margin-top:2px;">${g.gap_type}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('github-gaps').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+async function loadGitHubCollisions() {
+  try {
+    const res = await fetch('/api/github/collisions');
+    const data = await res.json();
+    const el = document.getElementById('github-collisions');
+    if (!data.collisions || data.collisions.length === 0) {
+      el.innerHTML = '<span style="color:#666;">No cross-domain dependency collisions yet.</span>';
+      return;
+    }
+    el.innerHTML = data.collisions.slice(0, 5).map(c => `
+      <div style="padding:6px 0;border-bottom:1px solid var(--mid);">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-family:'Space Mono',monospace;font-size:11px;color:#2244cc;font-weight:700;">${c.dependency}</span>
+          <span style="font-size:9px;color:#888;">${c.domains.join(' &#8596; ')}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);margin-left:auto;">${c.score}/100</span>
+        </div>
+        <div style="font-size:10px;color:#666;margin-top:2px;">
+          ${c.repos.slice(0, 3).map(r => r.name).join(', ')}${c.repos.length > 3 ? ' +' + (c.repos.length - 3) + ' more' : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('github-collisions').innerHTML = '<span style="color:#cc2222;">Failed to load</span>';
+  }
+}
+
+function formatNum(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function timeAgo(date) {
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
 // Countdown timer
 const TICK_INTERVAL = 120000; // 2 minutes
 function updateCountdown() {
@@ -2444,12 +3053,14 @@ loadPack().then(() => {
   loadVerifications();
   loadValidations();
   loadReviewQueue();
+  loadGitHubStatus();
   setInterval(refresh, 15000);
   setInterval(loadDiscoveries, 30000);
   setInterval(loadDeepDives, 30000);
   setInterval(loadVerifications, 60000);
   setInterval(loadValidations, 60000);
   setInterval(loadReviewQueue, 60000);
+  setInterval(loadGitHubStatus, 300000); // refresh GitHub every 5 min
   updateCountdown();
   setInterval(updateCountdown, 1000);
 });

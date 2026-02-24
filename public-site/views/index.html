@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — We publish the missing experiments in AI</title>
+<meta name="description" content="CLASHD27 scans papers and surfaces cross-domain collisions that suggest what to test next. Updated daily.">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-light: #111111;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --orange-dim: rgba(255,69,0,0.15);
+  --green: #00FF88;
+  --blue: #4488FF;
+  --yellow: #ffd700;
+  --text: #e0e0e0;
+  --muted: #666;
+  --dim: #333;
+  --border: #1a1a1a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ── HEADER ── */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(10,10,10,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.header-nav a {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+.header-nav a:hover { color: var(--orange); }
+
+/* ── HERO ── */
+.hero {
+  padding: 120px 24px 60px;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+.hero-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--green);
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+  background: rgba(0,255,136,0.08);
+  border: 1px solid rgba(0,255,136,0.2);
+  padding: 4px 14px;
+}
+.live-dot {
+  width: 7px; height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+  50% { opacity: 0.3; box-shadow: none; }
+}
+.hero h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(24px, 4.5vw, 42px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+  margin-bottom: 16px;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--orange);
+}
+.hero-sub {
+  font-size: clamp(14px, 2vw, 18px);
+  color: #999;
+  max-width: 600px;
+  margin: 0 auto 32px;
+  line-height: 1.7;
+}
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 12px 28px;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary {
+  background: var(--orange);
+  color: #000;
+}
+.btn-primary:hover { background: #ff6a33; }
+.btn-secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--dim);
+}
+.btn-secondary:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ── SUBSCRIBE FORM ── */
+.subscribe-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.subscribe-row input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--dim);
+  color: var(--text);
+  padding: 10px 16px;
+  width: 260px;
+  outline: none;
+}
+.subscribe-row input:focus { border-color: var(--orange); }
+.subscribe-row button {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: var(--bg-card);
+  border: 1px solid var(--dim);
+  color: var(--muted);
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.subscribe-row button:hover { border-color: var(--orange); color: var(--orange); }
+.subscribe-msg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--green);
+  margin-top: 8px;
+  min-height: 16px;
+}
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  max-width: 900px;
+  margin: 0 auto 48px;
+}
+.stat-item {
+  flex: 1;
+  background: var(--bg-card);
+  padding: 20px 16px;
+  text-align: center;
+  min-width: 0;
+}
+.stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(18px, 3vw, 28px);
+  font-weight: 700;
+  color: var(--orange);
+  display: block;
+}
+.stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── SECTION LAYOUT ── */
+.content-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.section-heading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── FEATURED GAP ── */
+.featured-card {
+  background: linear-gradient(135deg, rgba(255,69,0,0.08), var(--bg-card));
+  border: 1px solid #222;
+  padding: 28px;
+  margin-bottom: 48px;
+}
+.featured-corridor {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.score-badge {
+  background: var(--orange);
+  color: #000;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.featured-claim {
+  font-size: 18px;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.featured-evidence {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+}
+.featured-evidence li {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #999;
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.featured-evidence li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 6px; height: 6px;
+  border: 1px solid var(--orange);
+  background: transparent;
+}
+.featured-experiment {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--blue);
+  padding: 12px 16px;
+  background: rgba(68,136,255,0.06);
+  border-left: 2px solid var(--blue);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+.featured-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* ── ACTIVITY FEED ── */
+.feed-section {
+  margin-bottom: 48px;
+}
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.feed-item {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s;
+  border-left: 2px solid transparent;
+}
+.feed-item:hover {
+  background: #1a1a1a;
+  border-left-color: var(--orange);
+}
+.feed-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.feed-claim {
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feed-corridor {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--orange);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.feed-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ── SKELETON LOADING ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, #1a1a1a 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 2px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-line {
+  height: 14px;
+  margin-bottom: 8px;
+}
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w80 { width: 80%; }
+.skeleton-line.w40 { width: 40%; }
+.skeleton-feed-item {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+}
+
+/* ── LEADERBOARD TEASER ── */
+.leaderboard-section {
+  margin-bottom: 48px;
+}
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.lb-table th, .lb-table td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.lb-table th {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 9px;
+}
+.lb-table td { color: var(--text); }
+.lb-repo { color: var(--orange); font-weight: 600; }
+.lb-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-left: 4px;
+}
+.lb-badge-open { color: var(--yellow); border: 1px solid rgba(255,215,0,0.3); }
+.lb-badge-resolved { color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+.lb-badge-responded { color: var(--blue); border: 1px solid rgba(68,136,255,0.3); }
+
+/* ── HOW IT WORKS ── */
+.how-section {
+  margin-bottom: 48px;
+}
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.how-step {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 24px 20px;
+  text-align: center;
+}
+.how-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+  display: block;
+}
+.how-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.how-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.how-arrow {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  color: var(--dim);
+}
+
+/* ── FOOTER ── */
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 48px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.footer-sources {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  line-height: 1.8;
+}
+.footer-sources strong { color: #888; }
+.footer-links {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.footer-links a {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+}
+.footer-links a:hover { color: #ff6a33; }
+.footer-copy {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+/* ── WARMING UP STATE ── */
+.warming-up {
+  text-align: center;
+  padding: 32px 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  border: 1px dashed var(--dim);
+  background: var(--bg-card);
+}
+.warming-up .spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid var(--dim);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── ERROR STATE ── */
+.unavailable {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 16px;
+  text-align: center;
+}
+
+/* ── LOAD MORE ── */
+.load-more-row {
+  text-align: center;
+  padding: 16px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+  .stats-row { flex-wrap: wrap; }
+  .stat-item { min-width: 33%; flex: 1 0 33%; }
+  .feed-item { grid-template-columns: 1fr; gap: 4px; }
+  .feed-time { order: 2; }
+  .featured-card { padding: 20px; }
+  .how-steps { grid-template-columns: 1fr; }
+  .header-nav { gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <nav class="header-nav">
+    <a href="/gaps">Gaps</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/method">Method</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-live" id="hero-live">
+    <span class="live-dot"></span>
+    <span>LIVE</span>
+    <span id="hero-updated" style="color:var(--muted)">loading...</span>
+  </div>
+  <h1>We publish the <em>missing experiments</em> in AI &mdash; daily.</h1>
+  <p class="hero-sub">CLASHD27 scans papers and surfaces cross-domain collisions that suggest what to test next.</p>
+  <div class="hero-actions">
+    <a href="/gaps" class="btn btn-primary">BROWSE TODAY'S GAPS</a>
+    <a href="#activity" class="btn btn-secondary">SEE LATEST ACTIVITY</a>
+  </div>
+  <div class="subscribe-row" id="subscribe-form">
+    <input type="email" id="subscribe-email" placeholder="you@lab.edu" autocomplete="email">
+    <button type="button" id="subscribe-btn">WEEKLY DIGEST</button>
+  </div>
+  <div class="subscribe-msg" id="subscribe-msg"></div>
+</section>
+
+<!-- STATS ROW -->
+<div class="stats-row" id="stats-row">
+  <div class="stat-item">
+    <span class="stat-val" id="s-total">--</span>
+    <span class="stat-label">GAPS PUBLISHED</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-val" id="s-7d">--</span>
+    <span class="stat-label">LAST 7 DAYS</span>
+  </div>
+  <div class="stat-item" id="s-papers-wrap">
+    <span class="stat-val" id="s-papers">--</span>
+    <span class="stat-label">PAPERS SCANNED (7D)</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-val" id="s-corridors">--</span>
+    <span class="stat-label">CORRIDORS</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-val" id="s-last" style="font-size:14px">--</span>
+    <span class="stat-label">LAST GAP</span>
+  </div>
+</div>
+
+<!-- FEATURED GAP -->
+<div class="content-wrap">
+  <div class="section-heading">Featured Gap</div>
+  <div id="featured-gap">
+    <div class="featured-card">
+      <div class="skeleton skeleton-line w40" style="height:12px"></div>
+      <div class="skeleton skeleton-line w80" style="height:20px;margin-top:12px"></div>
+      <div class="skeleton skeleton-line w60" style="margin-top:16px"></div>
+      <div class="skeleton skeleton-line w60"></div>
+      <div class="skeleton skeleton-line w60"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVITY FEED -->
+<div class="content-wrap feed-section" id="activity">
+  <div class="section-heading">Latest Activity</div>
+  <div class="feed-list" id="feed-list">
+    <div class="skeleton-feed-item"><div class="skeleton skeleton-line" style="width:60px;height:12px"></div><div class="skeleton skeleton-line w80"></div><div class="skeleton skeleton-line" style="width:40px;height:12px"></div></div>
+    <div class="skeleton-feed-item"><div class="skeleton skeleton-line" style="width:60px;height:12px"></div><div class="skeleton skeleton-line w80"></div><div class="skeleton skeleton-line" style="width:40px;height:12px"></div></div>
+    <div class="skeleton-feed-item"><div class="skeleton skeleton-line" style="width:60px;height:12px"></div><div class="skeleton skeleton-line w80"></div><div class="skeleton skeleton-line" style="width:40px;height:12px"></div></div>
+    <div class="skeleton-feed-item"><div class="skeleton skeleton-line" style="width:60px;height:12px"></div><div class="skeleton skeleton-line w80"></div><div class="skeleton skeleton-line" style="width:40px;height:12px"></div></div>
+    <div class="skeleton-feed-item"><div class="skeleton skeleton-line" style="width:60px;height:12px"></div><div class="skeleton skeleton-line w80"></div><div class="skeleton skeleton-line" style="width:40px;height:12px"></div></div>
+  </div>
+  <div class="load-more-row" id="load-more-row" style="display:none">
+    <button class="btn btn-secondary" id="load-more-btn" style="font-size:11px;padding:8px 20px">LOAD MORE</button>
+  </div>
+</div>
+
+<!-- LEADERBOARD TEASER -->
+<div class="content-wrap leaderboard-section">
+  <div class="section-heading">Top Repositories</div>
+  <div id="leaderboard-teaser">
+    <div class="warming-up"><span class="spinner"></span> Loading leaderboard...</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="content-wrap how-section">
+  <div class="section-heading">How It Works</div>
+  <div class="how-steps">
+    <div class="how-step">
+      <span class="how-icon">&#128269;</span>
+      <div class="how-title">Sample</div>
+      <div class="how-desc">Papers from arXiv, Semantic Scholar, OpenAlex, and PubMed are ingested daily across domains.</div>
+    </div>
+    <div class="how-step">
+      <span class="how-icon">&#127922;</span>
+      <div class="how-title">Collide</div>
+      <div class="how-desc">A 3&times;3&times;3 cube classifies papers by method, surprise, and domain &mdash; then crashes distant cells together.</div>
+    </div>
+    <div class="how-step">
+      <span class="how-icon">&#128300;</span>
+      <div class="how-title">Verify</div>
+      <div class="how-desc">Multi-layer pipeline scores, screens, deep-dives, and validates each collision before publishing.</div>
+    </div>
+    <div class="how-step">
+      <span class="how-icon">&#128227;</span>
+      <div class="how-title">Publish</div>
+      <div class="how-desc">Surviving gaps are published with evidence, proposed experiments, and scored for reproducibility.</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-sources">
+    <strong>Sources:</strong> arXiv, Semantic Scholar, OpenAlex, PubMed/EuropePMC<br>
+    Budget-capped, reproducible, append-only state.
+  </div>
+  <div class="footer-links">
+    <a href="/gaps">Gap Catalog</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/method">Method</a>
+    <a href="https://github.com/greenbanaanas" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://x.com/greenbanaanas" target="_blank" rel="noopener">@greenbanaanas</a>
+  </div>
+  <div class="footer-copy">Built by greenbanaanas</div>
+</footer>
+
+<script src="/js/frontpage.js"></script>
+</body>
+</html>
