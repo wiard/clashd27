@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Vindt wat wetenschap mist</title>
+<meta name="description" content="Een 3x3x3 kubus die papers uit ongerelateerde domeinen tegen elkaar laat botsen om onontdekte research gaps te vinden.">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-light: #111111;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --text: #e0e0e0;
+  --muted: #666;
+  --dim: #333;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+.accent { color: var(--orange); }
+
+/* ── HERO ── */
+#hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#cube-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+}
+#hero::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,69,0,0.015) 2px, rgba(255,69,0,0.015) 4px);
+  pointer-events: none;
+  z-index: 2;
+}
+.scan-line {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,69,0,0.25), transparent);
+  z-index: 3;
+  animation: scanMove 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes scanMove { 0% { top: 0; } 100% { top: 100%; } }
+.hero-overlay {
+  position: relative;
+  z-index: 4;
+  text-align: center;
+  pointer-events: none;
+  padding: 0 20px;
+}
+.hero-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(36px, 7vw, 72px);
+  font-weight: 800;
+  color: var(--orange);
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  text-shadow: 0 0 60px rgba(255,69,0,0.3);
+}
+.hero-subtitle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: clamp(14px, 2vw, 20px);
+  color: #ccc;
+  font-weight: 400;
+  margin-bottom: 8px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.hero-desc {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(11px, 1.4vw, 13px);
+  color: var(--muted);
+  max-width: 520px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+}
+.hero-stats {
+  display: flex;
+  gap: clamp(16px, 4vw, 48px);
+  justify-content: center;
+  flex-wrap: wrap;
+  pointer-events: auto;
+}
+.hero-stat { text-align: center; }
+.hero-stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(20px, 3vw, 32px);
+  font-weight: 700;
+  color: var(--orange);
+  display: block;
+}
+.hero-stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.live-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: livePulse 1.5s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+  50% { opacity: 0.3; box-shadow: none; }
+}
+.hero-scroll {
+  position: absolute;
+  bottom: 32px;
+  z-index: 4;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  animation: scrollBounce 2s ease-in-out infinite;
+  pointer-events: auto;
+  text-decoration: none;
+}
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+/* ── SECTIONS ── */
+.section {
+  padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.section-dark { background: var(--bg); }
+.section-mid { background: var(--bg-light); }
+.section-heading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 24px;
+  line-height: 1.2;
+}
+.section-text {
+  font-size: clamp(15px, 1.8vw, 18px);
+  color: #999;
+  line-height: 1.9;
+  max-width: 700px;
+}
+.section-text strong { color: var(--orange); font-weight: 600; }
+
+/* ── TOP GAPS ── */
+.top-gaps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+.gap-card {
+  background: var(--bg-card);
+  border-left: 3px solid var(--orange);
+  padding: 20px 24px;
+  transition: border-color 0.3s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.gap-card:hover { border-left-color: #ff6a33; background: #1a1a1a; }
+.gap-card.research-ready { border-left-color: #ffd700; }
+.gap-domains {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.gap-hypo {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+.gap-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.gap-score { color: var(--orange); }
+.gap-badge {
+  background: var(--orange);
+  color: #000;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* ── CUBE EXPLAINED ── */
+.cube-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 32px;
+}
+.cube-stat-card {
+  background: var(--bg-card);
+  border: 1px solid #1a1a1a;
+  padding: 20px;
+  text-align: center;
+}
+.cube-stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--orange);
+}
+.cube-stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── CTA ── */
+.cta-section {
+  text-align: center;
+  padding: 80px 20px;
+  background: var(--bg);
+}
+.cta-btn {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #000;
+  background: var(--orange);
+  padding: 14px 40px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.cta-btn:hover { background: #ff6a33; }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid #1a1a1a;
+  padding: 48px 20px;
+  text-align: center;
+}
+.footer-built {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.footer-links {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.footer-links a {
+  color: var(--orange);
+  text-decoration: none;
+  margin: 0 12px;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: #ff6a33; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .hero-title { letter-spacing: 4px; }
+  .hero-stats { gap: 12px; }
+  .cube-stats { grid-template-columns: 1fr 1fr; }
+  .gap-meta { flex-direction: column; gap: 4px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section id="hero">
+  <canvas id="cube-canvas"></canvas>
+  <div class="scan-line"></div>
+  <div class="hero-overlay">
+    <h1 class="hero-title">CLASHD27</h1>
+    <p class="hero-subtitle">Vindt wat wetenschap mist</p>
+    <p class="hero-desc">Een 3&times;3&times;3 kubus die papers uit ongerelateerde domeinen tegen elkaar laat botsen om onontdekte research gaps te vinden</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-gaps">--</span>
+        <span class="hero-stat-label"><span class="live-dot"></span>GAPS FOUND</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-domains">--</span>
+        <span class="hero-stat-label">DOMAINS</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-avg">--</span>
+        <span class="hero-stat-label">AVG QUALITY</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-ready">--</span>
+        <span class="hero-stat-label">RESEARCH-READY</span>
+      </div>
+    </div>
+  </div>
+  <a href="#top-gaps" class="hero-scroll">bekijk ontdekte gaps &#8595;</a>
+</section>
+
+<!-- TOP GAPS -->
+<section id="top-gaps" class="section-dark">
+  <div class="section">
+    <h2 class="section-heading">Recent ontdekte gaps</h2>
+    <p class="section-text">De kubus draait 24/7. Elke 5 minuten selecteert de klok een nieuwe cel. Agents botsen, hypotheses worden gegenereerd, en een meerlaags verificatiesysteem filtert tot alleen de sterkste gaps overblijven.</p>
+    <div class="top-gaps" id="top-gaps-list">
+      <div style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Laden...</div>
+    </div>
+    <div style="text-align:center;margin-top:32px;">
+      <a href="/gaps" class="cta-btn">BEKIJK ALLE GAPS</a>
+    </div>
+  </div>
+</section>
+
+<!-- CUBE EXPLAINED -->
+<section id="cube-explained" class="section-mid">
+  <div class="section">
+    <h2 class="section-heading">27 cellen. 3 lagen. 1 klok.</h2>
+    <p class="section-text">
+      Papers worden geclassificeerd langs drie assen: <strong>methode</strong> (observatie, computationeel, experimenteel), <strong>verrassing</strong> (bevestigend, afwijkend, anomaal), en <strong>semantisch domein</strong>. Dat geeft 27 cellen. Papers in dezelfde cel zijn vergelijkbaar. Papers in verschillende cellen zijn onverwachte combinaties.
+    </p>
+    <div class="cube-stats" id="cube-stats">
+      <div class="cube-stat-card">
+        <div class="cube-stat-val" id="cs-cells">27</div>
+        <div class="cube-stat-label">CELLEN</div>
+      </div>
+      <div class="cube-stat-card">
+        <div class="cube-stat-val" id="cs-papers">--</div>
+        <div class="cube-stat-label">PAPERS IN KUBUS</div>
+      </div>
+      <div class="cube-stat-card">
+        <div class="cube-stat-val" id="cs-domains">--</div>
+        <div class="cube-stat-label">DOMEINEN</div>
+      </div>
+      <div class="cube-stat-card">
+        <div class="cube-stat-val" id="cs-tick">--</div>
+        <div class="cube-stat-label">TICKS GEDRAAID</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <a href="/gaps" class="cta-btn">VERKEN DE GAP CATALOGUS</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-built">Built by greenbanaanas</div>
+  <div class="footer-links">
+    <a href="/gaps">Gap Catalogus</a>
+    <a href="https://github.com/greenbanaanas" target="_blank">GitHub</a>
+    <a href="https://x.com/greenbanaanas" target="_blank">@greenbanaanas</a>
+  </div>
+</footer>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/js/cube-visual.js"></script>
+<script>
+const cube = new CubeVisual('cube-canvas', { interactive: true, autoRotate: true, showEdges: true });
+
+function escapeHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+async function loadData() {
+  try {
+    const stats = await fetch('/api/stats').then(r => r.json()).catch(() => null);
+    if (stats) {
+      document.getElementById('stat-gaps').textContent = stats.totalGaps || 0;
+      document.getElementById('stat-domains').textContent = stats.domains || 0;
+      document.getElementById('stat-avg').textContent = (stats.avgGapQuality || 0) + '%';
+      document.getElementById('stat-ready').textContent = stats.researchReady || 0;
+      document.getElementById('cs-papers').textContent = stats.cubePapers || '--';
+      document.getElementById('cs-domains').textContent = stats.domains || '--';
+      document.getElementById('cs-tick').textContent = (stats.tick || 0).toLocaleString();
+
+      // Set active cell
+      if (stats.tick) {
+        cube.setActiveCell(stats.tick % 27);
+      }
+
+      // Render top gaps
+      if (stats.topGaps && stats.topGaps.length > 0) {
+        const container = document.getElementById('top-gaps-list');
+        container.innerHTML = stats.topGaps.map(g => {
+          const domains = g.cellLabels ? g.cellLabels.join(' &times; ') : 'Cross-domain';
+          const score = g.gapQualityScore || 0;
+          const ready = g.researchReady;
+          return `<a href="/gaps/${encodeURIComponent(g.id)}" class="gap-card${ready ? ' research-ready' : ''}">
+            <div class="gap-domains">${escapeHtml(domains)}</div>
+            <div class="gap-hypo">${escapeHtml(g.hypothesis || g.discovery || '')}</div>
+            <div class="gap-meta">
+              <span class="gap-score">QUALITY ${score}%</span>
+              ${ready ? '<span class="gap-badge">RESEARCH-READY</span>' : ''}
+              <span>${g.pack || ''}</span>
+            </div>
+          </a>`;
+        }).join('');
+      } else {
+        document.getElementById('top-gaps-list').innerHTML =
+          '<div style="color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;">De kubus draait. Nog geen gaps gevonden.</div>';
+      }
+    }
+  } catch (e) {
+    console.error('Load failed:', e);
+  }
+}
+
+loadData();
+setInterval(loadData, 30000);
+</script>
+</body>
+</html>
