@@ -1023,6 +1023,47 @@ app.get('/api/cube/golden/:cellA/:cellB', (req, res) => {
   });
 });
 
+// --- API: PubMed & Trials (per finding, live enrichment) ---
+
+app.get('/api/findings/:id/pubmed', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const pubmed = require('../lib/pubmed');
+    const refs = await pubmed.enrichWithReferences(finding);
+    res.json({
+      finding_id: id,
+      pubmed_references: refs,
+      mesh_terms: finding.mesh_terms || [],
+      total: refs.length
+    });
+  } catch (e) {
+    res.status(500).json({ error: `PubMed enrichment failed: ${e.message}` });
+  }
+});
+
+app.get('/api/findings/:id/trials', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const clinicaltrials = require('../lib/clinicaltrials');
+    const trials = await clinicaltrials.searchTrials(finding);
+    const assessment = clinicaltrials.assessTrialOverlap(finding, trials);
+    res.json({
+      finding_id: id,
+      ...assessment
+    });
+  } catch (e) {
+    res.status(500).json({ error: `ClinicalTrials check failed: ${e.message}` });
+  }
+});
+
 // --- API: Funding & Enrichment ---
 
 app.get('/api/findings/:id/funding', (req, res) => {
@@ -1082,27 +1123,36 @@ app.get('/api/credibility/stats', (req, res) => {
   const discoveries = findings.filter(f => f.type === 'discovery');
 
   try {
-    const { scoreCredibility } = require('../lib/brief-enricher');
+    const { scoreGapQuality } = require('../lib/brief-enricher');
     const scores = discoveries.map(d => {
-      const c = scoreCredibility(d);
-      return { id: d.id, score: c.score, passed: c.passed, total: c.total };
+      const gq = scoreGapQuality(d);
+      return {
+        id: d.id,
+        gap_quality_score: gq.score,
+        gap_quality_passed: gq.passed,
+        gap_quality_total: gq.total,
+        // source_credibility_score requires live API calls, so only gap_quality is shown here
+        score: gq.score  // backward-compatible
+      };
     });
 
     const avg = scores.length > 0
-      ? Math.round(scores.reduce((s, c) => s + c.score, 0) / scores.length)
+      ? Math.round(scores.reduce((s, c) => s + c.gap_quality_score, 0) / scores.length)
       : 0;
 
     const distribution = { high: 0, medium: 0, low: 0 };
     for (const s of scores) {
-      if (s.score >= 70) distribution.high++;
-      else if (s.score >= 40) distribution.medium++;
+      if (s.gap_quality_score >= 70) distribution.high++;
+      else if (s.gap_quality_score >= 40) distribution.medium++;
       else distribution.low++;
     }
 
     res.json({
       total_scored: scores.length,
-      average_score: avg,
+      average_gap_quality_score: avg,
+      average_score: avg,  // backward-compatible
       distribution,
+      note: 'source_credibility_score requires live API enrichment via /api/findings/:id/brief',
       recent: scores.slice(-20).reverse()
     });
   } catch (e) {
