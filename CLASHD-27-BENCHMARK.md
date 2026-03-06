@@ -171,15 +171,27 @@ Deterministic API outputs:
 
 - `GET /api/clashd27/state`
 - `GET /api/clashd27/emergence`
+- `GET /api/clashd27/gravity`
+- `GET /api/clashd27/routes/:cellId`
 
-Both expose at minimum:
+State and emergence expose at minimum:
 
 - `clock`
 - `heatmap`
 - `topCells`
 - `topRoutes`
 - `clusters`
+- `gravityWells`
+- `momentum`
 - `suggestions`
+
+Gravity dynamics (v1.3):
+
+- `GRAVITY_FACTOR = 0.02` — pull fraction per tick
+- `SPILLOVER_FACTOR = 0.08` — signal spread to face neighbors
+- `gravityMass = score × (1 + |momentum|)` — well strength
+- `momentum = Δscore / tick` — heating/cooling velocity
+- Discovery triggers fire when emergence exceeds threshold or gravity wells heat
 
 ---
 

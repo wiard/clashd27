@@ -120,6 +120,38 @@ Emergence snapshots expose:
 - gradients
 - corridors
 - strongest cell
+- gravity wells
+- momentum (heating/cooling)
+- optimal routes
+
+### Gravity Model (v0.3)
+
+High-score cells act as gravity wells, pulling residue from lower-score face-adjacent neighbors each tick:
+
+```
+pull = (cell_score - neighbor_score) × GRAVITY_FACTOR
+```
+
+Where `GRAVITY_FACTOR = 0.02`. This concentrates semantic activity in hot regions.
+
+### Signal Spillover
+
+When a signal is ingested into a cell, `SPILLOVER_FACTOR × scoreDelta` (8%) spills to each face-adjacent neighbor, creating natural heat spread.
+
+### Momentum Tracking
+
+Each cell tracks velocity of score changes:
+
+```
+momentum = current_score - previous_score (per tick)
+gravityMass = score × (1 + |momentum|)
+```
+
+Cells with positive momentum are **heating**; negative are **cooling**. Sustained momentum (average over history) detects persistent trends.
+
+### Discovery Triggers
+
+When emergence score exceeds threshold or a gravity well is actively heating, the engine emits `emergenceTrigger` events that feed into the discovery pipeline for investigation.
 
 ---
 
