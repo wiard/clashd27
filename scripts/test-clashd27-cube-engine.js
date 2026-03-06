@@ -9,6 +9,7 @@ const {
   detectCollisions: detectCollisionsFn,
   summarizeEmergence: summarizeEmergenceFn
 } = require('../lib/clashd27-cube-engine');
+const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
 
 function assert(name, condition) {
   if (!condition) {
@@ -469,6 +470,59 @@ function testEmergenceIncludesGravityAndMomentum() {
   assert('ASCII includes phase info', ascii.includes('Phase:'));
 }
 
+function testSourceScorer() {
+  const engine = mkEngine('sources');
+  const ref = '2026-03-20T00:00:00.000Z';
+
+  // Ingest signals from multiple sources
+  engine.ingestSignal({
+    id: 'ss-1',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 1, persist: false, referenceTime: ref });
+
+  engine.ingestSignal({
+    id: 'ss-2',
+    source: 'ai agent skills',
+    timestamp: '2026-03-18T00:00:00.000Z',
+    keywords: ['api']
+  }, { tick: 2, persist: false, referenceTime: ref });
+
+  engine.ingestSignal({
+    id: 'ss-3',
+    source: 'github competitor',
+    timestamp: '2026-03-17T00:00:00.000Z',
+    keywords: ['audit', 'gap']
+  }, { tick: 3, persist: false, referenceTime: ref });
+
+  engine.ingestSignal({
+    id: 'ss-4',
+    source: 'internal system',
+    timestamp: '2026-03-16T00:00:00.000Z',
+    keywords: ['trust', 'consent']
+  }, { tick: 4, persist: false, referenceTime: ref });
+
+  const state = engine.getState();
+  const emergence = engine.summarizeEmergence({ persist: false });
+  const scores = scoreSignalSources(state, emergence.collisions, state.emergenceEvents);
+
+  assert('Source scorer returns array', Array.isArray(scores));
+  assert('Source scorer has entries', scores.length >= 2);
+
+  const internalSource = scores.find(s => s.source === 'internal system');
+  assert('Internal system source found', !!internalSource);
+  assert('Internal system has signal count >= 2', internalSource.signalCount >= 2);
+  assert('Internal system has uniqueCells > 0', internalSource.uniqueCells > 0);
+  assert('Internal system has combinedScore', Number.isFinite(internalSource.combinedScore));
+  assert('Internal system has diversityReach', Number.isFinite(internalSource.diversityReach));
+
+  const adjustments = suggestWeightAdjustments(scores);
+  assert('Weight adjustments returned', Object.keys(adjustments).length > 0);
+  const topAdj = adjustments[scores[0].source];
+  assert('Top source has multiplier >= 1.0', topAdj.multiplier >= 1.0);
+}
+
 function testExposedFunctions() {
   const engine = mkEngine('exports');
   updateResidueFn(engine, 5, { persist: false });
@@ -495,6 +549,7 @@ function run() {
   testOptimalRoutes();
   testTopology();
   testEmergenceIncludesGravityAndMomentum();
+  testSourceScorer();
   testExposedFunctions();
   console.log('[DONE] CLASHD27 cube engine tests passed.');
 }

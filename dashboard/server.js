@@ -8,6 +8,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { Clashd27CubeEngine } = require('../lib/clashd27-cube-engine');
+const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
 
 const app = express();
 const PORT = 3027;
@@ -1139,6 +1140,19 @@ app.get('/api/clashd27/topology', (req, res) => {
     res.json({ topology, phaseHistory: phaseHistory.slice(-27), transitions });
   } catch (e) {
     res.json({ topology: null, phaseHistory: [], transitions: [] });
+  }
+});
+
+app.get('/api/clashd27/sources', (req, res) => {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const state = engine.getState();
+    const emergence = engine.summarizeEmergence({ persist: false });
+    const scores = scoreSignalSources(state, emergence.collisions, state.emergenceEvents);
+    const adjustments = suggestWeightAdjustments(scores);
+    res.json({ sources: scores, adjustments });
+  } catch (e) {
+    res.json({ sources: [], adjustments: {} });
   }
 });
 
