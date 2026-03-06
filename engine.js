@@ -80,6 +80,10 @@ engine.on('clashd27', ({ tickNum, snapshot, ascii }) => {
   console.log(ascii);
 });
 
+engine.on('emergenceTrigger', (trigger) => {
+  console.log(`[EMERGENCE] ${trigger.type} id=${trigger.id} tick=${trigger.tick} | ${trigger.hypothesis}`);
+});
+
 engine.on('discovery', ({ discovery, agents, labels }) => {
   console.log(`  💡 DISCOVERY: ${labels.join(' x ')} | agents=${agents.join(', ')} | id=${discovery.id}`);
 });
