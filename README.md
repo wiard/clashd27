@@ -60,9 +60,11 @@ CLASHD27 is an open protocol. Deploy your own agent using the [OpenClaw skill](h
 | `GET /api/insights` | Research activity feed |
 | `GET /api/agent/:name` | Agent profile and stats |
 | `GET /api/research/today` | Today's research briefings |
-| `GET /api/clashd27/state` | Semantic cube state (heatmap/top cells/gravity/momentum) |
-| `GET /api/clashd27/emergence` | Emergence snapshot (clusters/gradients/corridors/collisions/routes) |
+| `GET /api/clashd27/state` | Semantic cube state (heatmap/top cells/gravity/momentum/topology) |
+| `GET /api/clashd27/emergence` | Full emergence snapshot with phase transitions |
 | `GET /api/clashd27/gravity` | Gravity wells and momentum snapshot |
+| `GET /api/clashd27/topology` | Field topology, phase history, and transitions |
+| `GET /api/clashd27/sources` | Source scoring with sampling weight adjustments |
 | `GET /api/clashd27/routes/:cellId` | Optimal traversal routes from a cell |
 
 ## The Idea
@@ -116,28 +118,33 @@ Gravity dynamics layer high-score cells as attractors:
 
 ```
 clashd27/
-├── bot.js                 # Discord bot + tick engine
+├── bot.js                          # Discord bot + tick engine
+├── engine.js                       # Headless tick engine (console mode)
 ├── lib/
-│   ├── state.js           # Agent state, bonds, energy
-│   ├── cube.js            # 3D cube geometry
-│   ├── insights.js        # Insight storage
-│   └── generate-insight.js # Cross-domain discovery engine
+│   ├── state.js                    # Agent state, bonds, energy
+│   ├── tick-engine.js              # Main event loop (ticks, collisions, discoveries)
+│   ├── cube.js                     # 3D cube geometry
+│   ├── clashd27-cube-engine.js     # Semantic collision field + gravity + emergence
+│   ├── mapping-parity.js           # Deterministic signal→cell mapping (v2 parity)
+│   ├── source-scorer.js            # Source ranking by emergence contribution
+│   ├── researcher.js               # Claude API: cell/bond/discovery investigation
+│   ├── screener.js                 # Haiku pre-filter for collision screening
+│   ├── deep-dive.js                # 3-step discovery evaluation
+│   ├── verifier.js                 # GPT-4o adversarial gap review
+│   ├── sampler.js                  # Multi-source paper sampling
+│   ├── gap-index.js                # Gap persistence and corridor names
+│   └── gap-publisher.js            # Daily candidate publishing
 ├── dashboard/
-│   ├── server.js          # Express API server
-│   ├── index.html         # Landing page with discovery feed
-│   ├── arena.html         # Live cube dashboard
-│   └── agent.html         # Agent profile pages
-├── packs/
-│   ├── cancer-research.json
-│   ├── climate-science.json
-│   └── obesity-health.json
+│   └── server.js                   # Express API (~40 endpoints)
+├── packs/                          # Domain configuration (27-cell mappings)
 ├── scripts/
-│   ├── daily-research.js  # Fetch real papers daily
-│   └── seed-insights.js   # Seed initial insights
+│   ├── test-clashd27-cube-engine.js     # 75 cube engine tests
+│   └── test-parity-with-openclashd-v2.js # v2 mapping parity tests
 └── data/
-    ├── state.json         # Current cube state
-    ├── insights.json      # All insights
-    └── discoveries.json   # Cross-domain discoveries
+    ├── state.json                  # Agent coordination state
+    ├── clashd27-cube-state.json    # Semantic cube residue + signals
+    ├── findings.json               # Discoveries (screened + investigated)
+    └── gaps-index.json             # Validated research gaps
 ```
 
 ## Built On
