@@ -67,7 +67,16 @@ engine.on('clashd27', ({ tickNum, snapshot, ascii }) => {
   const strongestLabel = strongest
     ? `cell=${strongest.cellId} score=${strongest.score} [${strongest.axes.what}/${strongest.axes.where}/${strongest.axes.time}]`
     : 'none';
+  const topWell = (snapshot?.gravityWells || [])[0];
+  const gravityLabel = topWell
+    ? `cell=${topWell.cellId} mass=${topWell.gravityMass} pull=${topWell.pullStrength}`
+    : 'none';
+  const heating = (snapshot?.momentum || []).filter(m => m.trend === 'heating');
+  const heatingLabel = heating.length > 0
+    ? heating.slice(0, 3).map(m => `${m.cellId}(${m.momentum})`).join(',')
+    : 'none';
   console.log(`[CLASHD27] tick=${tickNum} strongest=${strongestLabel} collisions=${(snapshot?.collisions || []).length} clusters=${(snapshot?.clusters || []).length}`);
+  console.log(`[CLASHD27] gravity=${gravityLabel} heating=${heatingLabel}`);
   console.log(ascii);
 });
 

@@ -1088,6 +1088,8 @@ app.get('/api/clashd27/state', (req, res) => {
     topCells: snap.topCells,
     topRoutes: snap.topRoutes,
     clusters: snap.clusters,
+    gravityWells: snap.gravityWells,
+    momentum: snap.momentum,
     suggestions: snap.suggestions,
     strongestCell: snap.strongestCell
   });
@@ -1105,10 +1107,41 @@ app.get('/api/clashd27/emergence', (req, res) => {
     gradients: snap.gradients,
     corridors: snap.corridors,
     collisions: snap.collisions,
+    gravityWells: snap.gravityWells,
+    momentum: snap.momentum,
+    optimalRoutes: snap.optimalRoutes,
     suggestions: snap.suggestions,
     strongestCell: snap.strongestCell,
     ascii: payload.ascii
   });
+});
+
+app.get('/api/clashd27/gravity', (req, res) => {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const wells = engine.computeGravityField();
+    const momentum = engine.computeMomentumSnapshot();
+    res.json({ wells, momentum });
+  } catch (e) {
+    res.json({ wells: [], momentum: [] });
+  }
+});
+
+app.get('/api/clashd27/routes/:cellId', (req, res) => {
+  try {
+    const cellId = parseInt(req.params.cellId, 10);
+    if (!Number.isFinite(cellId) || cellId < 0 || cellId > 26) {
+      return res.status(400).json({ error: 'cellId must be 0-26' });
+    }
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const routes = engine.computeOptimalRoutes(cellId, {
+      maxDepth: parseInt(req.query.depth || '5', 10),
+      topK: parseInt(req.query.topK || '5', 10)
+    });
+    res.json({ cellId, routes });
+  } catch (e) {
+    res.json({ cellId: req.params.cellId, routes: [] });
+  }
 });
 
 // --- API: PubMed & Trials (per finding, live enrichment) ---
