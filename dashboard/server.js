@@ -7,6 +7,7 @@ require('dotenv').config({ path: '/home/greenbanaanas/.secrets/clashd27.env', ov
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { Clashd27CubeEngine } = require('../lib/clashd27-cube-engine');
 
 const app = express();
 const PORT = 3027;
@@ -952,6 +953,7 @@ app.get('/api/labels', (req, res) => {
 
 // --- API: Cube (Anomaly Magnet v2.0) ---
 const CUBE_FILE = path.join(__dirname, '..', 'data', 'cube.json');
+const CLASHD27_CUBE_STATE_FILE = path.join(__dirname, '..', 'data', 'clashd27-cube-state.json');
 
 function readCube() {
   try {
@@ -962,6 +964,38 @@ function readCube() {
     console.error('[CUBE] Read failed:', e.message);
   }
   return null;
+}
+
+function readClashd27CubeSnapshot() {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const snapshot = engine.summarizeEmergence({ persist: false });
+    const state = engine.getState();
+    return {
+      clock: snapshot.clock,
+      state,
+      snapshot,
+      ascii: engine.renderAscii(snapshot)
+    };
+  } catch (e) {
+    return {
+      clock: 0,
+      state: null,
+      snapshot: {
+        clock: 0,
+        heatmap: [],
+        collisions: [],
+        clusters: [],
+        gradients: [],
+        corridors: [],
+        strongestCell: null,
+        topCells: [],
+        topRoutes: [],
+        suggestions: []
+      },
+      ascii: ''
+    };
+  }
 }
 
 app.get('/api/cube', (req, res) => {
@@ -1041,6 +1075,39 @@ app.get('/api/cube/golden/:cellA/:cellB', (req, res) => {
     components: { methodDistance, surprisePair: Math.round(surprisePair * 100) / 100, semanticDistance },
     cellA: { cell: parseInt(req.params.cellA), method: a.methodLabel, surprise: a.surpriseLabel, cluster: a.clusterLabel, papers: a.paperCount },
     cellB: { cell: parseInt(req.params.cellB), method: b.methodLabel, surprise: b.surpriseLabel, cluster: b.clusterLabel, papers: b.paperCount }
+  });
+});
+
+// --- API: CLASHD27 Semantic Cube ---
+app.get('/api/clashd27/state', (req, res) => {
+  const payload = readClashd27CubeSnapshot();
+  const snap = payload.snapshot;
+  res.json({
+    clock: snap.clock,
+    heatmap: snap.heatmap,
+    topCells: snap.topCells,
+    topRoutes: snap.topRoutes,
+    clusters: snap.clusters,
+    suggestions: snap.suggestions,
+    strongestCell: snap.strongestCell
+  });
+});
+
+app.get('/api/clashd27/emergence', (req, res) => {
+  const payload = readClashd27CubeSnapshot();
+  const snap = payload.snapshot;
+  res.json({
+    clock: snap.clock,
+    heatmap: snap.heatmap,
+    topCells: snap.topCells,
+    topRoutes: snap.topRoutes,
+    clusters: snap.clusters,
+    gradients: snap.gradients,
+    corridors: snap.corridors,
+    collisions: snap.collisions,
+    suggestions: snap.suggestions,
+    strongestCell: snap.strongestCell,
+    ascii: payload.ascii
   });
 });
 

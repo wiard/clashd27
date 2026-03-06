@@ -129,6 +129,60 @@ Measures reactive movement policy effectiveness.
 
 ---
 
+## Semantic Emergence Layer (v1.2)
+
+CLASHD27 now includes a deterministic semantic emergence engine over the same 27-cell lattice.
+
+Axes:
+
+- WHAT: `trust-model`, `surface`, `architecture`
+- WHERE: `internal`, `external`, `engine`
+- TIME: `historical`, `current`, `emerging`
+
+Signal sources:
+
+1. Git repositories (`github competitor`)
+2. AI agent skills (`ai agent skills`)
+3. Scientific papers (`paper/theory`)
+4. System self-observation (`internal system`)
+
+Residue formula:
+
+```
+residue = interaction_count × peer_diversity × time_spread × entropy_seed
+```
+
+Additional deterministic score dynamics:
+
+- `+0.3` per interaction
+- `+0.1` source-type change bonus
+- `+0.1` far-apart timestamp bonus
+- `+0.2` gap flag bonus
+- hard cap `1.0`
+- tick decay `× 0.995`
+
+Collision and emergence detection:
+
+- collision neighborhood: Manhattan distance `<= 1`
+- meaningful threshold: `>=2` sources, combined score `>0.7`, `>=3` ticks
+- pattern detectors: clusters, gradients, corridors
+
+Deterministic API outputs:
+
+- `GET /api/clashd27/state`
+- `GET /api/clashd27/emergence`
+
+Both expose at minimum:
+
+- `clock`
+- `heatmap`
+- `topCells`
+- `topRoutes`
+- `clusters`
+- `suggestions`
+
+---
+
 ## Reference Agents
 
 Three baseline agents define expected behavior bands.

@@ -60,6 +60,17 @@ engine.on('cycleEnd', ({ summary }) => {
   );
 });
 
+engine.on('clashd27', ({ tickNum, snapshot, ascii }) => {
+  // Keep terminal output readable: print emergence view every 9 ticks and on cycle boundaries.
+  if (tickNum % 9 !== 0 && tickNum % 27 !== 0) return;
+  const strongest = snapshot?.strongestCell;
+  const strongestLabel = strongest
+    ? `cell=${strongest.cellId} score=${strongest.score} [${strongest.axes.what}/${strongest.axes.where}/${strongest.axes.time}]`
+    : 'none';
+  console.log(`[CLASHD27] tick=${tickNum} strongest=${strongestLabel} collisions=${(snapshot?.collisions || []).length} clusters=${(snapshot?.clusters || []).length}`);
+  console.log(ascii);
+});
+
 engine.on('discovery', ({ discovery, agents, labels }) => {
   console.log(`  💡 DISCOVERY: ${labels.join(' x ')} | agents=${agents.join(', ')} | id=${discovery.id}`);
 });

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node bot.js",
     "register": "node register-commands.js",
-    "doctor": "node tools/doctor.js"
+    "doctor": "node tools/doctor.js",
+    "test:cube": "node scripts/test-clashd27-cube-engine.js"
   },
   "dependencies": {
     "csv-parse": "^6.1.0",

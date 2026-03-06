@@ -60,6 +60,69 @@ Cell 13 is the center. It touches all 26 other cells.
 
 ---
 
+## CLASHD27 Semantic Collision Field (v0.2)
+
+Alongside the spatial coordination cube, CLASHD27 now maintains a deterministic **semantic collision field** over the same 27 cells.
+
+Axes:
+
+- **Axis A (WHAT):** `trust-model` · `surface` · `architecture`
+- **Axis B (WHERE):** `internal` · `external` · `engine`
+- **Axis C (TIME):** `historical` · `current` · `emerging`
+
+Cell index uses the same 3×3×3 mapping (`cell = c*9 + b*3 + a`).
+
+Each cell stores residue from signal interactions:
+
+```
+residue = interaction_count × peer_diversity × time_spread × entropy_seed
+```
+
+Where:
+
+- `interaction_count` = interactions touching the cell
+- `peer_diversity` = unique contributing sources
+- `time_spread` = unique ticks represented
+- `entropy_seed` = deterministic hash-derived factor from signal identity
+
+Signal mapping is deterministic:
+
+- keywords `consent/trust/permission` → `trust-model`
+- keywords `channel/api/ui/mcp` → `surface`
+- keywords `kernel/audit/policy` → `architecture`
+- source `github competitor` → `external`
+- source `internal system` or `ai agent skills` → `internal`
+- source `paper/theory` → `engine`
+- age `>30 days` → `historical`
+- age `1-30 days` → `current`
+- `gap/trend/anomaly` marker → `emerging`
+
+Residue score update rules per interaction:
+
+- `+0.3` base
+- `+0.1` if source type differs
+- `+0.1` if timestamps are far apart
+- `+0.2` if signal is gap-flagged
+- cap at `1.0`
+- decay each tick: `score = score × 0.995`
+
+Collisions are meaningful when:
+
+- Manhattan distance between cells `<= 1`
+- at least `2` different sources
+- combined score `> 0.7`
+- events across at least `3` ticks
+
+Emergence snapshots expose:
+
+- heatmap
+- clusters
+- gradients
+- corridors
+- strongest cell
+
+---
+
 ## The Clock
 
 One clock ticks. Every tick activates one cell:
