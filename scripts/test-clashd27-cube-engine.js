@@ -395,6 +395,47 @@ function testOptimalRoutes() {
   assert('Best route has id', best.id.startsWith('route-'));
 }
 
+function testTopology() {
+  const engine = mkEngine('topology');
+  const ref = '2026-03-20T00:00:00.000Z';
+
+  // Empty field should be dormant
+  const emptyTopo = engine.computeTopology();
+  assert('Empty field is dormant', emptyTopo.phase === 'dormant');
+  assertNear('Empty field has zero total score', emptyTopo.totalScore, 0, 1e-9);
+  assert('Empty field has zero active cells', emptyTopo.activeCells === 0);
+
+  // Add signals to create a focused field
+  engine.ingestSignal({
+    id: 'topo-1',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 1, persist: false, referenceTime: ref });
+  engine.ingestSignal({
+    id: 'topo-2',
+    source: 'ai agent skills',
+    timestamp: '2026-03-01T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 2, persist: false, referenceTime: ref });
+  engine.ingestSignal({
+    id: 'topo-3',
+    source: 'internal system',
+    timestamp: '2026-03-18T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 3, persist: false, referenceTime: ref });
+
+  const topo = engine.computeTopology();
+  assert('Active field has positive total score', topo.totalScore > 0);
+  assert('Active field has active cells', topo.activeCells > 0);
+  assert('Phase is not dormant', topo.phase !== 'dormant');
+  assert('Dominant WHAT axis is trust-model', topo.dominantAxes.what.axis === 'trust-model');
+  assert('Layer energy has three layers', Number.isFinite(topo.layerEnergy.floor));
+  assert('Concentration is between 0 and 1', topo.concentration >= 0 && topo.concentration <= 1);
+  assert('Entropy is between 0 and 1', topo.normalizedEntropy >= 0 && topo.normalizedEntropy <= 1);
+  assert('Variance is non-negative', topo.variance >= 0);
+}
+
 function testEmergenceIncludesGravityAndMomentum() {
   const engine = mkEngine('full-emergence');
   const ref = '2026-03-20T00:00:00.000Z';
@@ -411,10 +452,12 @@ function testEmergenceIncludesGravityAndMomentum() {
   assert('Emergence includes gravityWells', Array.isArray(snapshot.gravityWells));
   assert('Emergence includes momentum', Array.isArray(snapshot.momentum));
   assert('Emergence includes optimalRoutes', Array.isArray(snapshot.optimalRoutes));
+  assert('Emergence includes topology', snapshot.topology && typeof snapshot.topology.phase === 'string');
 
   const ascii = engine.renderAscii(snapshot);
   assert('ASCII includes gravity legend', ascii.includes('G gravity'));
   assert('ASCII includes heating legend', ascii.includes('^ heating'));
+  assert('ASCII includes phase info', ascii.includes('Phase:'));
 }
 
 function testExposedFunctions() {
@@ -441,6 +484,7 @@ function run() {
   testMomentumSnapshot();
   testGravityField();
   testOptimalRoutes();
+  testTopology();
   testEmergenceIncludesGravityAndMomentum();
   testExposedFunctions();
   console.log('[DONE] CLASHD27 cube engine tests passed.');

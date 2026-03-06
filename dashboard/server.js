@@ -1090,6 +1090,7 @@ app.get('/api/clashd27/state', (req, res) => {
     clusters: snap.clusters,
     gravityWells: snap.gravityWells,
     momentum: snap.momentum,
+    topology: snap.topology,
     suggestions: snap.suggestions,
     strongestCell: snap.strongestCell
   });
@@ -1110,6 +1111,7 @@ app.get('/api/clashd27/emergence', (req, res) => {
     gravityWells: snap.gravityWells,
     momentum: snap.momentum,
     optimalRoutes: snap.optimalRoutes,
+    topology: snap.topology,
     suggestions: snap.suggestions,
     strongestCell: snap.strongestCell,
     ascii: payload.ascii
