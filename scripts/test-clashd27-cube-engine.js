@@ -434,6 +434,15 @@ function testTopology() {
   assert('Concentration is between 0 and 1', topo.concentration >= 0 && topo.concentration <= 1);
   assert('Entropy is between 0 and 1', topo.normalizedEntropy >= 0 && topo.normalizedEntropy <= 1);
   assert('Variance is non-negative', topo.variance >= 0);
+
+  // Phase history should be recorded after updateResidue
+  engine.updateResidue(5, { persist: false });
+  const history = engine.getPhaseHistory();
+  assert('Phase history recorded', history.length > 0);
+  const latest = history[history.length - 1];
+  assert('Phase history entry has tick', Number.isFinite(latest.tick));
+  assert('Phase history entry has phase', typeof latest.phase === 'string');
+  assert('Phase history entry has concentration', Number.isFinite(latest.concentration));
 }
 
 function testEmergenceIncludesGravityAndMomentum() {

@@ -1112,6 +1112,7 @@ app.get('/api/clashd27/emergence', (req, res) => {
     momentum: snap.momentum,
     optimalRoutes: snap.optimalRoutes,
     topology: snap.topology,
+    phaseTransitions: snap.phaseTransitions,
     suggestions: snap.suggestions,
     strongestCell: snap.strongestCell,
     ascii: payload.ascii
@@ -1126,6 +1127,18 @@ app.get('/api/clashd27/gravity', (req, res) => {
     res.json({ wells, momentum });
   } catch (e) {
     res.json({ wells: [], momentum: [] });
+  }
+});
+
+app.get('/api/clashd27/topology', (req, res) => {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const topology = engine.computeTopology();
+    const phaseHistory = engine.getPhaseHistory();
+    const transitions = engine.getPhaseTransitions();
+    res.json({ topology, phaseHistory: phaseHistory.slice(-27), transitions });
+  } catch (e) {
+    res.json({ topology: null, phaseHistory: [], transitions: [] });
   }
 });
 
