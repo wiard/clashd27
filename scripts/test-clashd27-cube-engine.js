@@ -234,6 +234,183 @@ function testClustersAndGradients() {
   assert('ASCII renderer includes z layers', ascii.includes('z=0') && ascii.includes('z=1') && ascii.includes('z=2'));
 }
 
+function testGravityAndSpillover() {
+  const engine = mkEngine('gravity');
+  const ref = '2026-03-20T00:00:00.000Z';
+
+  // Ingest a strong signal into cell 13 (center of cube — has 26 neighbors by Manhattan,
+  // but only 6 face-adjacent). Spillover should affect face neighbors.
+  engine.ingestSignal({
+    id: 'grav-1',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['audit']
+  }, { tick: 1, persist: false, referenceTime: ref });
+
+  const primaryCellId = normalizeSignal({
+    id: 'grav-1', source: 'internal system', timestamp: '2026-03-19T00:00:00.000Z', keywords: ['audit']
+  }).cellId;
+
+  // Check spillover: face neighbors should have > 0 score
+  const { manhattanDistance: md } = require('../lib/clashd27-cube-engine');
+  let spilloverFound = false;
+  for (let i = 0; i < 27; i += 1) {
+    if (i === primaryCellId) continue;
+    if (md(primaryCellId, i) === 1) {
+      const neighbor = engine.getState().cells[String(i)];
+      if (neighbor.score > 0) {
+        spilloverFound = true;
+        break;
+      }
+    }
+  }
+  assert('Spillover reaches face neighbors', spilloverFound);
+
+  // Now advance time to trigger gravity
+  engine.ingestSignal({
+    id: 'grav-2',
+    source: 'ai agent skills',
+    timestamp: '2026-03-01T00:00:00.000Z',
+    keywords: ['audit']
+  }, { tick: 2, persist: false, referenceTime: ref });
+
+  engine.updateResidue(5, { persist: false });
+
+  // After gravity: primary cell should have non-zero gravityMass
+  const primaryCell = engine.getState().cells[String(primaryCellId)];
+  assert('Gravity mass computed', primaryCell.gravityMass > 0);
+
+  // After updateResidue, momentum should be tracked
+  assert('Momentum tracked after update', primaryCell.momentumHistory.length > 0);
+  assert('Momentum is negative (decaying)', primaryCell.momentum < 0);
+}
+
+function testMomentumSnapshot() {
+  const engine = mkEngine('momentum');
+  const ref = '2026-03-20T00:00:00.000Z';
+
+  engine.ingestSignal({
+    id: 'mom-1',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 1, persist: false, referenceTime: ref });
+
+  engine.updateResidue(3, { persist: false });
+
+  const momentumSnap = engine.computeMomentumSnapshot();
+  assert('Momentum snapshot returns array', Array.isArray(momentumSnap));
+  assert('Momentum snapshot has entries', momentumSnap.length > 0);
+  const entry = momentumSnap[0];
+  assert('Momentum entry has trend', entry.trend === 'heating' || entry.trend === 'cooling');
+  assert('Momentum entry has sustained value', Number.isFinite(entry.sustained));
+}
+
+function testGravityField() {
+  const engine = mkEngine('gravfield');
+  const ref = '2026-03-20T00:00:00.000Z';
+
+  // Build a hot cell
+  engine.ingestSignal({
+    id: 'gf-1',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 1, persist: false, referenceTime: ref });
+  engine.ingestSignal({
+    id: 'gf-2',
+    source: 'ai agent skills',
+    timestamp: '2026-03-01T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 2, persist: false, referenceTime: ref });
+
+  engine.updateResidue(3, { persist: false });
+
+  const wells = engine.computeGravityField();
+  assert('Gravity field returns array', Array.isArray(wells));
+  assert('Gravity field has wells', wells.length > 0);
+  const topWell = wells[0];
+  assert('Top well has cellId', Number.isFinite(topWell.cellId));
+  assert('Top well has pullStrength', Number.isFinite(topWell.pullStrength));
+  assert('Top well has avgNeighborScore', Number.isFinite(topWell.avgNeighborScore));
+}
+
+function testOptimalRoutes() {
+  const engine = mkEngine('routes');
+  const ref = '2026-03-20T00:00:00.000Z';
+
+  // Create a gradient: cells 9, 10, 11 with increasing scores
+  engine.ingestSignal({
+    id: 'rt-9',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 1, persist: false, referenceTime: ref });
+
+  engine.ingestSignal({
+    id: 'rt-10a',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['api']
+  }, { tick: 1, persist: false, referenceTime: ref });
+  engine.ingestSignal({
+    id: 'rt-10b',
+    source: 'internal system',
+    timestamp: '2026-03-20T00:00:00.000Z',
+    keywords: ['api']
+  }, { tick: 2, persist: false, referenceTime: ref });
+
+  engine.ingestSignal({
+    id: 'rt-11a',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['audit']
+  }, { tick: 1, persist: false, referenceTime: ref });
+  engine.ingestSignal({
+    id: 'rt-11b',
+    source: 'internal system',
+    timestamp: '2026-03-20T00:00:00.000Z',
+    keywords: ['audit']
+  }, { tick: 2, persist: false, referenceTime: ref });
+  engine.ingestSignal({
+    id: 'rt-11c',
+    source: 'internal system',
+    timestamp: '2026-03-21T00:00:00.000Z',
+    keywords: ['audit']
+  }, { tick: 3, persist: false, referenceTime: ref });
+
+  const routes = engine.computeOptimalRoutes(9, { maxDepth: 4, topK: 3 });
+  assert('Routes returns array', Array.isArray(routes));
+  assert('At least one route found', routes.length >= 1);
+  const best = routes[0];
+  assert('Best route starts at cell 9', best.path[0] === 9);
+  assert('Best route has totalScore', best.totalScore > 0);
+  assert('Best route has avgScore', best.avgScore > 0);
+  assert('Best route has id', best.id.startsWith('route-'));
+}
+
+function testEmergenceIncludesGravityAndMomentum() {
+  const engine = mkEngine('full-emergence');
+  const ref = '2026-03-20T00:00:00.000Z';
+
+  engine.ingestSignal({
+    id: 'fe-1',
+    source: 'internal system',
+    timestamp: '2026-03-19T00:00:00.000Z',
+    keywords: ['trust']
+  }, { tick: 1, persist: false, referenceTime: ref });
+  engine.updateResidue(3, { persist: false });
+
+  const snapshot = engine.summarizeEmergence({ persist: false });
+  assert('Emergence includes gravityWells', Array.isArray(snapshot.gravityWells));
+  assert('Emergence includes momentum', Array.isArray(snapshot.momentum));
+  assert('Emergence includes optimalRoutes', Array.isArray(snapshot.optimalRoutes));
+
+  const ascii = engine.renderAscii(snapshot);
+  assert('ASCII includes gravity legend', ascii.includes('G gravity'));
+  assert('ASCII includes heating legend', ascii.includes('^ heating'));
+}
+
 function testExposedFunctions() {
   const engine = mkEngine('exports');
   updateResidueFn(engine, 5, { persist: false });
@@ -254,6 +431,11 @@ function run() {
   testResidueAndDecay();
   testCollisionDetection();
   testClustersAndGradients();
+  testGravityAndSpillover();
+  testMomentumSnapshot();
+  testGravityField();
+  testOptimalRoutes();
+  testEmergenceIncludesGravityAndMomentum();
   testExposedFunctions();
   console.log('[DONE] CLASHD27 cube engine tests passed.');
 }
