@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { Clashd27CubeEngine } = require('../lib/clashd27-cube-engine');
 const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
+const { buildPaperDiscoveryFeed } = require('../lib/paper-discovery-feed');
 
 const app = express();
 const PORT = 3027;
@@ -1118,6 +1119,36 @@ app.get('/api/clashd27/emergence', (req, res) => {
     strongestCell: snap.strongestCell,
     ascii: payload.ascii
   });
+});
+
+app.get('/api/clashd27/discovery-feed', (req, res) => {
+  try {
+    const signalLimit = parseInt(req.query.signalLimit || '120', 10);
+    const maxSignals = Number.isFinite(signalLimit)
+      ? Math.max(10, Math.min(300, signalLimit))
+      : 120;
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const cube = readCube();
+    const payload = buildPaperDiscoveryFeed({
+      engine,
+      cube,
+      maxSignals
+    });
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({
+      tick: 0,
+      timestamp: new Date().toISOString(),
+      counts: {
+        signal_detected: 0,
+        emergence_cluster: 0,
+        gravity_hotspot: 0,
+        discovery_candidate: 0
+      },
+      events: [],
+      error: e.message
+    });
+  }
 });
 
 app.get('/api/clashd27/gravity', (req, res) => {
