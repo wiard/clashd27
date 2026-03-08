@@ -10,6 +10,8 @@ const path = require('path');
 const { Clashd27CubeEngine } = require('../lib/clashd27-cube-engine');
 const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
 const { buildPaperDiscoveryFeed } = require('../lib/paper-discovery-feed');
+const { enrichCandidates, candidateToProposalPayload } = require('../lib/proposal-metadata');
+const { persistDiscoveryCandidate, persistFinding, getRecentKnowledgeObjects, getKnowledgeObjectsByKind, getKnowledgeObject } = require('../lib/knowledge-persistence');
 
 const app = express();
 const PORT = 3027;
@@ -1608,6 +1610,73 @@ app.get('/api/github/status', (req, res) => {
       scan_interval: parseInt(process.env.GITHUB_SCAN_INTERVAL || '3600000', 10),
       watchlist_interval: parseInt(process.env.GITHUB_WATCHLIST_INTERVAL || '1800000', 10),
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Enriched Proposals & Knowledge ---
+
+app.get('/api/clashd27/proposals/enriched', (req, res) => {
+  try {
+    const { detectDiscoveryCandidates } = require('../lib/discovery-candidates');
+    const { computeResearchGravity } = require('../lib/clashd27-cube-engine');
+    const cubeState = cubeEngine.getFullState();
+    const gravityCells = computeResearchGravity(cubeState);
+    const emergenceSummary = cubeEngine.summarizeEmergence ? cubeEngine.summarizeEmergence() : { collisions: [], clusters: [], gradients: [] };
+    const candidates = detectDiscoveryCandidates({ gravityCells, emergenceSummary, cubeState });
+    const enriched = enrichCandidates(candidates);
+    const proposals = enriched.map(c => candidateToProposalPayload(c, 'clashd27'));
+    res.json({ ok: true, proposals, enrichedCandidates: enriched });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clashd27/knowledge/persist-candidate', (req, res) => {
+  try {
+    const candidate = req.body;
+    if (!candidate || !candidate.id) {
+      return res.status(400).json({ error: 'candidate with id required' });
+    }
+    const object = persistDiscoveryCandidate(candidate);
+    res.json({ ok: true, object });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clashd27/knowledge/persist-finding', (req, res) => {
+  try {
+    const finding = req.body;
+    if (!finding) {
+      return res.status(400).json({ error: 'finding body required' });
+    }
+    const object = persistFinding(finding);
+    res.json({ ok: true, object });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/clashd27/knowledge/objects', (req, res) => {
+  try {
+    const kind = req.query.kind;
+    const limit = parseInt(req.query.limit || '20', 10);
+    const objects = kind ? getKnowledgeObjectsByKind(kind, limit) : getRecentKnowledgeObjects(limit);
+    res.json({ ok: true, objects });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/clashd27/knowledge/objects/:objectId', (req, res) => {
+  try {
+    const object = getKnowledgeObject(req.params.objectId);
+    if (!object) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+    res.json({ ok: true, object });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
