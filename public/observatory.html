@@ -3,213 +3,203 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CLASHD27 Observatory Cube</title>
+  <title>CLASHD27 Observatory</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #06080d;
-      --panel: rgba(9, 13, 22, 0.86);
-      --panel-strong: rgba(9, 13, 22, 0.96);
-      --line: rgba(137, 176, 255, 0.28);
+      --bg: #070a11;
+      --panel: rgba(10, 15, 25, 0.9);
+      --panel-strong: rgba(8, 12, 20, 0.95);
+      --line: rgba(143, 178, 232, 0.26);
+      --line-strong: rgba(143, 178, 232, 0.44);
       --text: #eef4ff;
-      --muted: #92a5c0;
-      --accent: #72d4ff;
-      --hot: #ff8d5a;
-      --glow: #6d7dff;
-      --ok: #89ffb0;
+      --muted: #91a3bd;
+      --accent: #8ed6ff;
+      --warn: #ff9f70;
+      --ok: #98f0be;
+      --danger: #ff7f7f;
+      --focus: #becbff;
     }
+
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
+    html, body { margin: 0; width: 100%; height: 100%; }
     body {
       font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at 14% 18%, rgba(112, 142, 255, 0.17), transparent 42%),
-        radial-gradient(circle at 84% 8%, rgba(77, 220, 255, 0.15), transparent 36%),
-        radial-gradient(circle at 58% 110%, rgba(255, 123, 77, 0.1), transparent 40%),
+        radial-gradient(circle at 12% 12%, rgba(101, 149, 255, 0.16), transparent 45%),
+        radial-gradient(circle at 78% 6%, rgba(94, 206, 255, 0.12), transparent 40%),
+        radial-gradient(circle at 55% 100%, rgba(255, 136, 89, 0.08), transparent 44%),
         var(--bg);
       overflow: hidden;
     }
-    #app {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      isolation: isolate;
-    }
-    #scene-wrap {
-      position: absolute;
-      inset: 0;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
+
+    #app { position: relative; width: 100%; height: 100%; }
+    #viewport { position: absolute; inset: 0; }
+    canvas { display: block; width: 100%; height: 100%; }
 
     .hud {
       position: absolute;
-      top: 14px;
-      left: 14px;
-      right: 14px;
+      top: 12px;
+      left: 12px;
+      right: 12px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       gap: 12px;
-      pointer-events: none;
       z-index: 4;
+      pointer-events: none;
     }
+
     .hud-card {
+      pointer-events: auto;
       background: var(--panel);
       border: 1px solid var(--line);
-      backdrop-filter: blur(10px);
       border-radius: 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
       padding: 12px 14px;
-      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.35);
-      pointer-events: auto;
     }
-    .title {
-      font-size: 13px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+
+    .hud-top {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .hud-title {
       margin: 0;
+      font-size: 13px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
       color: var(--accent);
     }
-    .sub {
-      margin-top: 6px;
+
+    .badge {
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .badge.ok { color: var(--ok); border-color: rgba(152, 240, 190, 0.45); }
+    .badge.degraded { color: var(--warn); border-color: rgba(255, 159, 112, 0.48); }
+
+    .hud-sub {
+      margin-top: 5px;
       font-size: 11px;
       color: var(--muted);
       font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
     }
+
     .stats {
       margin-top: 10px;
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 7px;
     }
+
     .stat {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9px;
+      padding: 7px;
       background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 10px;
-      padding: 7px 8px;
       min-width: 76px;
     }
+
     .stat-k {
       font-size: 9px;
+      letter-spacing: 0.07em;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
       color: var(--muted);
       font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
     }
+
     .stat-v {
       margin-top: 4px;
-      font-size: 16px;
-      color: var(--text);
+      font-size: 15px;
       font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      color: var(--text);
     }
+
     .btn {
-      border: 1px solid rgba(114, 212, 255, 0.45);
-      background: rgba(14, 26, 42, 0.72);
-      color: var(--text);
+      pointer-events: auto;
+      border: 1px solid rgba(142, 214, 255, 0.45);
       border-radius: 10px;
+      background: rgba(16, 27, 43, 0.8);
+      color: var(--text);
       padding: 9px 12px;
-      font-size: 11px;
       cursor: pointer;
+      font-size: 11px;
       font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-      transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+      transition: border-color 120ms ease, background 120ms ease;
     }
+
     .btn:hover {
-      background: rgba(27, 49, 76, 0.82);
-      border-color: rgba(114, 212, 255, 0.8);
-      transform: translateY(-1px);
+      border-color: rgba(142, 214, 255, 0.9);
+      background: rgba(26, 43, 66, 0.92);
     }
 
     .legend {
       position: absolute;
-      left: 14px;
-      bottom: 14px;
+      left: 12px;
+      bottom: 12px;
       z-index: 4;
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 10px 12px;
-      font-size: 10px;
-      color: var(--muted);
       line-height: 1.45;
+      color: var(--muted);
+      font-size: 10px;
       font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
       pointer-events: none;
+      max-width: 360px;
     }
-    .legend-row { display: flex; align-items: center; gap: 7px; margin-top: 4px; }
+
+    .legend-row { margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       display: inline-block;
-      box-shadow: 0 0 10px currentColor;
+      box-shadow: 0 0 9px currentColor;
     }
-    .dot.heat { color: #ff8d5a; background: #ff8d5a; }
-    .dot.gravity { color: #72d4ff; background: #72d4ff; }
-    .dot.coll { color: #b5c2ff; background: #b5c2ff; }
-    .dot.disc { color: #89ffb0; background: #89ffb0; }
+
+    .dot.discovery { color: #88f1c8; background: #88f1c8; }
+    .dot.proposal { color: #a9c6ff; background: #a9c6ff; }
+    .dot.approved { color: #ffd67f; background: #ffd67f; }
+    .dot.knowledge { color: #ffb48f; background: #ffb48f; }
 
     .panel {
       position: absolute;
-      right: 14px;
-      top: 14px;
-      bottom: 14px;
-      width: min(360px, calc(100vw - 28px));
+      top: 12px;
+      right: 12px;
+      bottom: 12px;
+      width: min(390px, calc(100vw - 24px));
       background: var(--panel-strong);
       border: 1px solid var(--line);
       border-radius: 14px;
-      box-shadow: 0 22px 46px rgba(0, 0, 0, 0.46);
       backdrop-filter: blur(12px);
-      padding: 14px;
-      overflow: auto;
+      box-shadow: 0 20px 46px rgba(0, 0, 0, 0.45);
       z-index: 4;
+      overflow: auto;
+      padding: 14px;
     }
-    .panel h2 {
-      margin: 0;
-      font-size: 14px;
-      color: var(--accent);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-    .cell-title {
-      margin: 8px 0 10px;
-      font-size: 16px;
-      font-weight: 700;
-    }
-    .meta-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .meta {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.09);
-      border-radius: 9px;
-      padding: 8px;
-    }
-    .meta-k {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-    }
-    .meta-v {
-      margin-top: 4px;
-      font-size: 13px;
-      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-      color: var(--text);
-    }
+
     .section {
-      margin-top: 12px;
       border-top: 1px solid rgba(255, 255, 255, 0.09);
       padding-top: 10px;
+      margin-top: 10px;
     }
+
     .section h3 {
       margin: 0 0 8px;
       font-size: 11px;
@@ -217,91 +207,185 @@
       text-transform: uppercase;
       color: var(--muted);
     }
-    .row {
-      margin-bottom: 7px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 8px;
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.02);
-      font-size: 11px;
-      line-height: 1.42;
-      color: #dce7ff;
+
+    .identity {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
     }
-    .muted { color: var(--muted); }
-    .pill {
-      display: inline-block;
-      margin-right: 6px;
-      margin-bottom: 6px;
-      padding: 3px 8px;
-      border-radius: 99px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      background: rgba(255, 255, 255, 0.03);
-      color: #cddcf5;
-      font-size: 10px;
+
+    .identity-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
       font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
     }
 
-    @media (max-width: 960px) {
+    .grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .cell {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 9px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .cell-k {
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .cell-v {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .row {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 8px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      margin-top: 6px;
+      font-size: 11px;
+      color: #dfebff;
+      line-height: 1.45;
+    }
+
+    .row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .status-chip {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #d8e4ff;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .status-chip.pending { color: #c9daff; border-color: rgba(169, 198, 255, 0.6); }
+    .status-chip.approved { color: #ffe2a0; border-color: rgba(255, 214, 127, 0.62); }
+    .status-chip.denied { color: #ffb0b0; border-color: rgba(255, 127, 127, 0.55); }
+    .status-chip.proposed { color: #b8f2d5; border-color: rgba(136, 241, 200, 0.52); }
+
+    .action-block { margin-top: 6px; }
+    .action-link {
+      display: inline-block;
+      text-decoration: none;
+      border: 1px solid rgba(142, 214, 255, 0.42);
+      border-radius: 7px;
+      padding: 3px 8px;
+      font-size: 10px;
+      color: var(--accent);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      background: rgba(18, 34, 52, 0.55);
+    }
+
+    .action-link:hover {
+      border-color: rgba(142, 214, 255, 0.86);
+      background: rgba(28, 50, 76, 0.7);
+    }
+
+    .row small { color: var(--muted); font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .muted { color: var(--muted); font-size: 11px; }
+
+    .timeline {
+      position: relative;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .timeline li {
+      border-left: 2px solid rgba(255, 255, 255, 0.12);
+      padding: 0 0 10px 10px;
+      margin-left: 4px;
+      font-size: 11px;
+    }
+
+    .timeline li:last-child { padding-bottom: 0; }
+    .timeline strong { display: block; color: var(--text); }
+    .timeline small { color: var(--muted); font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+    @media (max-width: 980px) {
       .panel {
         top: auto;
-        height: 42vh;
-        width: calc(100vw - 28px);
+        height: 45vh;
       }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .hud { right: 14px; }
+      .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
   </style>
 </head>
 <body>
   <div id="app">
-    <div id="scene-wrap"></div>
+    <div id="viewport"></div>
 
     <div class="hud">
       <div class="hud-card">
-        <h1 class="title">CLASHD27 Observatory Cube</h1>
-        <div class="sub" id="status-line">Loading observatory data…</div>
+        <div class="hud-top">
+          <h1 class="hud-title">CLASHD27 Observatory</h1>
+          <span id="health-badge" class="badge">Loading</span>
+        </div>
+        <div id="hud-sub" class="hud-sub">Deep analysis mode. Select a radar signal to inspect causal context.</div>
         <div class="stats">
           <div class="stat"><div class="stat-k">Active Cells</div><div id="stat-active" class="stat-v">0</div></div>
-          <div class="stat"><div class="stat-k">Gravity Wells</div><div id="stat-gravity" class="stat-v">0</div></div>
+          <div class="stat"><div class="stat-k">Discoveries</div><div id="stat-discovery" class="stat-v">0</div></div>
+          <div class="stat"><div class="stat-k">Proposals</div><div id="stat-proposals" class="stat-v">0</div></div>
+          <div class="stat"><div class="stat-k">Knowledge</div><div id="stat-knowledge" class="stat-v">0</div></div>
           <div class="stat"><div class="stat-k">Collisions</div><div id="stat-collisions" class="stat-v">0</div></div>
-          <div class="stat"><div class="stat-k">Discoveries</div><div id="stat-discoveries" class="stat-v">0</div></div>
         </div>
       </div>
       <button id="refresh-btn" class="btn" type="button">Refresh</button>
     </div>
 
-    <aside class="panel" id="context-panel">
-      <h2>Node Context</h2>
-      <div class="cell-title" id="cell-title">Click any node</div>
-      <div class="meta-grid" id="meta-grid"></div>
+    <aside class="panel">
+      <h2 class="identity" id="node-identity">Node not selected</h2>
+      <div class="identity-sub" id="node-axes">Select a cube node to focus the radar.</div>
+      <div class="identity-sub" id="handoff-note"></div>
+
+      <div class="grid" id="identity-grid"></div>
 
       <div class="section">
-        <h3>Axis Signature</h3>
-        <div id="axis-pills"></div>
+        <h3>Activity</h3>
+        <div id="activity-list" class="muted">No activity selected.</div>
+        <div id="timeline-list" class="muted" style="margin-top:8px;">No timeline available.</div>
       </div>
 
       <div class="section">
-        <h3>Collision Highlights</h3>
-        <div id="collision-list" class="muted">No collisions selected.</div>
+        <h3>Impact</h3>
+        <div id="impact-list" class="muted">No impact data selected.</div>
       </div>
 
       <div class="section">
-        <h3>Discovery Glow</h3>
-        <div id="discovery-list" class="muted">No discovery candidates selected.</div>
-      </div>
-
-      <div class="section">
-        <h3>Cube Papers</h3>
-        <div id="paper-list" class="muted">No paper snapshot available.</div>
+        <h3>Evidence</h3>
+        <div id="evidence-list" class="muted">No evidence data selected.</div>
       </div>
     </aside>
 
     <div class="legend">
-      <div>Drag to orbit. Scroll to zoom. Click node for context.</div>
-      <div class="legend-row"><span class="dot heat"></span><span>Heat state intensity</span></div>
-      <div class="legend-row"><span class="dot gravity"></span><span>Gravity rings (well pull)</span></div>
-      <div class="legend-row"><span class="dot coll"></span><span>Collision lines</span></div>
-      <div class="legend-row"><span class="dot disc"></span><span>Discovery glow</span></div>
+      <div>Calm mode: low motion, stable 15s refresh, focus highlights relationships.</div>
+      <div class="legend-row"><span class="dot discovery"></span><span>Discovery: soft glow</span></div>
+      <div class="legend-row"><span class="dot proposal"></span><span>Proposal: thin halo</span></div>
+      <div class="legend-row"><span class="dot approved"></span><span>Knowledge created: stable ring</span></div>
+      <div class="legend-row"><span class="dot knowledge"></span><span>Focused relationships: subtle links</span></div>
     </div>
   </div>
 
@@ -313,67 +397,74 @@
     const AXIS_WHERE = ['internal', 'external', 'engine'];
     const AXIS_TIME = ['historical', 'current', 'emerging'];
 
-    const statusLine = document.getElementById('status-line');
-    const refreshBtn = document.getElementById('refresh-btn');
+    const healthBadge = document.getElementById('health-badge');
+    const hudSub = document.getElementById('hud-sub');
     const statActive = document.getElementById('stat-active');
-    const statGravity = document.getElementById('stat-gravity');
+    const statDiscovery = document.getElementById('stat-discovery');
+    const statProposals = document.getElementById('stat-proposals');
+    const statKnowledge = document.getElementById('stat-knowledge');
     const statCollisions = document.getElementById('stat-collisions');
-    const statDiscoveries = document.getElementById('stat-discoveries');
-    const contextTitle = document.getElementById('cell-title');
-    const metaGrid = document.getElementById('meta-grid');
-    const axisPills = document.getElementById('axis-pills');
-    const collisionList = document.getElementById('collision-list');
-    const discoveryList = document.getElementById('discovery-list');
-    const paperList = document.getElementById('paper-list');
+    const refreshBtn = document.getElementById('refresh-btn');
 
-    const sceneWrap = document.getElementById('scene-wrap');
+    const nodeIdentity = document.getElementById('node-identity');
+    const nodeAxes = document.getElementById('node-axes');
+    const handoffNote = document.getElementById('handoff-note');
+    const identityGrid = document.getElementById('identity-grid');
+    const activityList = document.getElementById('activity-list');
+    const impactList = document.getElementById('impact-list');
+    const evidenceList = document.getElementById('evidence-list');
+    const timelineList = document.getElementById('timeline-list');
+
+    const state = {
+      selectedCellId: 13,
+      lastSuccessAt: null,
+      health: 'loading',
+      model: null,
+      previousModel: null,
+      jeevesApprovalUrl: 'jeeves://approval',
+      radarContext: null
+    };
+
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x050913, 9, 23);
+    scene.fog = new THREE.Fog(0x070a11, 11, 24);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    sceneWrap.appendChild(renderer.domElement);
+    document.getElementById('viewport').appendChild(renderer.domElement);
 
     const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(5.6, 4.8, 8.4);
+    camera.position.set(6.2, 5.1, 8.8);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.minDistance = 4.5;
     controls.maxDistance = 16;
-    controls.minDistance = 4.3;
-    controls.target.set(0, 0, 0);
+    controls.autoRotate = false;
 
-    const ambient = new THREE.AmbientLight(0x7ea4ff, 0.44);
+    const ambient = new THREE.AmbientLight(0x8fa3ce, 0.44);
     scene.add(ambient);
 
-    const key = new THREE.PointLight(0x96d2ff, 1.2, 50, 2.2);
+    const key = new THREE.PointLight(0x8ac8ff, 1.0, 48, 2.0);
     key.position.set(6, 8, 9);
     scene.add(key);
 
-    const rim = new THREE.PointLight(0xff8457, 0.74, 30, 1.9);
-    rim.position.set(-7, -3, -8);
+    const rim = new THREE.PointLight(0xff9e72, 0.52, 30, 2.0);
+    rim.position.set(-7, -4, -8);
     scene.add(rim);
 
     const cubeGroup = new THREE.Group();
     scene.add(cubeGroup);
 
-    const nodeMeshes = [];
-    const ringMeshes = [];
-    const glowMeshes = [];
-    const nodeById = new Map();
-    const collisionLinesGroup = new THREE.Group();
-    cubeGroup.add(collisionLinesGroup);
-
-    const collisionMaterials = [];
-    const ringPulse = [];
-
-    const baseSphere = new THREE.SphereGeometry(0.21, 24, 24);
-    const baseRing = new THREE.TorusGeometry(0.34, 0.014, 10, 64);
-    const baseGlow = new THREE.SphereGeometry(0.31, 20, 20);
-
     const gridSpacing = 1.4;
+    const nodeVisuals = [];
+    const nodeById = new Map();
+
+    const collisionsGroup = new THREE.Group();
+    const relationshipGroup = new THREE.Group();
+    cubeGroup.add(collisionsGroup);
+    cubeGroup.add(relationshipGroup);
 
     function cellToCoords(cellId) {
       const a = cellId % 3;
@@ -382,9 +473,13 @@
       return { a, b, c };
     }
 
-    function cellAxes(cellId) {
+    function cellToAxes(cellId) {
       const { a, b, c } = cellToCoords(cellId);
-      return { what: AXIS_WHAT[a], where: AXIS_WHERE[b], time: AXIS_TIME[c] };
+      return {
+        what: AXIS_WHAT[a],
+        where: AXIS_WHERE[b],
+        time: AXIS_TIME[c]
+      };
     }
 
     function cellPosition(cellId) {
@@ -396,11 +491,17 @@
       );
     }
 
-    function addFieldBackdrop() {
-      const points = new THREE.BufferGeometry();
+    function buildScaffold() {
+      const frameGeom = new THREE.BoxGeometry(gridSpacing * 2.2, gridSpacing * 2.2, gridSpacing * 2.2);
+      const frame = new THREE.LineSegments(
+        new THREE.EdgesGeometry(frameGeom),
+        new THREE.LineBasicMaterial({ color: 0x2f415d, transparent: true, opacity: 0.42 })
+      );
+      cubeGroup.add(frame);
+
       const stars = [];
-      for (let i = 0; i < 650; i += 1) {
-        const r = 24 * Math.random();
+      for (let i = 0; i < 540; i += 1) {
+        const r = 22 * Math.random();
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos((Math.random() * 2) - 1);
         stars.push(
@@ -409,422 +510,993 @@
           r * Math.cos(phi)
         );
       }
-      points.setAttribute('position', new THREE.Float32BufferAttribute(stars, 3));
-      const mat = new THREE.PointsMaterial({
-        size: 0.03,
-        color: 0x7e9fcf,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false
-      });
-      const cloud = new THREE.Points(points, mat);
-      scene.add(cloud);
-    }
-
-    function addGridScaffold() {
-      const box = new THREE.BoxGeometry(gridSpacing * 2.2, gridSpacing * 2.2, gridSpacing * 2.2);
-      const wire = new THREE.EdgesGeometry(box);
-      const line = new THREE.LineSegments(wire, new THREE.LineBasicMaterial({
-        color: 0x2f4268,
-        transparent: true,
-        opacity: 0.42
-      }));
-      cubeGroup.add(line);
+      const bgGeom = new THREE.BufferGeometry();
+      bgGeom.setAttribute('position', new THREE.Float32BufferAttribute(stars, 3));
+      const bg = new THREE.Points(
+        bgGeom,
+        new THREE.PointsMaterial({ size: 0.03, color: 0x7f95b8, transparent: true, opacity: 0.32, depthWrite: false })
+      );
+      scene.add(bg);
     }
 
     function buildNodes() {
+      const sphereGeom = new THREE.SphereGeometry(0.21, 24, 24);
+      const densityGeom = new THREE.SphereGeometry(0.38, 18, 18);
+      const ringGeom = new THREE.TorusGeometry(0.34, 0.011, 8, 48);
+      const stableRingGeom = new THREE.TorusGeometry(0.29, 0.014, 10, 56);
+      const coreGeom = new THREE.SphereGeometry(0.09, 16, 16);
+      const glowGeom = new THREE.SphereGeometry(0.31, 18, 18);
+
       for (let cellId = 0; cellId < 27; cellId += 1) {
-        const material = new THREE.MeshStandardMaterial({
-          color: 0x2f496f,
-          emissive: 0x0d1d2d,
-          emissiveIntensity: 0.2,
-          metalness: 0.5,
-          roughness: 0.33
-        });
+        const p = cellPosition(cellId);
 
-        const sphere = new THREE.Mesh(baseSphere, material);
-        sphere.position.copy(cellPosition(cellId));
-        sphere.userData = { cellId };
+        const density = new THREE.Mesh(
+          densityGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0x7ea1db,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        density.position.copy(p);
 
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: 0x72d4ff,
-          transparent: true,
-          opacity: 0,
-          side: THREE.DoubleSide,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false
-        });
-        const ring = new THREE.Mesh(baseRing, ringMat);
-        ring.position.copy(sphere.position);
-        ring.rotation.x = Math.PI / 2;
-        ring.visible = false;
+        const node = new THREE.Mesh(
+          sphereGeom,
+          new THREE.MeshStandardMaterial({
+            color: 0x2f476a,
+            emissive: 0x122233,
+            emissiveIntensity: 0.2,
+            metalness: 0.45,
+            roughness: 0.35,
+            transparent: true,
+            opacity: 1
+          })
+        );
+        node.position.copy(p);
+        node.userData = { cellId };
 
-        const glowMat = new THREE.MeshBasicMaterial({
-          color: 0x89ffb0,
-          transparent: true,
-          opacity: 0,
-          side: THREE.DoubleSide,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false
-        });
-        const glow = new THREE.Mesh(baseGlow, glowMat);
-        glow.position.copy(sphere.position);
-        glow.visible = false;
+        const discoveryGlow = new THREE.Mesh(
+          glowGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0x88f1c8,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        discoveryGlow.position.copy(p);
+        discoveryGlow.visible = false;
 
-        cubeGroup.add(sphere);
-        cubeGroup.add(ring);
-        cubeGroup.add(glow);
+        const proposalHalo = new THREE.Mesh(
+          ringGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0xa9c6ff,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        proposalHalo.position.copy(p);
+        proposalHalo.rotation.x = Math.PI / 2;
+        proposalHalo.visible = false;
 
-        nodeMeshes.push(sphere);
-        ringMeshes.push(ring);
-        glowMeshes.push(glow);
-        nodeById.set(cellId, sphere);
-        ringPulse.push(0.2 + Math.random() * 0.8);
+        const approvedRing = new THREE.Mesh(
+          stableRingGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0xffd67f,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        approvedRing.position.copy(p);
+        approvedRing.rotation.y = Math.PI / 2;
+        approvedRing.visible = false;
+
+        const gravityRing = new THREE.Mesh(
+          ringGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0x8fdcff,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        gravityRing.position.copy(p);
+        gravityRing.rotation.x = Math.PI / 2;
+        gravityRing.visible = false;
+
+        const knowledgeCore = new THREE.Mesh(
+          coreGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0xffb48f,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        knowledgeCore.position.copy(p);
+        knowledgeCore.visible = false;
+
+        cubeGroup.add(density, discoveryGlow, proposalHalo, approvedRing, gravityRing, node, knowledgeCore);
+
+        const visual = {
+          cellId,
+          node,
+          density,
+          discoveryGlow,
+          proposalHalo,
+          approvedRing,
+          gravityRing,
+          knowledgeCore,
+          pulseSeed: Math.random() * Math.PI * 2
+        };
+        nodeVisuals.push(visual);
+        nodeById.set(cellId, visual);
       }
-    }
-
-    addFieldBackdrop();
-    addGridScaffold();
-    buildNodes();
-
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    const state = {
-      generatedAt: null,
-      heatByCell: {},
-      gravityByCell: {},
-      collisions: [],
-      discoveries: [],
-      cubeCells: {},
-      strongestCell: null,
-      selectedCellId: null
-    };
-
-    function lerpColor(hexA, hexB, t) {
-      const a = new THREE.Color(hexA);
-      const b = new THREE.Color(hexB);
-      return a.lerp(b, Math.max(0, Math.min(1, t)));
     }
 
     function colorFromHeat(heat) {
-      if (heat <= 0.25) return lerpColor(0x24456f, 0x4f70c2, heat / 0.25);
-      if (heat <= 0.6) return lerpColor(0x4f70c2, 0x6ac8f5, (heat - 0.25) / 0.35);
-      return lerpColor(0x6ac8f5, 0xff8d5a, (heat - 0.6) / 0.4);
+      const t = Math.max(0, Math.min(1, heat || 0));
+      const cool = new THREE.Color(0x2f476a);
+      const warm = new THREE.Color(0xff9f70);
+      return cool.lerp(warm, t);
     }
 
-    function getDiscoveryGlowScores() {
-      const map = {};
-      for (const d of state.discoveries) {
-        const score = Number(d.candidateScore || d.emergenceScore || 0);
-        for (const cellId of Array.isArray(d.cells) ? d.cells : []) {
-          map[cellId] = Math.max(map[cellId] || 0, score);
-        }
-      }
-      return map;
-    }
-
-    function rebuildCollisionLines() {
-      for (const child of [...collisionLinesGroup.children]) {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
-        collisionLinesGroup.remove(child);
-      }
-      collisionMaterials.length = 0;
-
-      const unique = new Set();
-      for (const col of state.collisions.slice(0, 20)) {
-        const cells = Array.isArray(col.cells) ? col.cells : [];
-        if (cells.length < 2) continue;
-        const key = [cells[0], cells[1]].sort((a, b) => a - b).join(':');
-        if (unique.has(key)) continue;
-        unique.add(key);
-
-        const a = nodeById.get(cells[0]);
-        const b = nodeById.get(cells[1]);
-        if (!a || !b) continue;
-
-        const points = [a.position.clone(), b.position.clone()];
-        const geom = new THREE.BufferGeometry().setFromPoints(points);
-        const mat = new THREE.LineBasicMaterial({
-          color: 0xb5c2ff,
-          transparent: true,
-          opacity: 0.22,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false
-        });
-        const line = new THREE.Line(geom, mat);
-        collisionLinesGroup.add(line);
-        collisionMaterials.push(mat);
-      }
-    }
-
-    function renderContextPanel() {
-      const id = state.selectedCellId;
-      if (!Number.isInteger(id)) {
-        contextTitle.textContent = 'Click any node';
-        metaGrid.innerHTML = '';
-        axisPills.innerHTML = '<span class="muted">No node selected.</span>';
-        collisionList.innerHTML = '<div class="muted">No collisions selected.</div>';
-        discoveryList.innerHTML = '<div class="muted">No discovery candidates selected.</div>';
-        paperList.innerHTML = '<div class="muted">No paper snapshot selected.</div>';
-        return;
-      }
-
-      const axes = cellAxes(id);
-      const heat = Number(state.heatByCell[id] || 0);
-      const gravity = state.gravityByCell[id] || null;
-      const collisions = state.collisions.filter(c => (c.cells || []).includes(id)).slice(0, 6);
-      const discoveries = state.discoveries.filter(d => (d.cells || []).includes(id)).slice(0, 6);
-      const cellInfo = state.cubeCells[String(id)] || null;
-
-      contextTitle.textContent = `Cell ${id} · ${axes.what}/${axes.where}/${axes.time}`;
-      const paperCount = cellInfo && Number.isFinite(cellInfo.paperCount) ? cellInfo.paperCount : 0;
-
-      metaGrid.innerHTML = [
-        ['Heat', heat.toFixed(3)],
-        ['Papers', String(paperCount)],
-        ['Gravity Mass', gravity ? Number(gravity.gravityMass || 0).toFixed(3) : '0.000'],
-        ['Pull Strength', gravity ? Number(gravity.pullStrength || 0).toFixed(5) : '0.00000']
-      ].map(([k, v]) => `
-        <div class="meta">
-          <div class="meta-k">${k}</div>
-          <div class="meta-v">${v}</div>
-        </div>
-      `).join('');
-
-      axisPills.innerHTML = `
-        <span class="pill">what:${axes.what}</span>
-        <span class="pill">where:${axes.where}</span>
-        <span class="pill">time:${axes.time}</span>
-      `;
-
-      if (collisions.length === 0) {
-        collisionList.innerHTML = '<div class="muted">No active collisions for this node.</div>';
-      } else {
-        collisionList.innerHTML = collisions.map(c => {
-          const others = (c.cells || []).filter(v => v !== id).join(', ') || String(id);
-          return `<div class="row">cells ${others} · emergence ${(c.emergenceScore || 0).toFixed(3)} · density ${(c.density || 0).toFixed(3)}</div>`;
-        }).join('');
-      }
-
-      if (discoveries.length === 0) {
-        discoveryList.innerHTML = '<div class="muted">No discovery candidates include this node.</div>';
-      } else {
-        discoveryList.innerHTML = discoveries.map(d => {
-          const summary = (d.explanation || d.candidateId || d.id || 'candidate').toString();
-          const txt = summary.length > 140 ? `${summary.slice(0, 139)}…` : summary;
-          return `<div class="row">score ${(d.candidateScore || 0).toFixed(3)} · ${txt}</div>`;
-        }).join('');
-      }
-
-      if (!cellInfo) {
-        paperList.innerHTML = '<div class="muted">No paper-level cube data for this cell.</div>';
-      } else {
-        const topPapers = Array.isArray(cellInfo.topPapers) ? cellInfo.topPapers.slice(0, 3) : [];
-        const srcCounts = Object.entries(cellInfo.sourceCounts || {});
-        const sourceRows = srcCounts.length > 0
-          ? `<div class="row">sources: ${srcCounts.map(([k, v]) => `${k}:${v}`).join(' · ')}</div>`
-          : '';
-        const paperRows = topPapers.map(p => {
-          const title = (p.title || 'untitled').toString();
-          const trimmed = title.length > 88 ? `${title.slice(0, 87)}…` : title;
-          return `<div class="row">${trimmed}<div class="muted">${p.year || 'n/a'} · cites ${p.citationCount || 0} · ${p.source || 'unknown'}</div></div>`;
-        }).join('');
-        paperList.innerHTML = `${sourceRows}${paperRows || '<div class="muted">No top papers recorded.</div>'}`;
-      }
-    }
-
-    function applyVisualState() {
-      const discoveryScores = getDiscoveryGlowScores();
-      const selected = state.selectedCellId;
-
-      for (let i = 0; i < 27; i += 1) {
-        const sphere = nodeMeshes[i];
-        const ring = ringMeshes[i];
-        const glow = glowMeshes[i];
-        const heat = Number(state.heatByCell[i] || 0);
-        const gravity = state.gravityByCell[i] || null;
-        const discovery = Number(discoveryScores[i] || 0);
-
-        const c = colorFromHeat(heat);
-        sphere.material.color.copy(c);
-        sphere.material.emissive.copy(c.clone().multiplyScalar(0.43));
-        sphere.material.emissiveIntensity = 0.14 + (heat * 0.85);
-
-        const baseScale = 1 + (heat * 0.5);
-        const selectedScale = selected === i ? 1.2 : 1;
-        sphere.scale.setScalar(baseScale * selectedScale);
-
-        if (gravity) {
-          ring.visible = true;
-          const mass = Number(gravity.gravityMass || 0);
-          const pull = Number(gravity.pullStrength || 0);
-          const s = 1 + Math.min(0.7, mass * 0.09);
-          ring.scale.set(s, s, s);
-          ring.material.opacity = 0.25 + Math.min(0.5, pull * 7);
-        } else {
-          ring.visible = false;
-          ring.material.opacity = 0;
-        }
-
-        if (discovery > 0) {
-          glow.visible = true;
-          glow.material.opacity = 0.12 + Math.min(0.33, discovery * 0.4);
-          const gs = 1 + Math.min(0.85, discovery * 0.7);
-          glow.scale.set(gs, gs, gs);
-        } else {
-          glow.visible = false;
-          glow.material.opacity = 0;
-        }
-      }
-
-      rebuildCollisionLines();
-      renderContextPanel();
-
-      const activeCells = Object.values(state.heatByCell).filter(v => Number(v || 0) >= 0.08).length;
-      statActive.textContent = String(activeCells);
-      statGravity.textContent = String(Object.keys(state.gravityByCell).length);
-      statCollisions.textContent = String(state.collisions.length);
-      statDiscoveries.textContent = String(state.discoveries.length);
-    }
-
-    async function fetchJson(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status} @ ${url}`);
-      return res.json();
-    }
-
-    function normalizeHeatmap(emergence) {
-      const byCell = {};
-
+    function parseHeatmap(emergence) {
+      const out = {};
       if (Array.isArray(emergence.topCells)) {
         for (const item of emergence.topCells) {
-          if (Number.isInteger(item.cellId)) byCell[item.cellId] = Number(item.score || 0);
+          if (Number.isInteger(item.cellId)) out[item.cellId] = Number(item.score || 0);
         }
       }
-
       if (Array.isArray(emergence.heatmap)) {
         for (const layer of emergence.heatmap) {
-          for (const row of layer.rows || []) {
-            for (const item of row || []) {
-              if (Number.isInteger(item.cellId) && byCell[item.cellId] === undefined) {
-                byCell[item.cellId] = Number(item.score || 0);
+          for (const row of (layer.rows || [])) {
+            for (const cell of row || []) {
+              if (Number.isInteger(cell.cellId) && out[cell.cellId] === undefined) {
+                out[cell.cellId] = Number(cell.score || 0);
               }
             }
           }
         }
       }
-
       for (let i = 0; i < 27; i += 1) {
-        if (byCell[i] === undefined) byCell[i] = 0;
+        if (out[i] === undefined) out[i] = 0;
       }
-      return byCell;
+      return out;
     }
 
-    function normalizeDiscoveries(feed) {
-      const fromCandidates = feed?.discovery?.candidates;
-      if (Array.isArray(fromCandidates) && fromCandidates.length > 0) {
-        return fromCandidates.map(c => ({
+    function parseDiscoveries(feed) {
+      const candidates = feed?.discovery?.candidates;
+      if (Array.isArray(candidates) && candidates.length > 0) {
+        return candidates.map(c => ({
           id: c.id,
           candidateId: c.id,
-          cells: c.cells || [],
-          candidateScore: Number(c.candidateScore || 0),
-          explanation: c.explanation || ''
+          cells: Array.isArray(c.cells) ? c.cells : [],
+          score: Number(c.candidateScore || 0),
+          explanation: String(c.explanation || ''),
+          timestamp: c.timestamp || feed.timestamp || new Date().toISOString()
         }));
       }
-
-      const fromEvents = feed?.discovery?.candidateEvents;
-      if (Array.isArray(fromEvents)) {
-        return fromEvents.map(e => ({
-          id: e.candidateId,
-          candidateId: e.candidateId,
-          cells: e.cells || [],
-          candidateScore: Number(e.candidateScore || 0),
-          explanation: e.explanation || ''
+      const events = feed?.discovery?.candidateEvents;
+      if (Array.isArray(events)) {
+        return events.map(c => ({
+          id: c.candidateId,
+          candidateId: c.candidateId,
+          cells: Array.isArray(c.cells) ? c.cells : [],
+          score: Number(c.candidateScore || 0),
+          explanation: String(c.explanation || ''),
+          timestamp: c.timestamp || feed.timestamp || new Date().toISOString()
         }));
       }
-
       return [];
     }
 
-    async function loadData() {
-      const t0 = performance.now();
-      statusLine.textContent = 'Refreshing observatory stream…';
+    function objectCandidateIds(obj) {
+      const ids = new Set();
+      if (!obj || typeof obj !== 'object') return ids;
+
+      if (obj.parentCandidateId) ids.add(String(obj.parentCandidateId));
+      for (const id of (obj.relatedCandidateIds || [])) {
+        if (id) ids.add(String(id));
+      }
+
+      const m = obj.metadata || {};
+      if (m.candidateId) ids.add(String(m.candidateId));
+      if (m.parentCandidateId) ids.add(String(m.parentCandidateId));
+
+      for (const ref of (obj.sourceRefs || [])) {
+        if (ref && ref.sourceType === 'candidate' && ref.sourceId) ids.add(String(ref.sourceId));
+      }
+
+      return ids;
+    }
+
+    function objectCellsFallback(obj) {
+      const out = [];
+      const primary = obj?.metadata?.primaryCells || obj?.primaryCells || [];
+      for (const item of primary) {
+        if (Number.isInteger(item?.cellId) && item.cellId >= 0 && item.cellId < 27) {
+          out.push(item.cellId);
+        }
+      }
+      return out;
+    }
+
+    function toShortText(value, max = 140) {
+      const text = String(value || '').replace(/\s+/g, ' ').trim();
+      if (text.length <= max) return text;
+      return `${text.slice(0, max - 1)}...`;
+    }
+
+    function hasIntersection(a, b) {
+      const set = new Set((a || []).map(v => String(v)));
+      for (const value of (b || [])) {
+        if (set.has(String(value))) return true;
+      }
+      return false;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function statusClass(status) {
+      const s = String(status || 'proposed').toLowerCase();
+      if (s === 'approved') return 'approved';
+      if (s === 'denied') return 'denied';
+      if (s === 'pending') return 'pending';
+      return 'proposed';
+    }
+
+    function statusLabel(status) {
+      const s = String(status || 'proposed').toLowerCase();
+      if (s === 'approved') return 'Approved';
+      if (s === 'denied') return 'Denied';
+      if (s === 'pending') return 'Pending';
+      return 'Proposed';
+    }
+
+    function buildJeevesReviewUrl(item, selectedCell, axes) {
+      const base = String(state.jeevesApprovalUrl || '').trim();
+      if (!base) return '';
 
       try {
-        const [emergence, discoveryFeed, cube] = await Promise.all([
-          fetchJson('/api/clashd27/emergence'),
-          fetchJson('/api/clashd27/discovery-feed?signalLimit=120'),
-          fetchJson('/api/cube')
-        ]);
+        const url = new URL(base, window.location.origin);
+        const candidateId = (item.candidateIds && item.candidateIds[0]) || item.candidateId || '';
+        const candidateScore = Number(item.candidateScore || 0);
 
-        state.generatedAt = new Date().toISOString();
-        state.heatByCell = normalizeHeatmap(emergence || {});
-
-        const gravityMap = {};
-        for (const g of (emergence.gravityWells || [])) {
-          if (Number.isInteger(g.cellId)) gravityMap[g.cellId] = g;
+        if (item.proposalId || item.id) {
+          url.searchParams.set('proposalId', item.proposalId || item.id);
         }
-        state.gravityByCell = gravityMap;
+        if (candidateId) url.searchParams.set('candidateId', candidateId);
+        if (Number.isInteger(selectedCell)) url.searchParams.set('originCell', String(selectedCell));
+        if (axes && axes.what) url.searchParams.set('what', axes.what);
+        if (axes && axes.where) url.searchParams.set('where', axes.where);
+        if (axes && axes.time) url.searchParams.set('time', axes.time);
+        if (candidateScore > 0) url.searchParams.set('candidateScore', candidateScore.toFixed(3));
 
-        state.collisions = Array.isArray(emergence.collisions) ? emergence.collisions : [];
-        state.discoveries = normalizeDiscoveries(discoveryFeed);
-        state.strongestCell = emergence.strongestCell || null;
-        state.cubeCells = cube && cube.cells ? cube.cells : {};
+        if (item.id && String(item.id).startsWith('prop-')) {
+          const contextUrl = `${window.location.origin}/api/clashd27/proposals/${encodeURIComponent(item.id)}/observatory-context`;
+          url.searchParams.set('contextUrl', contextUrl);
+        }
 
-        applyVisualState();
-
-        const strongest = state.strongestCell && Number.isInteger(state.strongestCell.cellId)
-          ? ` · strongest cell ${state.strongestCell.cellId}`
-          : '';
-        const ms = Math.round(performance.now() - t0);
-        statusLine.textContent = `Live · refreshed ${new Date().toLocaleTimeString()} (${ms}ms)${strongest}`;
-      } catch (err) {
-        statusLine.textContent = `Refresh failed: ${err.message}`;
+        url.searchParams.set('source', 'clashd27-observatory');
+        return url.toString();
+      } catch (_) {
+        return '';
       }
     }
 
-    function handlePointerDown(event) {
+    function reviewActionMarkup(item, selectedCell, axes) {
+      const href = buildJeevesReviewUrl(item, selectedCell, axes);
+      if (!href) return '';
+      return `<div class=\"action-block\"><a class=\"action-link\" href=\"${escapeHtml(href)}\" target=\"_blank\" rel=\"noopener\">Review in Jeeves →</a></div>`;
+    }
+
+    function parseCellFromAny(value) {
+      const n = parseInt(value, 10);
+      if (Number.isInteger(n) && n >= 0 && n < 27) return n;
+      return null;
+    }
+
+    function consumeRadarContext(input) {
+      if (!input || typeof input !== 'object') return;
+      const context = {
+        source: String(input.source || 'jeeves-radar'),
+        proposalId: input.proposalId ? String(input.proposalId) : '',
+        candidateId: input.candidateId ? String(input.candidateId) : '',
+        candidateScore: Number(input.candidateScore || 0),
+        originCell: parseCellFromAny(input.originCell ?? input.cell ?? input.cellId),
+        what: input.what ? String(input.what) : '',
+        where: input.where ? String(input.where) : '',
+        time: input.time ? String(input.time) : ''
+      };
+      state.radarContext = context;
+      if (Number.isInteger(context.originCell)) {
+        state.selectedCellId = context.originCell;
+      }
+    }
+
+    function buildRadarModel(emergence, feed, cube, knowledgeObjects, governanceProposals) {
+      const heatByCell = parseHeatmap(emergence || {});
+      const collisions = Array.isArray(emergence?.collisions) ? emergence.collisions : [];
+      const gravity = Array.isArray(emergence?.gravityWells) ? emergence.gravityWells : [];
+      const discoveries = parseDiscoveries(feed || {});
+
+      const candidateCells = new Map();
+      const discoveriesByCandidate = new Map();
+      for (const d of discoveries) {
+        const key = String(d.candidateId || d.id || '');
+        if (!key) continue;
+        candidateCells.set(key, d.cells || []);
+        if (!discoveriesByCandidate.has(key)) discoveriesByCandidate.set(key, []);
+        discoveriesByCandidate.get(key).push(d);
+      }
+
+      const proposals = [];
+      const approved = [];
+      const knowledge = [];
+      const proposalCellsById = new Map();
+
+      for (const p of governanceProposals || []) {
+        const payload = p?.intent?.payload || {};
+        const candidateId = payload.candidateId ? String(payload.candidateId) : null;
+        const primaryCells = Array.isArray(payload.primaryCells)
+          ? payload.primaryCells.map(c => c && c.cellId).filter(v => Number.isInteger(v))
+          : [];
+        let cells = Array.isArray(payload.cells) ? payload.cells.filter(v => Number.isInteger(v)) : [];
+        if (cells.length === 0) cells = primaryCells;
+        if (cells.length === 0 && candidateId && candidateCells.has(candidateId)) {
+          cells = candidateCells.get(candidateId) || [];
+        }
+        cells = [...new Set(cells.filter(v => Number.isInteger(v) && v >= 0 && v < 27))];
+
+        const originCell = cells.length > 0 ? cells[0] : null;
+        const axes = payload.axes && payload.axes[0]
+          ? payload.axes[0]
+          : (Number.isInteger(originCell) ? cellToAxes(originCell) : null);
+
+        const item = {
+          id: p.id,
+          proposalId: p.id,
+          source: 'governance',
+          kind: 'proposal',
+          status: String(p.status || 'pending').toLowerCase(),
+          title: p.title || '',
+          summary: p.priorityExplanation || '',
+          timestamp: p.createdAtIso || new Date().toISOString(),
+          candidateIds: candidateId ? [candidateId] : [],
+          candidateScore: Number(payload.candidateScore || 0),
+          evidenceRefs: Array.isArray(payload.evidenceRefs) ? payload.evidenceRefs.slice(0, 5) : [],
+          cells,
+          originCell,
+          axes
+        };
+
+        if (item.proposalId && cells.length > 0) proposalCellsById.set(item.proposalId, cells);
+        if (item.status === 'approved') approved.push(item);
+        else proposals.push(item);
+      }
+
+      for (const obj of knowledgeObjects || []) {
+        const kind = String(obj.kind || '').toLowerCase();
+        const metadata = obj.metadata || {};
+        const candidateIds = [...objectCandidateIds(obj)];
+        const proposalRef = (obj.sourceRefs || []).find(r => r && r.sourceType === 'proposal' && r.sourceId);
+        const proposalId = metadata.proposalId || (proposalRef ? proposalRef.sourceId : null);
+
+        let cells = [];
+        for (const cid of candidateIds) {
+          const found = candidateCells.get(String(cid));
+          if (Array.isArray(found)) cells.push(...found);
+        }
+        if (cells.length === 0 && proposalId && proposalCellsById.has(proposalId)) {
+          cells.push(...(proposalCellsById.get(proposalId) || []));
+        }
+        if (cells.length === 0) cells = objectCellsFallback(obj);
+        cells = [...new Set(cells.filter(v => Number.isInteger(v) && v >= 0 && v < 27))];
+
+        const originCell = cells.length > 0 ? cells[0] : null;
+        const axes = metadata.axes && metadata.axes[0]
+          ? metadata.axes[0]
+          : (Number.isInteger(originCell) ? cellToAxes(originCell) : null);
+
+        const item = {
+          id: obj.objectId || obj.id || `${kind}-${Math.random()}`,
+          proposalId,
+          source: 'knowledge',
+          kind,
+          status: kind === 'extension_proposal' ? 'proposed' : null,
+          title: obj.title || '',
+          summary: obj.summary || '',
+          timestamp: obj.createdAtIso || obj.createdAt || new Date().toISOString(),
+          candidateIds,
+          candidateScore: Number(metadata.candidateScore || 0),
+          evidenceRefs: Array.isArray(obj.sourceRefs) ? obj.sourceRefs.slice(0, 5) : [],
+          cells,
+          originCell,
+          axes,
+          metadata
+        };
+
+        if (kind === 'extension_proposal') proposals.push(item);
+        else if (kind === 'decision' && String(metadata.decision || '').toLowerCase() === 'approved') {
+          item.status = 'approved';
+          approved.push(item);
+        } else {
+          knowledge.push(item);
+        }
+      }
+
+      const nodeSignals = [];
+      for (let i = 0; i < 27; i += 1) {
+        nodeSignals.push({
+          cellId: i,
+          discoveryCount: 0,
+          proposalCount: 0,
+          approvedCount: 0,
+          knowledgeCount: 0,
+          collisionCount: 0,
+          density: 0,
+          links: new Set(),
+          discoveries: [],
+          proposals: [],
+          approved: [],
+          knowledge: [],
+          timeline: []
+        });
+      }
+
+      for (const c of collisions) {
+        const cells = Array.isArray(c.cells) ? c.cells : [];
+        for (const cellId of cells) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].collisionCount += 1;
+          for (const other of cells) {
+            if (other !== cellId) nodeSignals[cellId].links.add(other);
+          }
+        }
+      }
+
+      for (const d of discoveries) {
+        const linked = Array.isArray(d.cells) ? d.cells : [];
+        for (const cellId of linked) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].discoveryCount += 1;
+          nodeSignals[cellId].discoveries.push(d);
+          nodeSignals[cellId].timeline.push({
+            at: d.timestamp,
+            type: 'discovery detected',
+            summary: toShortText(`${d.score.toFixed(3)} | ${d.explanation || d.candidateId}`, 120)
+          });
+          for (const other of linked) {
+            if (other !== cellId) nodeSignals[cellId].links.add(other);
+          }
+        }
+      }
+
+      for (const p of proposals) {
+        for (const cellId of p.cells || []) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].proposalCount += 1;
+          nodeSignals[cellId].proposals.push(p);
+          nodeSignals[cellId].timeline.push({
+            at: p.timestamp,
+            type: 'extension proposed',
+            summary: toShortText(`${statusLabel(p.status)} | ${p.title || p.summary || 'proposal created'}`, 120)
+          });
+        }
+      }
+
+      for (const a of approved) {
+        for (const cellId of a.cells || []) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].approvedCount += 1;
+          nodeSignals[cellId].approved.push(a);
+          nodeSignals[cellId].timeline.push({
+            at: a.timestamp,
+            type: 'extension approved',
+            summary: toShortText(a.title || a.summary || 'approved extension action', 120)
+          });
+        }
+      }
+
+      for (const k of knowledge) {
+        for (const cellId of k.cells || []) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].knowledgeCount += 1;
+          nodeSignals[cellId].knowledge.push(k);
+          nodeSignals[cellId].timeline.push({
+            at: k.timestamp,
+            type: 'knowledge created',
+            summary: toShortText(k.title || k.summary || 'knowledge object recorded', 120)
+          });
+        }
+      }
+
+      let maxDensity = 1;
+      for (const node of nodeSignals) {
+        const gravityNode = gravity.find(g => g.cellId === node.cellId);
+        const gravityWeight = gravityNode ? Number(gravityNode.gravityMass || 0) * 0.35 : 0;
+        node.density =
+          (node.discoveryCount * 1.0) +
+          (node.proposalCount * 1.1) +
+          (node.approvedCount * 1.4) +
+          (node.knowledgeCount * 0.8) +
+          (node.collisionCount * 0.35) +
+          gravityWeight;
+        if (node.density > maxDensity) maxDensity = node.density;
+      }
+
+      for (const node of nodeSignals) {
+        node.densityNorm = Math.max(0, Math.min(1, node.density / maxDensity));
+        node.timeline.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+      }
+
+      const gravityMap = {};
+      for (const g of gravity) {
+        if (Number.isInteger(g.cellId)) gravityMap[g.cellId] = g;
+      }
+
+      return {
+        heatByCell,
+        collisions,
+        discoveries,
+        proposals,
+        approved,
+        knowledge,
+        gravityMap,
+        strongestCell: emergence?.strongestCell || null,
+        cubeCells: cube?.cells || {},
+        nodeSignals,
+        discoveriesByCandidate
+      };
+    }
+
+    function focusSetForCell(cellId, model) {
+      const focus = new Set([cellId]);
+      const node = model.nodeSignals[cellId];
+      for (const link of node.links) focus.add(link);
+      return focus;
+    }
+
+    function clearGroup(group) {
+      for (const child of [...group.children]) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        group.remove(child);
+      }
+    }
+
+    function rebuildCollisionLines(model, selectedCell) {
+      clearGroup(collisionsGroup);
+      const seen = new Set();
+      for (const col of model.collisions.slice(0, 24)) {
+        const cells = Array.isArray(col.cells) ? col.cells : [];
+        if (cells.length < 2) continue;
+        const pair = [cells[0], cells[1]].sort((a, b) => a - b).join(':');
+        if (seen.has(pair)) continue;
+        seen.add(pair);
+
+        const a = nodeById.get(cells[0]);
+        const b = nodeById.get(cells[1]);
+        if (!a || !b) continue;
+
+        const touchesFocus = selectedCell == null ? false : cells.includes(selectedCell);
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([a.node.position, b.node.position]),
+          new THREE.LineBasicMaterial({
+            color: touchesFocus ? 0xd4deff : 0xaebee8,
+            transparent: true,
+            opacity: touchesFocus ? 0.36 : 0.12,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        collisionsGroup.add(line);
+      }
+    }
+
+    function rebuildRelationshipLines(model, selectedCell, focusSet) {
+      clearGroup(relationshipGroup);
+      if (!Number.isInteger(selectedCell)) return;
+
+      const source = nodeById.get(selectedCell);
+      if (!source) return;
+
+      for (const targetCell of focusSet) {
+        if (targetCell === selectedCell) continue;
+        const target = nodeById.get(targetCell);
+        if (!target) continue;
+
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([source.node.position, target.node.position]),
+          new THREE.LineBasicMaterial({
+            color: 0xbecbff,
+            transparent: true,
+            opacity: 0.11,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        relationshipGroup.add(line);
+      }
+    }
+
+    function whyItMatters(node, heat, gravityEntry) {
+      if (node.approvedCount > 0) {
+        return 'This cell already has approved actions and is producing downstream results.';
+      }
+      if (node.proposalCount > 0 && node.discoveryCount > 0) {
+        return 'Discoveries here are translating into concrete extension proposals.';
+      }
+      if (node.discoveryCount > 0 && heat >= 0.4) {
+        return 'Emerging discoveries combined with elevated heat suggest a growing research zone.';
+      }
+      if (gravityEntry && Number(gravityEntry.pullStrength || 0) > 0.003) {
+        return 'Gravity pull indicates nearby signals are converging into this coordinate.';
+      }
+      if (node.knowledgeCount > 0) {
+        return 'Knowledge artifacts are accumulating here, indicating repeatable outcomes.';
+      }
+      return 'No strong chain yet; monitor for new discovery or proposal transitions.';
+    }
+
+    function renderContextPanel(model) {
+      const id = state.selectedCellId;
+      if (!Number.isInteger(id)) {
+        nodeIdentity.textContent = 'Node not selected';
+        nodeAxes.textContent = 'Select a cube node to focus the radar.';
+        handoffNote.textContent = '';
+        identityGrid.innerHTML = '';
+        activityList.textContent = 'No activity selected.';
+        timelineList.textContent = 'No timeline available.';
+        impactList.textContent = 'No impact data selected.';
+        evidenceList.textContent = 'No evidence data selected.';
+        return;
+      }
+
+      const node = model.nodeSignals[id];
+      const axes = cellToAxes(id);
+      const heat = Number(model.heatByCell[id] || 0);
+      const gravityEntry = model.gravityMap[id] || null;
+      const cubeCell = model.cubeCells[String(id)] || null;
+
+      nodeIdentity.textContent = `Node ${id}`;
+      nodeAxes.textContent = `${axes.what} / ${axes.where} / ${axes.time}`;
+      if (state.radarContext && (state.radarContext.proposalId || state.radarContext.candidateId)) {
+        const parts = [];
+        if (state.radarContext.proposalId) parts.push(`proposal ${state.radarContext.proposalId}`);
+        if (state.radarContext.candidateId) parts.push(`candidate ${state.radarContext.candidateId}`);
+        if (state.radarContext.candidateScore > 0) parts.push(`score ${state.radarContext.candidateScore.toFixed(3)}`);
+        handoffNote.textContent = `Radar handoff: ${parts.join(' · ')}`;
+      } else {
+        handoffNote.textContent = '';
+      }
+
+      identityGrid.innerHTML = [
+        ['Heat', heat.toFixed(3)],
+        ['Density', (node.densityNorm || 0).toFixed(3)],
+        ['Gravity', gravityEntry ? Number(gravityEntry.gravityMass || 0).toFixed(3) : '0.000'],
+        ['Pull', gravityEntry ? Number(gravityEntry.pullStrength || 0).toFixed(5) : '0.00000'],
+        ['Discoveries', String(node.discoveryCount)],
+        ['Proposals', String(node.proposalCount)],
+        ['Approved', String(node.approvedCount)],
+        ['Knowledge', String(node.knowledgeCount)]
+      ].map(([k, v]) => `
+        <div class="cell">
+          <div class="cell-k">${k}</div>
+          <div class="cell-v">${v}</div>
+        </div>
+      `).join('');
+
+      const discoveryRows = node.discoveries.slice(0, 4).map(d => {
+        const row = {
+          id: null,
+          candidateId: d.candidateId,
+          candidateIds: [d.candidateId],
+          candidateScore: d.score
+        };
+        return `<div class="row">
+          <div class="row-head">
+            <small>Discovery</small>
+            <span class="status-chip proposed">Detected</span>
+          </div>
+          score ${d.score.toFixed(3)} | ${escapeHtml(toShortText(d.explanation || d.candidateId, 100))}
+          <br><small>linked cells ${(d.cells || []).join(', ') || '-'}</small>
+          ${reviewActionMarkup(row, id, axes)}
+        </div>`;
+      }).join('');
+
+      const proposalRows = node.proposals.slice(0, 4).map(p =>
+        `<div class="row">
+          <div class="row-head">
+            <small>Extension proposal</small>
+            <span class="status-chip ${statusClass(p.status)}">${escapeHtml(statusLabel(p.status))}</span>
+          </div>
+          ${escapeHtml(toShortText(p.title || p.summary || 'proposal', 100))}
+          ${p.candidateScore ? `<br><small>candidate score ${Number(p.candidateScore).toFixed(3)}</small>` : ''}
+          ${reviewActionMarkup(p, id, axes)}
+        </div>`
+      ).join('');
+
+      const approvedRows = node.approved.slice(0, 4).map(a =>
+        `<div class="row">
+          <div class="row-head">
+            <small>Approved extension</small>
+            <span class="status-chip approved">Approved</span>
+          </div>
+          ${escapeHtml(toShortText(a.title || a.summary || 'approved extension', 100))}
+          ${reviewActionMarkup(a, id, axes)}
+        </div>`
+      ).join('');
+
+      activityList.innerHTML =
+        `${discoveryRows || ''}${proposalRows || ''}${approvedRows || ''}` ||
+        '<div class="muted">No discovery/proposal activity for this node.</div>';
+
+      const chainSource = [...node.proposals, ...node.approved];
+      const seenChain = new Set();
+      const chainRows = chainSource.slice(0, 8).map(item => {
+        const key = String(item.proposalId || item.id || (item.candidateIds || [])[0] || '');
+        if (!key || seenChain.has(key)) return '';
+        seenChain.add(key);
+
+        const candidateIds = (item.candidateIds || []).map(v => String(v));
+        const linkedDiscoveries = node.discoveries.filter(d => candidateIds.includes(String(d.candidateId))).length;
+        const linkedKnowledge = node.knowledge.filter(k =>
+          (item.proposalId && k.proposalId && String(k.proposalId) === String(item.proposalId)) ||
+          hasIntersection(candidateIds, k.candidateIds || [])
+        ).length;
+
+        return `<div class="row">
+          <small>Knowledge link</small><br>
+          Discovery ${linkedDiscoveries} → Proposal ${escapeHtml(statusLabel(item.status || (node.approved.includes(item) ? 'approved' : 'proposed')))} → Knowledge ${linkedKnowledge}
+          <br><small>${escapeHtml(toShortText(item.title || item.summary || key, 96))}</small>
+        </div>`;
+      }).filter(Boolean).join('');
+
+      const impactRows = node.knowledge.slice(0, 4).map(k =>
+        `<div class="row"><small>${escapeHtml(k.kind || 'knowledge')}</small><br>${escapeHtml(toShortText(k.title || k.summary || 'knowledge object', 105))}</div>`
+      ).join('');
+
+      const whyRow = `<div class="row"><small>Why this matters</small><br>${escapeHtml(whyItMatters(node, heat, gravityEntry))}</div>`;
+      impactList.innerHTML = `${whyRow}${chainRows || ''}${impactRows || '<div class="row">No linked knowledge objects yet.</div>'}`;
+
+      if (!cubeCell) {
+        evidenceList.innerHTML = '<div class="muted">No cube paper context for this node.</div>';
+      } else {
+        const src = Object.entries(cubeCell.sourceCounts || {});
+        const sourceRow = src.length > 0
+          ? `<div class="row"><small>Source datasets</small><br>${src.map(([name, count]) => `${escapeHtml(name)}:${count}`).join(' | ')}</div>`
+          : '';
+
+        const paperRows = (cubeCell.topPapers || []).slice(0, 3).map(p =>
+          `<div class="row"><small>Top paper</small><br>${escapeHtml(toShortText(p.title || 'untitled', 100))}<br><small>${escapeHtml(p.year || 'n/a')} | cites ${p.citationCount || 0} | ${escapeHtml(p.source || 'unknown')}</small></div>`
+        ).join('');
+
+        const proposalEvidence = [...node.proposals, ...node.approved]
+          .flatMap(item => item.evidenceRefs || [])
+          .map(ref => ({
+            sourceType: ref.sourceType || 'source',
+            sourceId: ref.sourceId || '',
+            label: ref.label || ref.sourceId || ''
+          }));
+
+        const seenEvidence = new Set();
+        const evidenceRows = proposalEvidence.filter(ref => {
+          const key = `${ref.sourceType}:${ref.sourceId}:${ref.label}`;
+          if (seenEvidence.has(key)) return false;
+          seenEvidence.add(key);
+          return true;
+        }).slice(0, 4).map(ref =>
+          `<div class="row"><small>${escapeHtml(ref.sourceType)}</small><br>${escapeHtml(toShortText(ref.label || ref.sourceId || 'evidence', 100))}</div>`
+        ).join('');
+
+        evidenceList.innerHTML = `${sourceRow}${paperRows || '<div class="row">No paper snapshot for this cell.</div>'}${evidenceRows || ''}`;
+      }
+
+      if (!node.timeline.length) {
+        timelineList.innerHTML = '<div class="muted">No timeline events for this node yet.</div>';
+      } else {
+        const items = node.timeline.slice(-10).map(t => `
+          <li>
+            <strong>${escapeHtml(t.type)}</strong>
+            <small>${new Date(t.at).toLocaleString()}</small>
+            <div>${escapeHtml(toShortText(t.summary, 120))}</div>
+          </li>
+        `).join('');
+        timelineList.innerHTML = `<ul class="timeline">${items}</ul>`;
+      }
+    }
+
+    function applyVisualState(model) {
+      const selected = state.selectedCellId;
+      const focusActive = Number.isInteger(selected);
+      const focusSet = focusActive ? focusSetForCell(selected, model) : new Set();
+
+      for (const visual of nodeVisuals) {
+        const nodeSignal = model.nodeSignals[visual.cellId];
+        const heat = Number(model.heatByCell[visual.cellId] || 0);
+        const density = Number(nodeSignal.densityNorm || 0);
+        const gravity = model.gravityMap[visual.cellId];
+
+        const related = !focusActive || focusSet.has(visual.cellId);
+        const dimFactor = related ? 1 : 0.24;
+
+        const c = colorFromHeat(heat);
+        visual.node.material.color.copy(c);
+        visual.node.material.emissive.copy(c.clone().multiplyScalar(0.4));
+        visual.node.material.emissiveIntensity = (0.12 + heat * 0.78) * dimFactor;
+        visual.node.material.opacity = related ? 1 : 0.18;
+
+        const scale = 1 + (heat * 0.35) + (selected === visual.cellId ? 0.18 : 0);
+        visual.node.scale.setScalar(scale);
+
+        visual.density.material.opacity = density * 0.22 * dimFactor;
+        visual.density.visible = density > 0.03;
+
+        visual.discoveryGlow.visible = nodeSignal.discoveryCount > 0;
+        visual.discoveryGlow.material.opacity = (0.05 + Math.min(0.2, nodeSignal.discoveryCount * 0.06)) * dimFactor;
+
+        visual.proposalHalo.visible = nodeSignal.proposalCount > 0;
+        visual.proposalHalo.material.opacity = (0.08 + Math.min(0.18, nodeSignal.proposalCount * 0.05)) * dimFactor;
+
+        visual.approvedRing.visible = nodeSignal.knowledgeCount > 0;
+        visual.approvedRing.material.opacity = (0.1 + Math.min(0.2, nodeSignal.knowledgeCount * 0.05)) * dimFactor;
+
+        if (gravity) {
+          const mass = Number(gravity.gravityMass || 0);
+          const pull = Number(gravity.pullStrength || 0);
+          const s = 1 + Math.min(0.7, mass * 0.09);
+          visual.gravityRing.visible = true;
+          visual.gravityRing.scale.set(s, s, s);
+          visual.gravityRing.material.opacity = (0.1 + Math.min(0.28, pull * 8)) * dimFactor;
+        } else {
+          visual.gravityRing.visible = false;
+          visual.gravityRing.material.opacity = 0;
+        }
+
+        visual.knowledgeCore.visible = false;
+        visual.knowledgeCore.material.opacity = 0;
+      }
+
+      rebuildCollisionLines(model, selected);
+      rebuildRelationshipLines(model, selected, focusSet);
+      renderContextPanel(model);
+
+      const activeCells = Object.values(model.heatByCell).filter(v => Number(v) >= 0.08).length;
+      statActive.textContent = String(activeCells);
+      statDiscovery.textContent = String(model.discoveries.length);
+      statProposals.textContent = String(model.proposals.length);
+      statKnowledge.textContent = String(model.knowledge.length + model.approved.length);
+      statCollisions.textContent = String(model.collisions.length);
+    }
+
+    function setHealth(status, detail) {
+      state.health = status;
+      healthBadge.className = 'badge';
+      if (status === 'nominal') {
+        healthBadge.classList.add('ok');
+        healthBadge.textContent = 'Nominal';
+      } else if (status === 'degraded') {
+        healthBadge.classList.add('degraded');
+        healthBadge.textContent = 'Degraded';
+      } else {
+        healthBadge.textContent = 'Loading';
+      }
+      hudSub.textContent = detail;
+    }
+
+    async function safeFetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }
+
+    async function loadRadar() {
+      const started = performance.now();
+
+      const required = await Promise.allSettled([
+        safeFetchJson('/api/clashd27/emergence'),
+        safeFetchJson('/api/clashd27/discovery-feed?signalLimit=120'),
+        safeFetchJson('/api/cube')
+      ]);
+
+      const requiredOk = required.every(r => r.status === 'fulfilled');
+      if (!requiredOk) {
+        const failed = required
+          .filter(r => r.status === 'rejected')
+          .map(r => r.reason?.message || 'unknown')
+          .join(' | ');
+
+        if (state.model) {
+          setHealth('degraded', `Using last valid snapshot. Fetch issue: ${failed}`);
+          return;
+        }
+
+        setHealth('degraded', `Radar unavailable: ${failed}`);
+        return;
+      }
+
+      const emergence = required[0].value;
+      const feed = required[1].value;
+      const cube = required[2].value;
+
+      const optional = await Promise.allSettled([
+        safeFetchJson('/api/clashd27/knowledge/objects?limit=180'),
+        safeFetchJson('/api/agents/proposals?limit=120'),
+        safeFetchJson('/api/observatory/config')
+      ]);
+
+      const knowledgeObjects = optional[0].status === 'fulfilled'
+        ? (optional[0].value.objects || [])
+        : [];
+      const governanceProposals = optional[1].status === 'fulfilled'
+        ? (optional[1].value.proposals || [])
+        : [];
+      const config = optional[2].status === 'fulfilled'
+        ? (optional[2].value || {})
+        : {};
+      state.jeevesApprovalUrl = String(config.jeevesApprovalUrl || state.jeevesApprovalUrl || '');
+
+      state.model = buildRadarModel(emergence, feed, cube, knowledgeObjects, governanceProposals);
+      state.previousModel = state.model;
+      state.lastSuccessAt = new Date();
+
+      applyVisualState(state.model);
+
+      const ms = Math.round(performance.now() - started);
+      const strongest = state.model.strongestCell?.cellId;
+      const strongestText = Number.isInteger(strongest) ? ` | strongest cell ${strongest}` : '';
+      setHealth('nominal', `Updated ${state.lastSuccessAt.toLocaleTimeString()} (${ms} ms)${strongestText}`);
+    }
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('pointerdown', (event) => {
       const rect = renderer.domElement.getBoundingClientRect();
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-      raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster.intersectObjects(nodeMeshes, false);
-      if (hits.length === 0) return;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(nodeVisuals.map(v => v.node), false);
+      if (!hits.length) return;
 
-      const id = hits[0].object.userData.cellId;
+      const id = hits[0].object.userData?.cellId;
       if (!Number.isInteger(id)) return;
 
       state.selectedCellId = id;
-      applyVisualState();
-    }
-
-    renderer.domElement.addEventListener('pointerdown', handlePointerDown);
-
-    refreshBtn.addEventListener('click', () => {
-      loadData().catch(() => {});
+      if (state.model) {
+        applyVisualState(state.model);
+      }
     });
 
-    const clock = new THREE.Clock();
+    refreshBtn.addEventListener('click', () => {
+      loadRadar().catch(err => {
+        setHealth('degraded', `Refresh failed: ${err.message}`);
+      });
+    });
 
     function animate() {
       requestAnimationFrame(animate);
 
-      const t = clock.getElapsedTime();
-      cubeGroup.rotation.y += 0.0012;
-
-      for (let i = 0; i < ringMeshes.length; i += 1) {
-        const ring = ringMeshes[i];
-        if (!ring.visible) continue;
-        ring.rotation.z += 0.003 + (ringPulse[i] * 0.002);
-      }
-
-      const pulse = 0.15 + (Math.sin(t * 2.4) * 0.09 + 0.09);
-      for (const mat of collisionMaterials) {
-        mat.opacity = pulse;
-      }
+      cubeGroup.rotation.y += 0.0009;
 
       controls.update();
       renderer.render(scene, camera);
@@ -838,9 +1510,32 @@
 
     window.addEventListener('resize', onResize);
 
-    state.selectedCellId = 13;
-    loadData();
-    setInterval(loadData, 15000);
+    const query = new URLSearchParams(window.location.search);
+    consumeRadarContext({
+      source: query.get('source') || '',
+      proposalId: query.get('proposalId') || '',
+      candidateId: query.get('candidateId') || '',
+      candidateScore: query.get('candidateScore') || '',
+      originCell: query.get('originCell') || query.get('cell') || '',
+      what: query.get('what') || '',
+      where: query.get('where') || '',
+      time: query.get('time') || ''
+    });
+
+    window.addEventListener('message', (event) => {
+      const payload = event && event.data ? event.data : null;
+      if (!payload || typeof payload !== 'object') return;
+      if (payload.type !== 'jeeves-radar-context') return;
+      consumeRadarContext(payload.payload || {});
+      if (state.model) applyVisualState(state.model);
+    });
+
+    buildScaffold();
+    buildNodes();
+
+    setHealth('loading', 'Fetching observatory sources...');
+    loadRadar();
+    setInterval(loadRadar, 15000);
     animate();
   </script>
 </body>

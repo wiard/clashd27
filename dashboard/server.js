@@ -7,7 +7,7 @@ require('dotenv').config({ path: '/home/greenbanaanas/.secrets/clashd27.env', ov
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { Clashd27CubeEngine } = require('../lib/clashd27-cube-engine');
+const { Clashd27CubeEngine, cellToCoords, AXIS_WHAT, AXIS_WHERE, AXIS_TIME } = require('../lib/clashd27-cube-engine');
 const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
 const { buildPaperDiscoveryFeed } = require('../lib/paper-discovery-feed');
 const { enrichCandidates, candidateToProposalPayload } = require('../lib/proposal-metadata');
@@ -38,6 +38,12 @@ function requireAdmin(req, res, next) {
   }
   return next();
 }
+
+app.get('/api/observatory/config', (req, res) => {
+  res.json({
+    jeevesApprovalUrl: process.env.JEEVES_APPROVAL_URL || process.env.JEEVES_URL || 'jeeves://approval'
+  });
+});
 
 // --- State ---
 function readState() {
@@ -1797,6 +1803,102 @@ app.get('/api/agents/proposals/:id', sandboxOnly, (req, res) => {
     const proposal = getProposal(req.params.id);
     if (!proposal) return res.status(404).json({ error: 'not_found' });
     res.json({ ok: true, proposal, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function axesFromCellId(cellId) {
+  if (!Number.isInteger(cellId) || cellId < 0 || cellId > 26) return null;
+  const { a, b, c } = cellToCoords(cellId);
+  return {
+    what: AXIS_WHAT[a] || null,
+    where: AXIS_WHERE[b] || null,
+    time: AXIS_TIME[c] || null
+  };
+}
+
+function compactEvidenceRefs(evidenceRefs) {
+  return (evidenceRefs || []).slice(0, 5).map(ref => ({
+    sourceType: ref.sourceType || ref.type || 'unknown',
+    sourceId: ref.sourceId || ref.source || ref.id || '',
+    label: (ref.label || ref.claim || ref.title || '').toString().slice(0, 120)
+  }));
+}
+
+app.get('/api/clashd27/proposals/:id/observatory-context', (req, res) => {
+  try {
+    const proposal = getProposal(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
+    const payload = (proposal.intent && proposal.intent.payload) || {};
+    const candidateId = payload.candidateId || payload.parentCandidateId || null;
+
+    const cells = [];
+    if (Array.isArray(payload.cells)) {
+      for (const cell of payload.cells) {
+        if (Number.isInteger(cell) && cell >= 0 && cell < 27) cells.push(cell);
+      }
+    }
+    if (Array.isArray(payload.primaryCells)) {
+      for (const cell of payload.primaryCells) {
+        const cellId = cell && Number.isInteger(cell.cellId) ? cell.cellId : null;
+        if (Number.isInteger(cellId) && cellId >= 0 && cellId < 27) cells.push(cellId);
+      }
+    }
+
+    let originCell = cells.length > 0 ? cells[0] : null;
+    let axes = payload.axes && payload.axes[0]
+      ? payload.axes[0]
+      : axesFromCellId(originCell);
+    let candidateScore = Number(payload.candidateScore || payload.noveltyScore || payload.novelty || 0);
+    let discoveryEvidence = compactEvidenceRefs(payload.evidenceRefs || []);
+    let discoverySummary = (payload.candidateSummary || payload.finding || proposal.title || '').toString().slice(0, 180);
+
+    if ((!Number.isInteger(originCell) || candidateScore === 0 || discoveryEvidence.length === 0) && candidateId) {
+      try {
+        const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+        const feed = buildPaperDiscoveryFeed({
+          engine,
+          cube: readCube(),
+          maxSignals: 120
+        });
+        const candidates = (feed.discovery && feed.discovery.candidates) || [];
+        const candidateEvents = (feed.discovery && feed.discovery.candidateEvents) || [];
+        const match = candidates.find(c => c.id === candidateId) || candidateEvents.find(c => c.candidateId === candidateId);
+        if (match) {
+          const matchCells = Array.isArray(match.cells) ? match.cells.filter(v => Number.isInteger(v)) : [];
+          if (!Number.isInteger(originCell) && matchCells.length > 0) {
+            originCell = matchCells[0];
+            axes = axesFromCellId(originCell);
+          }
+          if (candidateScore === 0) candidateScore = Number(match.candidateScore || 0);
+          if (discoveryEvidence.length === 0) {
+            discoveryEvidence = compactEvidenceRefs((match.sources || []).map(s => ({ sourceType: 'signal', sourceId: s })));
+          }
+          if (discoverySummary.length === 0) {
+            discoverySummary = (match.explanation || candidateId || proposal.title || '').toString().slice(0, 180);
+          }
+        }
+      } catch (_) {
+        // non-fatal enrichment fallback
+      }
+    }
+
+    res.json({
+      proposalId: proposal.id,
+      title: proposal.title,
+      status: proposal.status,
+      candidateId,
+      originCell,
+      axes: axes || { what: null, where: null, time: null },
+      discoverySummary,
+      discoveryEvidence,
+      candidateScore,
+      reasoningTraceShort: (proposal.reasoningTraceShort || payload.reasoningTraceShort || '').toString().slice(0, 220)
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
