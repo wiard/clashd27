@@ -1844,6 +1844,10 @@ app.get('/leaderboard', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'leaderboard.html'));
 });
 
+app.get('/observatory', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'observatory.html'));
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
