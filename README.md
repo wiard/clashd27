@@ -114,6 +114,26 @@ Gravity dynamics layer high-score cells as attractors:
 - **Momentum**: per-cell velocity tracking detects heating/cooling trends
 - **Discovery triggers**: high-emergence collisions and heating gravity wells auto-queue investigations
 
+## Governance Mode
+
+clashd27 includes a sandbox governance kernel for standalone development and testing. In the full 3-repo deployment, **openclashd-v2 is the canonical governance and action kernel**:
+
+```
+ clashd27                    openclashd-v2               openclaw
+ (discovery engine)          (governance kernel)         (agent runtime)
+ ─────────────────           ──────────────────          ──────────────
+ signals → cube →            proposals → ranking →       skills → actions
+ candidates → proposals  ──► decisions → execution  ◄──  consent → receipts
+                             knowledge linking
+```
+
+| `GOVERNANCE_MODE` | Behavior |
+|-------------------|----------|
+| `sandbox` (default) | Local `/api/agents/proposals/*` endpoints active. Proposals are stored, ranked, decided, and executed locally in clashd27. Useful for development, tests, and single-repo demos. Responses include `_sandbox: true`. |
+| any other value (e.g. `production`) | Local governance endpoints return `403 governance_disabled`. Proposals must be routed to the openclashd-v2 gateway via `POST {OPENCLASHD_V2_URL}/api/agents/propose`. |
+
+The knowledge graph endpoint (`GET /api/knowledge/objects/:id/graph`) is always available regardless of mode since it reads local knowledge objects.
+
 ## Architecture
 
 ```

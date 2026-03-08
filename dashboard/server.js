@@ -11,7 +11,8 @@ const { Clashd27CubeEngine } = require('../lib/clashd27-cube-engine');
 const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
 const { buildPaperDiscoveryFeed } = require('../lib/paper-discovery-feed');
 const { enrichCandidates, candidateToProposalPayload } = require('../lib/proposal-metadata');
-const { persistDiscoveryCandidate, persistFinding, getRecentKnowledgeObjects, getKnowledgeObjectsByKind, getKnowledgeObject } = require('../lib/knowledge-persistence');
+const { persistDiscoveryCandidate, persistFinding, getRecentKnowledgeObjects, getKnowledgeObjectsByKind, getKnowledgeObject, getKnowledgeGraph, linkKnowledgeObjects, persistDecisionChain } = require('../lib/knowledge-persistence');
+const { isSandboxMode, GOVERNANCE_MODE, submitProposal, decideProposal, getProposals, getRankedProposals, getDecidedProposals, getProposal, executeProposalAction, attachActionResult } = require('../lib/governance-kernel');
 
 const app = express();
 const PORT = 3027;
@@ -1627,7 +1628,61 @@ app.get('/api/clashd27/proposals/enriched', (req, res) => {
     const candidates = detectDiscoveryCandidates({ gravityCells, emergenceSummary, cubeState });
     const enriched = enrichCandidates(candidates);
     const proposals = enriched.map(c => candidateToProposalPayload(c, 'clashd27'));
-    res.json({ ok: true, proposals, enrichedCandidates: enriched });
+    res.json({
+      ok: true,
+      proposals,
+      enrichedCandidates: enriched,
+      meta: {
+        candidateCount: enriched.length,
+        timestamp: new Date().toISOString(),
+        tick: cubeState.clock || 0
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/clashd27/discovery/:candidateId/context', (req, res) => {
+  try {
+    const { detectDiscoveryCandidates } = require('../lib/discovery-candidates');
+    const { computeResearchGravity } = require('../lib/clashd27-cube-engine');
+    const { extractEvidenceRefs, extractPrimaryCells, extractDomainAxes, buildCandidateSummary, buildReasoningTraceShort, deriveRecommendedActionKind } = require('../lib/proposal-metadata');
+    const cubeState = cubeEngine.getFullState();
+    const gravityCells = computeResearchGravity(cubeState);
+    const emergenceSummary = cubeEngine.summarizeEmergence ? cubeEngine.summarizeEmergence() : { collisions: [], clusters: [], gradients: [] };
+    const candidates = detectDiscoveryCandidates({ gravityCells, emergenceSummary, cubeState });
+    const enriched = enrichCandidates(candidates);
+    const candidate = enriched.find(c => c.id === req.params.candidateId);
+
+    if (!candidate) {
+      return res.status(404).json({ error: 'candidate_not_found' });
+    }
+
+    res.json({
+      ok: true,
+      candidateId: candidate.id,
+      candidateType: candidate.candidateType,
+      candidateScore: candidate.candidateScore,
+      candidateSummary: buildCandidateSummary(candidate),
+      reasoningTraceShort: buildReasoningTraceShort(candidate),
+      recommendedActionKind: deriveRecommendedActionKind(candidate),
+      ranking: {
+        noveltyScore: candidate.noveltyScore,
+        evidenceDensity: candidate.evidenceDensity,
+        crossDomainScore: candidate.crossDomainScore,
+        sourceConfidence: candidate.sourceConfidence,
+        governanceValue: candidate.governanceValue,
+        supportingSourceCount: candidate.supportingSourceCount,
+        collisionCount: candidate.collisionCount,
+        clusterStrength: candidate.clusterStrength
+      },
+      evidenceRefs: extractEvidenceRefs(candidate),
+      primaryCells: extractPrimaryCells(candidate),
+      domainAxes: extractDomainAxes(candidate),
+      explanation: candidate.explanation,
+      timestamp: new Date().toISOString()
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1677,6 +1732,106 @@ app.get('/api/clashd27/knowledge/objects/:objectId', (req, res) => {
       return res.status(404).json({ error: 'not_found' });
     }
     res.json({ ok: true, object });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Governance Kernel (sandbox mode only) ---
+// In production the canonical governance kernel lives in openclashd-v2.
+// These endpoints are enabled only when GOVERNANCE_MODE=sandbox (default).
+
+function sandboxOnly(req, res, next) {
+  if (!isSandboxMode()) {
+    return res.status(403).json({
+      error: 'governance_disabled',
+      message: `Local governance endpoints are disabled (GOVERNANCE_MODE=${GOVERNANCE_MODE}). ` +
+        'Route proposals to openclashd-v2 gateway instead.'
+    });
+  }
+  return next();
+}
+
+app.post('/api/agents/propose', sandboxOnly, (req, res) => {
+  try {
+    const { agentId, title, intent } = req.body;
+    if (!title) return res.status(400).json({ error: 'title required' });
+    const proposal = submitProposal({ agentId, title, intent });
+    res.json({ ok: true, proposal, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals', sandboxOnly, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '50', 10);
+    const proposals = getProposals(limit);
+    res.json({ ok: true, proposals, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals/ranked', sandboxOnly, (req, res) => {
+  try {
+    const ranked = getRankedProposals();
+    res.json({ ok: true, proposals: ranked, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals/decided', sandboxOnly, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '20', 10);
+    const decided = getDecidedProposals(limit);
+    res.json({ ok: true, proposals: decided, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals/:id', sandboxOnly, (req, res) => {
+  try {
+    const proposal = getProposal(req.params.id);
+    if (!proposal) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true, proposal, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/agents/proposals/:id/decide', sandboxOnly, (req, res) => {
+  try {
+    const { decision, reason } = req.body;
+    if (!decision || (decision !== 'approved' && decision !== 'denied')) {
+      return res.status(400).json({ error: 'decision must be "approved" or "denied"' });
+    }
+    const proposal = decideProposal(req.params.id, decision, reason);
+    if (!proposal) return res.status(404).json({ error: 'not_found' });
+
+    let actionResult = null;
+    if (decision === 'approved') {
+      actionResult = executeProposalAction(proposal, {
+        persistKnowledgeObject: require('../lib/knowledge-persistence').persistKnowledgeObject,
+        linkKnowledgeObjects
+      });
+    }
+
+    res.json({ ok: true, proposal: getProposal(req.params.id), actionResult, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Knowledge Graph (always available — read-only) ---
+
+app.get('/api/knowledge/objects/:id/graph', (req, res) => {
+  try {
+    const { root, linked } = getKnowledgeGraph(req.params.id);
+    if (!root) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true, root, linked });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
