@@ -7,7 +7,10 @@
     "start": "node bot.js",
     "register": "node register-commands.js",
     "doctor": "node tools/doctor.js",
-    "test:cube": "node scripts/test-clashd27-cube-engine.js"
+    "test:cube": "node scripts/test-clashd27-cube-engine.js",
+    "test:v2:cube": "node tests/cube-engine.test.js",
+    "test:v2:discovery": "node tests/discovery-candidates.test.js",
+    "test": "node scripts/test-clashd27-cube-engine.js && node tests/cube-engine.test.js && node tests/discovery-candidates.test.js"
   },
   "dependencies": {
     "csv-parse": "^6.1.0",

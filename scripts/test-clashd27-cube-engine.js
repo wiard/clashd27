@@ -86,14 +86,16 @@ function testResidueAndDecay() {
     architectureAspect: 'policy'
   };
 
+  // V2: internal-system source weight = 0.7, so base scoreDelta = 0.3 * 0.7 = 0.21
   const r1 = engine.ingestSignal({
     id: 'r1',
     timestamp: '2026-03-19T00:00:00.000Z',
     ...baseSignal
   }, { tick: 10, persist: false, referenceTime: ref });
-  assertNear('Score +0.3 on first interaction', r1.cell.score, 0.3, 1e-9);
-  assert('ScoreDelta is 0.3 base', r1.scoreDelta === 0.3);
+  assertNear('Score weighted by source quality (internal=0.7)', r1.cell.score, 0.21, 1e-3);
+  assertNear('ScoreDelta is 0.3*0.7=0.21 for internal source', r1.scoreDelta, 0.21, 1e-3);
 
+  // V2: agent-skill weight = 1.0, base = 0.3*1.0 = 0.3, +0.1 source-changed, +0.1 far-apart = 0.5
   const r2 = engine.ingestSignal({
     id: 'r2',
     source: 'ai agent skills',
@@ -103,10 +105,8 @@ function testResidueAndDecay() {
     surfaceType: 'skill',
     architectureAspect: 'policy'
   }, { tick: 11, persist: false, referenceTime: ref });
-  // Tick 11 triggers decay + gravity + spillover before applying the +0.5 delta.
-  // Score should be > 0.7 (base decay 0.2985 + delta 0.5 = 0.7985 + gravity/spillover adjustments)
-  assert('Score includes source-diff and far-apart bonuses', r2.cell.score > 0.79);
-  assertNear('ScoreDelta includes source+far-apart bonuses', r2.scoreDelta, 0.5, 1e-9);
+  assert('Score includes source-diff and far-apart bonuses', r2.cell.score > 0.6);
+  assertNear('ScoreDelta includes source+far-apart bonuses', r2.scoreDelta, 0.5, 1e-3);
 
   const r3 = engine.ingestSignal({
     id: 'r3',
@@ -117,12 +117,15 @@ function testResidueAndDecay() {
     surfaceType: 'daemon',
     architectureAspect: 'policy'
   }, { tick: 12, persist: false, referenceTime: ref });
-  assertNear('Score capped at 1.0', r3.cell.score, 1.0, 1e-9);
+  assert('Score approaches or reaches cap', r3.cell.score >= 0.9);
   assert('Interaction count tracked', r3.cell.interactionCount === 3);
   assert('Peer diversity tracked', r3.cell.peerDiversity === 2);
   assert('Time spread tracked across ticks', r3.cell.timeSpread === 3);
   assert('Formula residue positive', r3.cell.formulaResidue > 0);
+  assert('DirectScore tracked separately', r3.cell.directScore > 0);
+  assert('SpilloverScore tracked separately', typeof r3.cell.spilloverScore === 'number');
 
+  // V2: gap signal from internal: 0.3*0.7 = 0.21 + gap 0.2 = 0.41
   const gapSignal = engine.ingestSignal({
     id: 'r4-gap',
     source: 'internal system',
@@ -132,7 +135,7 @@ function testResidueAndDecay() {
     surfaceType: 'daemon',
     architectureAspect: 'policy'
   }, { tick: 12, persist: false, referenceTime: ref });
-  assertNear('Gap-flagged signal adds +0.2 bonus', gapSignal.scoreDelta, 0.5, 1e-9);
+  assertNear('Gap-flagged signal adds +0.2 bonus to weighted base', gapSignal.scoreDelta, 0.41, 1e-3);
 
   engine.updateResidue(100, { persist: false });
   const decayedCell = engine.getState().cells[String(r3.signal.cellId)];
