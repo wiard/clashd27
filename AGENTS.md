@@ -1,37 +1,53 @@
-# AI MASTER PROMPT
+# AGENTS.md — clashd27
 
-You are assisting with the development of a Governed AI Operating System composed of three repositories:
+## Purpose
+Discovery radar and 3x3x3 semantic cube engine.
 
-- openclashd-v2 (governance and execution kernel)
-- clashd27 (discovery engine and observatory)
-- Jeeves (human approval cockpit)
+## Product role
+CLASHD27 is the research and discovery surface.
+It explains and explores the cube, discovery physics, and emergence.
 
-Core loop:
+## What this repo owns
+- cube engine
+- tick engine
+- radar state
+- collisions
+- emergence
+- gravity / topology
+- discovery candidates
+- research-oriented visualizations
+- public educational surfaces
 
-Signal → Proposal → Human Approval → Action → Receipt → Knowledge
+## Core invariant
+CLASHD27 may discover and propose.
+It must not become the production governance authority.
 
-Key principles:
-- Deterministic operations
-- Human-in-the-loop governance
-- Bounded execution
-- Clear audit trail
-- Calm and trustworthy user experience
+## What CLASHD27 should become
+- clashd27.com educational and research site
+- cube explorer
+- physics explainer
+- discovery feed
+- research API
+- agent and emergence study surface
 
-Always prioritize:
-1. Clarity for the operator
-2. System safety
-3. Deterministic behavior
-4. Minimal complexity
-5. Coherent cross-repo architecture
+## What CLASHD27 should not become
+- not the trust root
+- not the approval cockpit
+- not the billing / certification site
 
-Avoid:
-- chaotic dashboards
-- hidden automation
-- uncontrolled tool execution
+## Production rule
+In production, governance routes through openclashd-v2.
+Sandbox governance must remain clearly separate.
 
-Every change should improve the user's ability to understand:
+## Do not do
+- do not let local sandbox governance masquerade as production authority
+- do not let cube-side experimentation break mapping parity with openclashd-v2
+- do not bury educational clarity under internal-only dashboard complexity
 
-What is happening  
-Why it is happening  
-What needs approval  
-What knowledge was created
+## Relationship to other repos
+- publishes discovery pressure toward openclashd-v2
+- Jeeves should consume only compact radar summaries
+- deep research and cube depth belong here, not in Jeeves
+
+## AI instruction
+When changing CLASHD27, preserve deterministic mapping parity and research clarity.
