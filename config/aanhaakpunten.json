@@ -1,0 +1,55 @@
+{
+  "cross_domain": [
+    { "woord": "accountability",   "gewicht": 0.9, "domeinen": ["ai-governance","legal-ai","healthcare-ai","finance-ai"] },
+    { "woord": "validation",       "gewicht": 0.9, "domeinen": ["healthcare-ai","finance-ai","ai-safety","education-ai"] },
+    { "woord": "explainability",   "gewicht": 1.0, "domeinen": ["ai-governance","ai-safety","legal-ai","healthcare-ai","finance-ai","climate-ai","education-ai"] },
+    { "woord": "oversight",        "gewicht": 0.9, "domeinen": ["ai-governance","legal-ai","finance-ai","ai-safety"] },
+    { "woord": "auditability",     "gewicht": 0.8, "domeinen": ["ai-governance","finance-ai","legal-ai"] },
+    { "woord": "consent",          "gewicht": 0.9, "domeinen": ["ai-governance","healthcare-ai","legal-ai","education-ai"] },
+    { "woord": "robustness",       "gewicht": 0.8, "domeinen": ["ai-safety","finance-ai","climate-ai","healthcare-ai"] },
+    { "woord": "interpretability", "gewicht": 0.9, "domeinen": ["ai-safety","healthcare-ai","legal-ai","education-ai"] },
+    { "woord": "scalability",      "gewicht": 0.7, "domeinen": ["ai-governance","finance-ai","climate-ai","education-ai"] },
+    { "woord": "alignment",        "gewicht": 0.8, "domeinen": ["ai-safety","ai-governance","education-ai"] }
+  ],
+  "ai-governance": [
+    { "woord": "boundary",         "gewicht": 0.6, "domeinen": ["ai-governance"] },
+    { "woord": "protocol",         "gewicht": 0.6, "domeinen": ["ai-governance","legal-ai"] },
+    { "woord": "jurisdiction",     "gewicht": 0.7, "domeinen": ["ai-governance","legal-ai"] },
+    { "woord": "disclosure",       "gewicht": 0.7, "domeinen": ["ai-governance","finance-ai","legal-ai"] },
+    { "woord": "compliance",       "gewicht": 0.7, "domeinen": ["ai-governance","finance-ai","legal-ai","healthcare-ai"] }
+  ],
+  "ai-safety": [
+    { "woord": "containment",      "gewicht": 0.6, "domeinen": ["ai-safety"] },
+    { "woord": "alignment",        "gewicht": 0.7, "domeinen": ["ai-safety","ai-governance"] },
+    { "woord": "adversarial",      "gewicht": 0.6, "domeinen": ["ai-safety","finance-ai"] },
+    { "woord": "failure mode",     "gewicht": 0.7, "domeinen": ["ai-safety","healthcare-ai","climate-ai"] }
+  ],
+  "healthcare-ai": [
+    { "woord": "triage",           "gewicht": 0.5, "domeinen": ["healthcare-ai"] },
+    { "woord": "clinical",         "gewicht": 0.5, "domeinen": ["healthcare-ai","legal-ai"] },
+    { "woord": "liability",        "gewicht": 0.7, "domeinen": ["healthcare-ai","legal-ai","finance-ai"] },
+    { "woord": "diagnosis",        "gewicht": 0.5, "domeinen": ["healthcare-ai","education-ai"] }
+  ],
+  "legal-ai": [
+    { "woord": "precedent",        "gewicht": 0.6, "domeinen": ["legal-ai","ai-governance"] },
+    { "woord": "evidence",         "gewicht": 0.7, "domeinen": ["legal-ai","healthcare-ai","ai-safety"] },
+    { "woord": "discretion",       "gewicht": 0.6, "domeinen": ["legal-ai","ai-governance"] }
+  ],
+  "climate-ai": [
+    { "woord": "attribution",      "gewicht": 0.6, "domeinen": ["climate-ai","ai-safety"] },
+    { "woord": "mitigation",       "gewicht": 0.6, "domeinen": ["climate-ai","finance-ai"] },
+    { "woord": "threshold",        "gewicht": 0.7, "domeinen": ["climate-ai","healthcare-ai","finance-ai"] },
+    { "woord": "feedback loop",    "gewicht": 0.7, "domeinen": ["climate-ai","ai-safety","education-ai"] }
+  ],
+  "finance-ai": [
+    { "woord": "systemic risk",    "gewicht": 0.7, "domeinen": ["finance-ai","ai-governance","climate-ai"] },
+    { "woord": "stress-testing",   "gewicht": 0.6, "domeinen": ["finance-ai","ai-safety","healthcare-ai"] },
+    { "woord": "arbitrage",        "gewicht": 0.5, "domeinen": ["finance-ai"] }
+  ],
+  "education-ai": [
+    { "woord": "scaffolding",      "gewicht": 0.5, "domeinen": ["education-ai"] },
+    { "woord": "assessment",       "gewicht": 0.6, "domeinen": ["education-ai","healthcare-ai"] },
+    { "woord": "equity",           "gewicht": 0.7, "domeinen": ["education-ai","ai-governance","healthcare-ai"] },
+    { "woord": "personalization",  "gewicht": 0.6, "domeinen": ["education-ai","healthcare-ai","finance-ai"] }
+  ]
+}

@@ -17,6 +17,7 @@
     "library:export": "node bin/library-export.js",
     "library:backup": "bash bin/backup-library.sh",
     "library:cron": "bash bin/setup-cron.sh",
+    "bieb:run": "node bin/promise-cube-run.js",
     "bieb:detect": "node bin/bieb-detect.js",
     "bieb:stats": "node bin/bieb-stats.js",
     "bieb:export": "node bin/bieb-export.js",

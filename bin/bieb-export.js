@@ -2,16 +2,16 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
 const { BeloofteLibrary } = require('../src/bieb/belofte-library');
+const { resolvePromiseLibraryLayout } = require('../src/bieb/promise-paths');
 
-const ROOT_DIR = path.join(__dirname, '..');
-const EXPORTS_DIR = path.join(ROOT_DIR, 'data', 'bieb', 'exports');
+const PROMISE_LAYOUT = resolvePromiseLibraryLayout();
+const EXPORTS_DIR = PROMISE_LAYOUT.exportsDir;
 const dateStamp = new Date().toISOString().slice(0, 10);
 
 fs.mkdirSync(EXPORTS_DIR, { recursive: true });
 
-const bieb = new BeloofteLibrary();
+const bieb = new BeloofteLibrary(PROMISE_LAYOUT);
 const stats = bieb.stats();
 const markdown = bieb.export('markdown');
 

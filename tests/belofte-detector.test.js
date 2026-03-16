@@ -205,7 +205,10 @@ function makeTmpDir() {
   const tmpDir = makeTmpDir();
   const bieb = new BeloofteLibrary({
     beloftesFile: path.join(tmpDir, 'beloftes.jsonl'),
-    indexFile: path.join(tmpDir, 'index.json')
+    indexFile: path.join(tmpDir, 'index.json'),
+    latestCubeFile: path.join(tmpDir, 'latest-cube.json'),
+    runsFile: path.join(tmpDir, 'runs.jsonl'),
+    legacyBeloftesFile: false
   });
 
   const belofte = {
@@ -237,7 +240,10 @@ function makeTmpDir() {
   const tmpDir = makeTmpDir();
   const bieb = new BeloofteLibrary({
     beloftesFile: path.join(tmpDir, 'beloftes.jsonl'),
-    indexFile: path.join(tmpDir, 'index.json')
+    indexFile: path.join(tmpDir, 'index.json'),
+    latestCubeFile: path.join(tmpDir, 'latest-cube.json'),
+    runsFile: path.join(tmpDir, 'runs.jsonl'),
+    legacyBeloftesFile: false
   });
 
   bieb.addOrUpdate({
@@ -278,7 +284,10 @@ function makeTmpDir() {
   const tmpDir = makeTmpDir();
   const bieb = new BeloofteLibrary({
     beloftesFile: path.join(tmpDir, 'beloftes.jsonl'),
-    indexFile: path.join(tmpDir, 'index.json')
+    indexFile: path.join(tmpDir, 'index.json'),
+    latestCubeFile: path.join(tmpDir, 'latest-cube.json'),
+    runsFile: path.join(tmpDir, 'runs.jsonl'),
+    legacyBeloftesFile: false
   });
 
   bieb.addOrUpdate({
