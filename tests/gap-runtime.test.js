@@ -2,8 +2,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { TickEngine } = require('../lib/tick-engine');
 const { Clashd27CubeEngine } = require('../lib/clashd27-cube-engine');
+
+process.env.CLASHD27_DISABLE_EXTERNAL_INGEST = '1';
 
 let passed = 0;
 let failed = 0;
@@ -123,6 +126,7 @@ async function testGapHandoffDelivery() {
   });
 
   assert('runtime delivery publishes handoffs', cycle.delivery.published === cycle.gapProposalHandoffs.length);
+  assert('runtime cycle exposes ingestion report', cycle.ingestion && typeof cycle.ingestion === 'object');
   assert('runtime delivery calls openclashd-v2 proposal endpoint', calls.length === cycle.gapProposalHandoffs.length && calls[0].url === 'https://openclashd-v2.test/api/agents/propose?token=test-token');
   assert(
     'runtime delivery sends canonical proposal payload',
@@ -172,7 +176,20 @@ async function run() {
   console.log('[DONE] Governed runtime discovery tests passed.');
 }
 
-run().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+async function runExtraSuites() {
+  const extraSuites = process.argv.slice(2);
+  for (const suite of extraSuites) {
+    const suitePath = path.resolve(process.cwd(), suite);
+    const result = spawnSync(process.execPath, [suitePath], { stdio: 'inherit' });
+    if (result.status !== 0) {
+      throw new Error(`extra suite failed: ${suite}`);
+    }
+  }
+}
+
+run()
+  .then(runExtraSuites)
+  .catch(err => {
+    console.error(err);
+    process.exit(1);
+  });

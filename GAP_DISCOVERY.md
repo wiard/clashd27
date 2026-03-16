@@ -30,6 +30,11 @@ It does:
 - recommend a governed next step
 - emit `GapPacket` and `GapProposalHandoff`
 
+See also:
+
+- [STREAM_INGESTION.md](/Users/wiardvasen/clashd27/STREAM_INGESTION.md)
+  The Kafka/Flink-style scaling boundary that feeds the deterministic discovery core.
+
 ## Insertion Points
 
 - [`/Users/wiardvasen/clashd27/lib/clashd27-cube-engine.js`](/Users/wiardvasen/clashd27/lib/clashd27-cube-engine.js)

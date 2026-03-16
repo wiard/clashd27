@@ -15,8 +15,9 @@
     "test:v2:cube": "node tests/cube-engine.test.js",
     "test:v2:discovery": "node tests/discovery-candidates.test.js",
     "test:gap": "node tests/gap-pipeline.test.js",
+    "test:ingestion": "node tests/paper-ingestion.test.js && node tests/discovery-stream-orchestrator.test.js",
     "test:runtime-gap": "node tests/gap-runtime.test.js",
-    "test": "node scripts/test-clashd27-cube-engine.js && node tests/cube-engine.test.js && node tests/discovery-candidates.test.js && node tests/gap-pipeline.test.js && node tests/gap-runtime.test.js"
+    "test": "node scripts/test-clashd27-cube-engine.js && node tests/cube-engine.test.js && node tests/discovery-candidates.test.js && node tests/gap-pipeline.test.js && node tests/paper-ingestion.test.js && node tests/discovery-stream-orchestrator.test.js && node tests/gap-runtime.test.js"
   },
   "dependencies": {
     "csv-parse": "^6.1.0",
