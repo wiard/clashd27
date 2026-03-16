@@ -1,0 +1,416 @@
+{
+  "generatedAt": "2026-03-16T09:26:06.405Z",
+  "referenceTime": "2026-03-16T00:00:00.000Z",
+  "sourcePipeline": {
+    "report": {
+      "papersAnalyzed": 2,
+      "rawSignalsQueued": 9,
+      "signalsGenerated": 9,
+      "normalizedSignals": 9,
+      "droppedSignals": 0,
+      "duplicateSignals": 0,
+      "lowQualitySignals": 0,
+      "cubeCellsActivated": 4,
+      "sourceRuns": [
+        {
+          "kind": "paper",
+          "source": "paper-source",
+          "fetched": 2,
+          "emittedSignals": 7,
+          "queries": 1
+        },
+        {
+          "kind": "github",
+          "source": "github-repo-source",
+          "fetched": 1,
+          "emittedSignals": 1,
+          "queries": 1
+        },
+        {
+          "kind": "internal",
+          "source": "internal-system-source",
+          "fetched": 1,
+          "emittedSignals": 1,
+          "queries": 1
+        }
+      ],
+      "topicDepths": {
+        "rawSignals": 0,
+        "normalizedSignals": 0
+      }
+    },
+    "normalizedSignals": 9,
+    "signalLogCount": 9,
+    "activatedCells": [
+      24,
+      15,
+      14,
+      11
+    ],
+    "verified": {
+      "papersAnalyzed": true,
+      "normalizedSignals": true,
+      "cubeIngestion": true,
+      "queueDrained": true
+    }
+  },
+  "signalIngestion": {
+    "signals": [
+      {
+        "id": "manual-paper-1",
+        "type": "paper-theory",
+        "title": "LLM governance gap",
+        "domain": "ai-governance",
+        "content": "Agents lack deterministic consent enforcement.",
+        "score": 0.82,
+        "source": "paper theory",
+        "timestamp": "2026-03-06T00:00:00.000Z",
+        "keywords": [
+          "governance",
+          "consent",
+          "gap"
+        ]
+      },
+      {
+        "id": "manual-github-1",
+        "type": "github-repo",
+        "title": "LangChain agent memory",
+        "domain": "ai-tooling",
+        "content": "Memory persists across sessions without consent scope.",
+        "score": 0.72,
+        "source": "github competitor",
+        "timestamp": "2026-03-08T00:00:00.000Z",
+        "keywords": [
+          "agent",
+          "memory",
+          "consent",
+          "gap"
+        ]
+      },
+      {
+        "id": "manual-internal-1",
+        "type": "internal-system",
+        "title": "OpenClashd consent kernel",
+        "domain": "ai-architecture",
+        "content": "Channel-scoped consent enforcement with TTL.",
+        "score": 0.63,
+        "source": "internal system",
+        "timestamp": "2026-03-10T00:00:00.000Z",
+        "keywords": [
+          "governance",
+          "architecture",
+          "consent"
+        ]
+      }
+    ],
+    "signalLogCount": 3,
+    "activatedCells": [
+      24,
+      21,
+      9
+    ],
+    "deterministicMappings": [
+      {
+        "signalId": "manual-paper-1",
+        "cellId": 24,
+        "axes": "trust-model/engine/emerging",
+        "deterministic": true
+      },
+      {
+        "signalId": "manual-github-1",
+        "cellId": 21,
+        "axes": "trust-model/external/emerging",
+        "deterministic": true
+      },
+      {
+        "signalId": "manual-internal-1",
+        "cellId": 9,
+        "axes": "trust-model/internal/current",
+        "deterministic": true
+      }
+    ],
+    "sourceWeights": [
+      {
+        "signalId": "manual-paper-1",
+        "sourceWeight": 1.5,
+        "scoreDelta": 0.65,
+        "cellId": 24
+      },
+      {
+        "signalId": "manual-github-1",
+        "sourceWeight": 1.2,
+        "scoreDelta": 0.56,
+        "cellId": 21
+      },
+      {
+        "signalId": "manual-internal-1",
+        "sourceWeight": 0.7,
+        "scoreDelta": 0.21,
+        "cellId": 9
+      }
+    ],
+    "verified": {
+      "signalsPresent": true,
+      "deterministicCells": true,
+      "sourceWeightsApplied": true
+    }
+  },
+  "discoveryPipeline": {
+    "candidateCount": 1,
+    "gapPacketCount": 1,
+    "collisionsDetected": 0,
+    "clustersDetected": 1,
+    "topCandidateScore": 0.442,
+    "scoringTrace": {
+      "version": "clashd27.gap-score.v1",
+      "cells": [
+        21,
+        24
+      ],
+      "domainDistance": 0.1,
+      "collisionCount": 0,
+      "gravityPeak": 2.543,
+      "sourceContribution": 0,
+      "formulas": {
+        "novelty": "proposal-novelty + time-weight + low-saturation + domain-bonus",
+        "collision": "emergence + domain-distance + far-field-bonus",
+        "residue": "score-pressure + formula-residue + persistence",
+        "gravity": "local-gravity / peak-gravity",
+        "evidence": "proposal-evidence + evidence-density + source-diversity + temporal-spread + source-contribution",
+        "entropy": "entropy-seed + source-dispersion + time-dispersion",
+        "serendipity": "cross-domain-score + far-field + source-mix + time-mix",
+        "total": "0.16N + 0.18C + 0.16R + 0.16G + 0.14E + 0.10H + 0.10S"
+      }
+    },
+    "hypothesis": {
+      "statement": "Signals clustered in trust-model/engine/emerging indicate an ungoverned capability or missing control surface worth formal proposal review.",
+      "rationale": "Candidate disc-clust-2027433231 shows novelty 0.758, collision 0, residue 0.344, gravity 0.872, evidence 0.402, entropy 0.458, and serendipity 0.237.",
+      "mechanism": "Repeated signals are converging across semantically adjacent or distant cube cells faster than existing governance language explains.",
+      "operatorValue": "Escalating this as a proposal candidate gives Jeeves a legible decision object before any execution path is considered."
+    },
+    "packetValidation": {
+      "ok": true,
+      "errors": []
+    },
+    "breaker": {
+      "contradictionMatches": [
+        "manual-paper-1",
+        "manual-internal-1"
+      ],
+      "existingSolutionMatches": [
+        "manual-internal-1"
+      ],
+      "killChecks": {
+        "deterministicRemapStable": true,
+        "evidenceFloorPassed": true,
+        "interactionPressurePassed": true,
+        "entropySerendipityPassed": true
+      },
+      "verdict": "fails",
+      "reason": "Breaker found an internal existing-solution signal that challenges the missing-control-surface hypothesis."
+    },
+    "gapPacketView": {
+      "gapId": "gap-1794960a",
+      "hypothesis": {
+        "statement": "Signals clustered in trust-model/engine/emerging indicate an ungoverned capability or missing control surface worth formal proposal review.",
+        "rationale": "Candidate disc-clust-2027433231 shows novelty 0.758, collision 0, residue 0.344, gravity 0.872, evidence 0.402, entropy 0.458, and serendipity 0.237.",
+        "mechanism": "Repeated signals are converging across semantically adjacent or distant cube cells faster than existing governance language explains.",
+        "operatorValue": "Escalating this as a proposal candidate gives Jeeves a legible decision object before any execution path is considered."
+      },
+      "scoringTrace": {
+        "version": "clashd27.gap-score.v1",
+        "cells": [
+          21,
+          24
+        ],
+        "domainDistance": 0.1,
+        "collisionCount": 0,
+        "gravityPeak": 2.543,
+        "sourceContribution": 0,
+        "formulas": {
+          "novelty": "proposal-novelty + time-weight + low-saturation + domain-bonus",
+          "collision": "emergence + domain-distance + far-field-bonus",
+          "residue": "score-pressure + formula-residue + persistence",
+          "gravity": "local-gravity / peak-gravity",
+          "evidence": "proposal-evidence + evidence-density + source-diversity + temporal-spread + source-contribution",
+          "entropy": "entropy-seed + source-dispersion + time-dispersion",
+          "serendipity": "cross-domain-score + far-field + source-mix + time-mix",
+          "total": "0.16N + 0.18C + 0.16R + 0.16G + 0.14E + 0.10H + 0.10S"
+        }
+      },
+      "verificationPlan": [
+        {
+          "step": "Confirm the signal bundle",
+          "objective": "Verify that the supporting signals map deterministically into the stated cube cells and no ingestion anomaly created the pattern.",
+          "successMetric": "Cell signature remains stable for candidate disc-clust-2027433231.",
+          "boundedBy": "single replay over current signal bundle"
+        },
+        {
+          "step": "Test competing explanations",
+          "objective": "Check whether the candidate is better explained by a known cluster, corridor, or existing governance surface rather than a new gap.",
+          "successMetric": "Alternative explanation is weaker than the current hypothesis.",
+          "boundedBy": "current cube state and current emergence summary only"
+        },
+        {
+          "step": "Draft bounded proposal",
+          "objective": "Translate the candidate into an openclashd-v2 proposal with explicit scope, operator approval, and certification hooks.",
+          "successMetric": "Proposal payload preserves total score 0.442 and includes kill tests.",
+          "boundedBy": "proposal payload only, no execution side effects"
+        }
+      ],
+      "killConditions": [
+        {
+          "condition": "Deterministic remapping changes the primary cube cell or axes signature.",
+          "reason": "The candidate is not stable enough for governed intake if its semantic location is not reproducible."
+        },
+        {
+          "condition": false,
+          "reason": "Weak evidence should remain an observatory hint, not a proposal candidate."
+        },
+        {
+          "condition": false,
+          "reason": "Low interaction pressure means there is not enough structured pull to justify operator review yet."
+        },
+        {
+          "condition": false,
+          "reason": "If the pattern is neither informationally rich nor meaningfully cross-domain, it is probably routine noise."
+        }
+      ]
+    },
+    "handoff": {
+      "executionMode": "forbidden",
+      "destinationSystem": "openclashd-v2",
+      "forbiddenKeysPresent": [],
+      "recommendedActionType": "submit_gap_proposal",
+      "exactKeySet": [
+        "actions",
+        "agentId",
+        "authorityBoundary",
+        "axes",
+        "axesSignature",
+        "boundary",
+        "bounded",
+        "boundedBy",
+        "candidateId",
+        "candidateScore",
+        "candidateSummary",
+        "candidateType",
+        "cellId",
+        "cells",
+        "class",
+        "clusterStrength",
+        "collision",
+        "collisionCount",
+        "completedStages",
+        "condition",
+        "createdAtIso",
+        "crossDomain",
+        "crossDomainScore",
+        "cube",
+        "current",
+        "destinationSystem",
+        "detectedAtIso",
+        "directExecutionAllowed",
+        "domainAxes",
+        "domainDistance",
+        "entropy",
+        "evidence",
+        "evidenceDensity",
+        "evidenceRefs",
+        "executes",
+        "executionMode",
+        "forbiddenFlow",
+        "formulas",
+        "gapType",
+        "generatedAt",
+        "governanceRequired",
+        "governanceValue",
+        "gravity",
+        "gravityPeak",
+        "handedOffAtIso",
+        "hypothesis",
+        "intent",
+        "key",
+        "killTests",
+        "kind",
+        "lifecycleState",
+        "mechanism",
+        "metadata",
+        "nextStage",
+        "normalization",
+        "novelty",
+        "noveltyScore",
+        "objective",
+        "operatorValue",
+        "packet",
+        "packetId",
+        "payload",
+        "permittedFlow",
+        "primaryCell",
+        "primaryCells",
+        "proposal",
+        "proposalIntakeKind",
+        "proposedIntent",
+        "rationale",
+        "reason",
+        "reasoningTraceShort",
+        "recommendedAction",
+        "recommendedActionClass",
+        "recommendedActionKind",
+        "rendering",
+        "requiresConsent",
+        "requiresHumanApproval",
+        "residue",
+        "risk",
+        "safeClashInspectable",
+        "scores",
+        "scoringTrace",
+        "serendipity",
+        "source",
+        "sourceConfidence",
+        "sourceContribution",
+        "sourceId",
+        "sourcePacketId",
+        "sourceSystem",
+        "sourceType",
+        "sources",
+        "statement",
+        "step",
+        "successMetric",
+        "summary",
+        "supportingSourceCount",
+        "targetSystem",
+        "time",
+        "title",
+        "topic",
+        "total",
+        "totalScore",
+        "trust",
+        "trustBoundary",
+        "type",
+        "verificationPlan",
+        "version",
+        "what",
+        "where"
+      ]
+    },
+    "runtimeSummary": {
+      "signalsIngested": 3,
+      "cubeCellsActivated": 3,
+      "collisionsDetected": 0,
+      "clustersDetected": 1,
+      "discoveryCandidates": 1,
+      "hypothesesGenerated": 1,
+      "gapPacketsCreated": 1
+    },
+    "verified": {
+      "discoveryCandidatesProduced": true,
+      "gapScoringExecuted": true,
+      "hypothesisGenerated": true,
+      "breakerDeterministic": true,
+      "gapPacketFieldsPresent": true,
+      "governedHandoff": true
+    }
+  },
+  "finalStatus": "working"
+}
