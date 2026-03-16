@@ -13,6 +13,7 @@ const { libraryNeedsMigration, migrateLibrary } = require('../library/gap-librar
 const { resolveLibraryLayout, resolveConfiguredPath } = require('../library/library-paths');
 const { detectBeloftes, scoreBelofteCandidate, classifyBelofte } = require('../bieb/belofte-detector');
 const { BeloofteLibrary } = require('../bieb/belofte-library');
+const { Vivant } = require('../bieb/vivant');
 
 const ROOT_DIR = path.join(__dirname, '..', '..');
 const DEFAULT_CONFIG = nightlyConfig.nightlyReader || {};
@@ -208,11 +209,47 @@ async function runNightlyReader(options = {}) {
       found: belofteCandidates.length,
       new: newCount,
       confirmed: confirmedCount,
-      topBelofte
+      topBelofte,
+      _candidates: belofteCandidates
     };
     console.log(`[NIGHTLY] Beloftes detected: ${belofteReport.found} (${belofteReport.new} new, ${belofteReport.confirmed} confirmed)`);
   } catch (belofteError) {
     console.error(`[NIGHTLY] Belofte detection failed: ${belofteError.message}`);
+  }
+
+  // --- VIVANT: update het levende netwerk ---
+  let vivantReport = { actieveNodes: 0, herleefdeNodes: 0, sterksteNode: null, beweging: 'stabiel', gemiddeldePrecisie: 0 };
+  try {
+    const vivant = new Vivant();
+    const actievePatronen = [];
+
+    // Patronen uit beloftes
+    for (const candidate of (belofteReport._candidates || [])) {
+      if (candidate.titel) {
+        actievePatronen.push({ patroon: candidate.titel, domeinen: candidate.domeinen || [] });
+      }
+    }
+
+    // Patronen uit domain resultaten
+    for (const result of results) {
+      if (result.domainLabel) {
+        actievePatronen.push({ patroon: result.domainLabel, domeinen: [result.domainId] });
+      }
+    }
+
+    if (actievePatronen.length > 0) {
+      const snapshot = vivant.updateNetwerk(actievePatronen, runId);
+      vivantReport = {
+        actieveNodes: snapshot.actieveNodes,
+        herleefdeNodes: snapshot.herleefdeNodes,
+        sterksteNode: snapshot.sterksteNode ? `${snapshot.sterksteNode.patroon} (precisie ${snapshot.sterksteNode.precisie})` : null,
+        beweging: snapshot.beweging,
+        gemiddeldePrecisie: snapshot.gemiddeldePrecisie
+      };
+      console.log(`[NIGHTLY] VIVANT: ${snapshot.actieveNodes} active nodes, ${snapshot.herleefdeNodes} revived, movement: ${snapshot.beweging}`);
+    }
+  } catch (vivantError) {
+    console.error(`[NIGHTLY] VIVANT update failed: ${vivantError.message}`);
   }
 
   const stats = library.stats();
@@ -245,7 +282,8 @@ async function runNightlyReader(options = {}) {
     topGaps: library.query({ limit: 10, sortBy: 'score' }),
     crossDomainGaps: crossDomain,
     delivery,
-    beloftes: belofteReport
+    beloftes: belofteReport,
+    vivant: vivantReport
   };
 
   const reportPath = path.join(reportsDir, `run-${timestampId(new Date())}.json`);
