@@ -1,0 +1,600 @@
+{
+  "generatedAt": "2026-03-16T09:38:11.879Z",
+  "environment": {
+    "requiredDirectories": [
+      {
+        "path": "src/sources",
+        "exists": true
+      },
+      {
+        "path": "src/queue",
+        "exists": true
+      },
+      {
+        "path": "src/orchestration",
+        "exists": true
+      },
+      {
+        "path": "src/gap",
+        "exists": true
+      },
+      {
+        "path": "lib",
+        "exists": true
+      }
+    ],
+    "requiredFiles": [
+      {
+        "path": "lib/tick-engine.js",
+        "exists": true
+      },
+      {
+        "path": "src/orchestration/discovery-stream-orchestrator.js",
+        "exists": true
+      },
+      {
+        "path": "src/sources/arxiv-source.js",
+        "exists": true
+      },
+      {
+        "path": "src/sources/semantic-scholar-source.js",
+        "exists": true
+      },
+      {
+        "path": "src/sources/openalex-source.js",
+        "exists": true
+      },
+      {
+        "path": "src/sources/crossref-source.js",
+        "exists": true
+      },
+      {
+        "path": "src/sources/paper-signal-extractor.js",
+        "exists": true
+      },
+      {
+        "path": "src/queue/signal-normalizer.js",
+        "exists": true
+      },
+      {
+        "path": "src/gap/gap-pipeline.js",
+        "exists": true
+      }
+    ],
+    "npmInstall": {
+      "status": "success"
+    }
+  },
+  "paperIngestion": {
+    "targetMinPapers": 3000,
+    "targetMaxPapers": 10000,
+    "uniquePapers": 4258,
+    "sources": {
+      "openalex": {
+        "requests": 32,
+        "rawFetched": 6400,
+        "withAbstract": 4541,
+        "uniqueAdded": 3729,
+        "duplicates": 807,
+        "errors": []
+      },
+      "crossref": {
+        "requests": 8,
+        "rawFetched": 300,
+        "withAbstract": 76,
+        "uniqueAdded": 76,
+        "duplicates": 0,
+        "errors": [
+          "AI+governance-offset100.json: Unexpected end of JSON input",
+          "AI+safety+verification-offset0.json: Unexpected end of JSON input",
+          "AI+safety+verification-offset100.json: Unexpected end of JSON input",
+          "multi-agent+systems-offset0.json: Unexpected end of JSON input",
+          "multi-agent+systems-offset100.json: Unexpected end of JSON input"
+        ]
+      },
+      "arxiv": {
+        "requests": 6,
+        "rawFetched": 720,
+        "withAbstract": 720,
+        "uniqueAdded": 435,
+        "duplicates": 285,
+        "errors": []
+      },
+      "semanticScholar": {
+        "requests": 2,
+        "rawFetched": 20,
+        "withAbstract": 18,
+        "uniqueAdded": 18,
+        "duplicates": 0,
+        "errors": [
+          "AI+governance.json: Too Many Requests. Please wait and try again or apply for a key for higher rate limits. https://www.semanticscholar.org/product/api#api-key-form"
+        ]
+      }
+    },
+    "sourceBreakdown": {
+      "openalex": 3729,
+      "crossref": 76,
+      "arxiv": 435,
+      "semantic-scholar": 18
+    }
+  },
+  "signalExtraction": {
+    "totalSignalsGenerated": 9386,
+    "averageSignalsPerPaper": 2.204,
+    "signalTypes": {
+      "paper-theory": 4258,
+      "paper-method": 2009,
+      "paper-result": 1906,
+      "paper-limitation": 1213
+    }
+  },
+  "normalization": {
+    "accepted": 9386,
+    "dropped": 0,
+    "duplicates": 0,
+    "lowQuality": 0,
+    "windowingVerified": true,
+    "dedupeKeysGenerated": true,
+    "sourceWeightsVerified": {
+      "paper-theory": 1.5,
+      "github-repo": 1.2,
+      "internal-system": 0.7
+    }
+  },
+  "cubeIngestion": {
+    "normalizedSignalsIngested": 9386,
+    "cellsActivated": 6,
+    "activatedCellIds": [
+      15,
+      16,
+      17,
+      24,
+      25,
+      26
+    ],
+    "spilloverCells": 15,
+    "spilloverOnlyCells": 5,
+    "deterministicSampleSize": 500,
+    "deterministicSampleFailures": 0,
+    "totalTick": 9386,
+    "totalEvidenceScore": 0.982
+  },
+  "discoveryPipeline": {
+    "collisionsDetected": 11,
+    "clustersDetected": 4,
+    "gradientsDetected": 0,
+    "discoveryCandidates": 10,
+    "candidateCellSets": [
+      {
+        "candidateId": "disc-col-1182438175",
+        "cells": [
+          15,
+          16
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.822
+      },
+      {
+        "candidateId": "disc-col-3902755696",
+        "cells": [
+          15,
+          24
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.822
+      },
+      {
+        "candidateId": "disc-col-3509607636",
+        "cells": [
+          6,
+          15
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.784
+      },
+      {
+        "candidateId": "disc-col-804628626",
+        "cells": [
+          12,
+          15
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.784
+      },
+      {
+        "candidateId": "disc-clust-2576991453",
+        "cells": [
+          6,
+          12,
+          15,
+          16,
+          24
+        ],
+        "type": "cluster_peak",
+        "candidateScore": 0.762
+      },
+      {
+        "candidateId": "disc-col-1260068159",
+        "cells": [
+          17,
+          26
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.72
+      },
+      {
+        "candidateId": "disc-col-1446444903",
+        "cells": [
+          24,
+          25
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.72
+      },
+      {
+        "candidateId": "disc-col-3303172982",
+        "cells": [
+          25,
+          26
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.72
+      },
+      {
+        "candidateId": "disc-col-3654447193",
+        "cells": [
+          16,
+          25
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.72
+      },
+      {
+        "candidateId": "disc-col-3759833691",
+        "cells": [
+          16,
+          17
+        ],
+        "type": "collision_intersection",
+        "candidateScore": 0.72
+      }
+    ],
+    "gapPacketsGenerated": 10
+  },
+  "gapScoring": {
+    "candidateCount": 10,
+    "scoringTraceCoverage": true,
+    "formulaVerifiedCount": 10,
+    "topCandidateScores": [
+      {
+        "candidateId": "disc-col-3902755696",
+        "total": 0.722,
+        "novelty": 0.773,
+        "collision": 0.662,
+        "residue": 1,
+        "gravity": 0.823,
+        "evidence": 0.742,
+        "entropy": 0.482,
+        "serendipity": 0.358
+      },
+      {
+        "candidateId": "disc-col-1182438175",
+        "total": 0.714,
+        "novelty": 0.728,
+        "collision": 0.64,
+        "residue": 1,
+        "gravity": 0.882,
+        "evidence": 0.742,
+        "entropy": 0.397,
+        "serendipity": 0.379
+      },
+      {
+        "candidateId": "disc-col-3509607636",
+        "total": 0.622,
+        "novelty": 0.683,
+        "collision": 0.694,
+        "residue": 0.7,
+        "gravity": 0.7,
+        "evidence": 0.665,
+        "entropy": 0.349,
+        "serendipity": 0.358
+      },
+      {
+        "candidateId": "disc-col-804628626",
+        "total": 0.62,
+        "novelty": 0.728,
+        "collision": 0.694,
+        "residue": 0.7,
+        "gravity": 0.68,
+        "evidence": 0.665,
+        "entropy": 0.266,
+        "serendipity": 0.379
+      },
+      {
+        "candidateId": "disc-col-3654447193",
+        "total": 0.609,
+        "novelty": 0.773,
+        "collision": 0.567,
+        "residue": 0.8,
+        "gravity": 0.558,
+        "evidence": 0.578,
+        "entropy": 0.497,
+        "serendipity": 0.358
+      },
+      {
+        "candidateId": "disc-col-1446444903",
+        "total": 0.603,
+        "novelty": 0.818,
+        "collision": 0.576,
+        "residue": 0.8,
+        "gravity": 0.499,
+        "evidence": 0.578,
+        "entropy": 0.415,
+        "serendipity": 0.379
+      },
+      {
+        "candidateId": "disc-col-3759833691",
+        "total": 0.601,
+        "novelty": 0.728,
+        "collision": 0.555,
+        "residue": 0.8,
+        "gravity": 0.611,
+        "evidence": 0.579,
+        "entropy": 0.397,
+        "serendipity": 0.379
+      },
+      {
+        "candidateId": "disc-col-1260068159",
+        "total": 0.599,
+        "novelty": 0.773,
+        "collision": 0.525,
+        "residue": 0.8,
+        "gravity": 0.552,
+        "evidence": 0.579,
+        "entropy": 0.477,
+        "serendipity": 0.358
+      },
+      {
+        "candidateId": "disc-col-3303172982",
+        "total": 0.594,
+        "novelty": 0.818,
+        "collision": 0.533,
+        "residue": 0.8,
+        "gravity": 0.498,
+        "evidence": 0.578,
+        "entropy": 0.41,
+        "serendipity": 0.379
+      },
+      {
+        "candidateId": "disc-clust-2576991453",
+        "total": 0.552,
+        "novelty": 0.662,
+        "collision": 0.625,
+        "residue": 0.76,
+        "gravity": 0.634,
+        "evidence": 0.445,
+        "entropy": 0.3,
+        "serendipity": 0.187
+      }
+    ]
+  },
+  "hypotheses": {
+    "promisingCandidates": 4,
+    "generated": 4,
+    "structureVerifiedCount": 4,
+    "samples": [
+      {
+        "candidateId": "disc-col-3902755696",
+        "score": 0.722,
+        "hypothesis": "Signals clustered in trust-model/engine/current x trust-model/engine/emerging indicate an ungoverned capability or missing control surface worth formal proposal review.",
+        "verificationSteps": 3,
+        "killConditions": 4
+      },
+      {
+        "candidateId": "disc-col-1182438175",
+        "score": 0.714,
+        "hypothesis": "Signals clustered in trust-model/engine/current x surface/engine/current indicate an ungoverned capability or missing control surface worth formal proposal review.",
+        "verificationSteps": 3,
+        "killConditions": 4
+      },
+      {
+        "candidateId": "disc-col-3509607636",
+        "score": 0.622,
+        "hypothesis": "Signals clustered in trust-model/engine/historical x trust-model/engine/current indicate an ungoverned capability or missing control surface worth formal proposal review.",
+        "verificationSteps": 3,
+        "killConditions": 4
+      },
+      {
+        "candidateId": "disc-col-804628626",
+        "score": 0.62,
+        "hypothesis": "Signals clustered in trust-model/external/current x trust-model/engine/current indicate an ungoverned capability or missing control surface worth formal proposal review.",
+        "verificationSteps": 3,
+        "killConditions": 4
+      }
+    ]
+  },
+  "breaker": {
+    "hypothesesVerified": 0,
+    "hypothesesRejected": 4,
+    "rejectedSamples": [
+      {
+        "candidateId": "disc-col-3902755696",
+        "packetId": "gap-9b0c56c2",
+        "contradictions": 10,
+        "existingSolutions": 10,
+        "reason": "Breaker found conflicting or already-solved evidence in the scanned corpus."
+      },
+      {
+        "candidateId": "disc-col-1182438175",
+        "packetId": "gap-0fd88ea9",
+        "contradictions": 10,
+        "existingSolutions": 10,
+        "reason": "Breaker found conflicting or already-solved evidence in the scanned corpus."
+      },
+      {
+        "candidateId": "disc-col-3509607636",
+        "packetId": "gap-90a77fab",
+        "contradictions": 10,
+        "existingSolutions": 10,
+        "reason": "Breaker found conflicting or already-solved evidence in the scanned corpus."
+      },
+      {
+        "candidateId": "disc-col-804628626",
+        "packetId": "gap-5fa9a31f",
+        "contradictions": 10,
+        "existingSolutions": 10,
+        "reason": "Breaker found conflicting or already-solved evidence in the scanned corpus."
+      }
+    ]
+  },
+  "gapPackets": {
+    "verifiedGapPackets": 0,
+    "packetChecks": []
+  },
+  "governanceHandoff": {
+    "generated": 10,
+    "verifiedGenerated": 0,
+    "overallCompliant": true,
+    "samples": [
+      {
+        "gapId": "gap-9b0c56c2",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-0fd88ea9",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-90a77fab",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-5fa9a31f",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-23b7b6c0",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-23c44344",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-9899ded9",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-4e46ebbe",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-08eb14cd",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      },
+      {
+        "gapId": "gap-acec941c",
+        "executionMode": "forbidden",
+        "trustBoundary": "discovery_only",
+        "destinationSystem": "openclashd-v2",
+        "forbiddenExecutionFields": [],
+        "compliant": true
+      }
+    ]
+  },
+  "performance": {
+    "paperCollectionMs": 869.26,
+    "normalizationMs": 204.64,
+    "ingestionMs": 208.99,
+    "discoveryCycleMs": 7,
+    "signalsPerSecond": 44910.62,
+    "memorySnapshots": [
+      {
+        "stage": "start",
+        "rssMb": 45.97,
+        "heapUsedMb": 5.02,
+        "externalMb": 1.61
+      },
+      {
+        "stage": "after-paper-collection",
+        "rssMb": 395.7,
+        "heapUsedMb": 90.36,
+        "externalMb": 1.58
+      },
+      {
+        "stage": "after-signal-extraction",
+        "rssMb": 396.05,
+        "heapUsedMb": 124.16,
+        "externalMb": 1.58
+      },
+      {
+        "stage": "after-normalization",
+        "rssMb": 407.47,
+        "heapUsedMb": 160.66,
+        "externalMb": 1.58
+      },
+      {
+        "stage": "after-cube-ingestion",
+        "rssMb": 415.63,
+        "heapUsedMb": 145.64,
+        "externalMb": 1.63
+      },
+      {
+        "stage": "after-discovery",
+        "rssMb": 416.8,
+        "heapUsedMb": 148.61,
+        "externalMb": 1.63
+      }
+    ]
+  },
+  "finalStatus": "degraded",
+  "summary": {
+    "papersAnalyzed": 4258,
+    "signalsGenerated": 9386,
+    "cubeCellsActivated": 6,
+    "collisionsDetected": 11,
+    "clustersDetected": 4,
+    "discoveryCandidates": 10,
+    "promisingGaps": 4,
+    "hypothesesGenerated": 4,
+    "hypothesesRejectedByBreaker": 4,
+    "gapPacketsProduced": 0,
+    "governanceHandoffsGenerated": 10
+  }
+}
