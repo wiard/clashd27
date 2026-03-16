@@ -11,6 +11,25 @@ CLASHD27 keeps discovery deterministic by separating scaling from semantics.
 - cube ingest
   Existing deterministic `cubeEngine.ingestSignal()` path
 
+## Hybrid deployment split
+
+- **MacBook / CLASHD27**
+  owns paper ingestion, local queues, normalized signal generation, deterministic cube discovery, and the full append-only gap library
+- **VPS / Redpanda sidecar**
+  optional lightweight transport broker only
+- **VPS / Flink (future)**
+  reserved for stream normalization and windowing only
+- **VPS / OpenClashd**
+  canonical governance surface, `/api/gaps`, operator APIs, and website state
+
+The permanent library stays local to the MacBook:
+
+- `data/gap-library.jsonl`
+- `data/domains/*/gaps.jsonl`
+- `data/library-runs/`
+
+Only governed handoffs cross the boundary to OpenClashd. The full library, paper corpus, and run artifacts do not.
+
 ## Responsibilities
 
 ### Ingestion layer
@@ -29,6 +48,7 @@ It may:
 - assign source weights
 - deduplicate repeated inputs
 - batch signals into deterministic hour windows
+- optionally publish stream copies into a VPS-side broker later without moving the source of truth away from the MacBook
 
 It may not:
 
@@ -37,6 +57,8 @@ It may not:
 - alter gap scoring
 - alter hypothesis generation
 - alter governed handoff semantics
+- turn the VPS into the permanent gap library host
+- couple future Flink jobs to OpenClashd governance storage
 
 ### Discovery layer
 
@@ -75,3 +97,12 @@ Additional paper facets use bounded weights close to the paper-theory baseline s
 ```bash
 npm run test:ingestion
 ```
+
+For the hybrid deployment, also verify:
+
+```bash
+node bin/library-stats.js
+node bin/nightly-reader.js --domain ai-governance
+```
+
+Those runs should continue to write the library locally while governed handoffs publish to `OPENCLASHD_GATEWAY_URL` over HTTP.

@@ -3,18 +3,13 @@
 const https = require('https');
 const { parseStringPromise } = require('xml2js');
 const { extractPaperSignals, normalizeText } = require('./paper-signal-extractor');
+const { createCanonicalPaper, getPaperQueries, getSourceLimit } = require('./paper-source-config');
 const { TOPICS } = require('../queue/topics');
 
 const ARXIV_API = 'https://export.arxiv.org/api/query';
-const MAX_RESULTS = 20;
+const MAX_RESULTS = 100;
 
-const QUERIES = [
-  'AI governance consent',
-  'AI agent safety',
-  'multi-agent systems security',
-  'large language model alignment',
-  'autonomous AI oversight'
-];
+const QUERIES = getPaperQueries();
 
 const CATEGORY_MAP = {
   'cs.AI': 'ai-research',
@@ -81,16 +76,39 @@ function entryToSignal(entry) {
   return signals;
 }
 
-/**
- * Fetch recent papers from arXiv for a single query.
- * @param {string} query
- * @returns {Promise<object[]>} canonical signal objects
- */
-async function fetchQuery(query) {
+function entryToPaper(entry) {
+  const title = Array.isArray(entry.title) ? entry.title[0] : String(entry.title || '');
+  const summary = Array.isArray(entry.summary) ? entry.summary[0] : String(entry.summary || '');
+  const published = Array.isArray(entry.published) ? entry.published[0] : String(entry.published || '');
+  const id = Array.isArray(entry.id) ? entry.id[0] : String(entry.id || '');
+  const categories = entry['arxiv:primary_category']
+    ? [entry['arxiv:primary_category'][0]]
+    : (entry.category || []);
+  const authors = (entry.author || []).map((author) => {
+    if (typeof author === 'string') return author;
+    return Array.isArray(author.name) ? author.name[0] : String(author.name || '');
+  });
+
+  return createCanonicalPaper({
+    paperId: `arxiv:${id.replace(/[^a-zA-Z0-9.]/g, '_')}`,
+    title,
+    abstract: summary,
+    authors,
+    year: Number.isFinite(new Date(published).getUTCFullYear()) ? new Date(published).getUTCFullYear() : null,
+    keywords: normalizeText(title).toLowerCase().split(/\s+/).slice(0, 8),
+    citationCount: 0,
+    references: [],
+    url: id,
+    source: 'arXiv',
+    domain: mapDomain(categories)
+  });
+}
+
+async function fetchQueryBundle(query, opts = {}) {
   const params = new URLSearchParams({
     search_query: `all:${query}`,
     start: '0',
-    max_results: String(MAX_RESULTS),
+    max_results: String(Number.isFinite(opts.maxResults) ? opts.maxResults : getSourceLimit('arxiv', MAX_RESULTS)),
     sortBy: 'submittedDate',
     sortOrder: 'descending'
   });
@@ -99,7 +117,20 @@ async function fetchQuery(query) {
   const parsed = await parseStringPromise(xml, { explicitArray: true });
   const feed = parsed.feed || {};
   const entries = feed.entry || [];
-  return entries.flatMap(entryToSignal);
+  return {
+    papers: entries.map(entryToPaper).filter((paper) => paper.title && paper.abstract),
+    signals: entries.flatMap(entryToSignal)
+  };
+}
+
+/**
+ * Fetch recent papers from arXiv for a single query.
+ * @param {string} query
+ * @returns {Promise<object[]>} canonical signal objects
+ */
+async function fetchQuery(query) {
+  const bundle = await fetchQueryBundle(query);
+  return bundle.signals;
 }
 
 /**
@@ -107,16 +138,22 @@ async function fetchQuery(query) {
  * @param {import('../queue/signal-queue').SignalQueue} queue
  * @returns {Promise<{ fetched: number, queries: number }>}
  */
-async function fetchArxivPapers(queue) {
+async function fetchArxivPapers(queue, opts = {}) {
   let totalFetched = 0;
   let emittedSignals = 0;
   let queriesRun = 0;
+  const papersById = new Map();
 
-  for (const query of QUERIES) {
+  for (const query of getPaperQueries(opts)) {
     try {
-      const signals = await fetchQuery(query);
+      const bundle = await fetchQueryBundle(query, opts);
       const paperIds = new Set();
-      for (const signal of signals) {
+      for (const paper of bundle.papers) {
+        if (paper.paperId && !papersById.has(paper.paperId)) {
+          papersById.set(paper.paperId, paper);
+        }
+      }
+      for (const signal of bundle.signals) {
         queue.produce(TOPICS.RAW_SIGNALS, signal);
         emittedSignals += 1;
         paperIds.add(signal.paperId);
@@ -128,13 +165,20 @@ async function fetchArxivPapers(queue) {
     }
   }
 
-  return { fetched: totalFetched, emittedSignals, queries: queriesRun };
+  return {
+    fetched: totalFetched,
+    emittedSignals,
+    queries: queriesRun,
+    papers: Array.from(papersById.values())
+  };
 }
 
 module.exports = {
   fetchArxivPapers,
   fetchQuery,
+  fetchQueryBundle,
   entryToSignal,
+  entryToPaper,
   mapDomain,
   scoreByRecency,
   QUERIES,

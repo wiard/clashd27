@@ -3,17 +3,12 @@
 const https = require('https');
 
 const { extractPaperSignals, normalizeText } = require('./paper-signal-extractor');
+const { createCanonicalPaper, getPaperQueries, getSourceLimit } = require('./paper-source-config');
 const { TOPICS } = require('../queue/topics');
 
 const CROSSREF_API = 'https://api.crossref.org/works';
 const MAX_RESULTS = 50;
-const QUERIES = [
-  'AI governance',
-  'AI safety',
-  'cybersecurity architecture',
-  'complex systems',
-  'multi-agent systems'
-];
+const QUERIES = getPaperQueries();
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
@@ -68,6 +63,28 @@ function messageItemToSignals(item) {
   });
 }
 
+function messageItemToPaper(item) {
+  const title = Array.isArray(item.title) ? normalizeText(item.title[0]) : normalizeText(item.title);
+  const abstract = stripTags(Array.isArray(item.abstract) ? item.abstract[0] : item.abstract);
+  const keywords = Array.isArray(item.subject) ? item.subject.map((subject) => normalizeText(subject)) : [];
+  const issuedYear = Number(item.issued && item.issued['date-parts'] && item.issued['date-parts'][0] && item.issued['date-parts'][0][0]) || null;
+  return createCanonicalPaper({
+    paperId: normalizeText(item.DOI || item.URL || title),
+    title,
+    abstract,
+    authors: Array.isArray(item.author)
+      ? item.author.map((author) => `${normalizeText(author.given)} ${normalizeText(author.family)}`.trim())
+      : [],
+    year: issuedYear,
+    keywords,
+    citationCount: Number(item['is-referenced-by-count']) || 0,
+    references: Array.isArray(item.reference) ? item.reference.map((reference) => reference.DOI || reference.key || '') : [],
+    url: normalizeText(item.URL || ''),
+    source: 'Crossref',
+    domain: inferDomain(keywords, title)
+  });
+}
+
 function stripTags(value) {
   return normalizeText(String(value || '').replace(/<[^>]+>/g, ' '));
 }
@@ -87,27 +104,41 @@ function inferDomain(keywords, title) {
 }
 
 async function fetchQuery(query, opts = {}) {
+  const bundle = await fetchQueryBundle(query, opts);
+  return bundle.signals;
+}
+
+async function fetchQueryBundle(query, opts = {}) {
   const params = new URLSearchParams({
     query,
-    rows: String(Number.isFinite(opts.maxResults) ? opts.maxResults : MAX_RESULTS),
+    rows: String(Number.isFinite(opts.maxResults) ? opts.maxResults : getSourceLimit('crossref', MAX_RESULTS)),
     sort: 'is-referenced-by-count',
     order: 'desc'
   });
   const data = await httpGet(`${CROSSREF_API}?${params.toString()}`);
   const items = Array.isArray(data && data.message && data.message.items) ? data.message.items : [];
-  return items.flatMap(messageItemToSignals);
+  return {
+    papers: items.map(messageItemToPaper).filter((paper) => paper.title && paper.abstract),
+    signals: items.flatMap(messageItemToSignals)
+  };
 }
 
 async function fetchCrossrefPapers(queue, opts = {}) {
   let fetched = 0;
   let emittedSignals = 0;
   let queries = 0;
+  const papersById = new Map();
 
-  for (const query of (opts.queries || QUERIES)) {
+  for (const query of getPaperQueries(opts)) {
     try {
-      const signals = await fetchQuery(query, opts);
+      const bundle = await fetchQueryBundle(query, opts);
       const paperIds = new Set();
-      for (const signal of signals) {
+      for (const paper of bundle.papers) {
+        if (paper.paperId && !papersById.has(paper.paperId)) {
+          papersById.set(paper.paperId, paper);
+        }
+      }
+      for (const signal of bundle.signals) {
         queue.produce(TOPICS.RAW_SIGNALS, signal);
         emittedSignals += 1;
         paperIds.add(signal.paperId);
@@ -119,11 +150,18 @@ async function fetchCrossrefPapers(queue, opts = {}) {
     }
   }
 
-  return { fetched, emittedSignals, queries };
+  return {
+    fetched,
+    emittedSignals,
+    queries,
+    papers: Array.from(papersById.values())
+  };
 }
 
 module.exports = {
   fetchCrossrefPapers,
   fetchQuery,
+  fetchQueryBundle,
+  messageItemToPaper,
   messageItemToSignals
 };

@@ -1,0 +1,44 @@
+{
+  "sourceLimits": {
+    "arxiv": 100,
+    "semanticScholar": 50,
+    "openAlex": 100,
+    "crossref": 50,
+    "pubmed": 50
+  },
+  "paperQueries": {
+    "aiGovernance": [
+      "AI governance consent architecture",
+      "AI agent safety verification",
+      "multi-agent system trust",
+      "autonomous AI oversight human control",
+      "AI alignment formal verification"
+    ],
+    "aiInnovationFrontiers": [
+      "large language model emergent capabilities",
+      "foundation model limitations",
+      "AI reasoning gaps",
+      "neural scaling laws limitations",
+      "AI robustness adversarial"
+    ],
+    "crossDomainOpportunities": [
+      "AI healthcare governance",
+      "AI legal compliance automation",
+      "AI financial risk oversight",
+      "AI education personalization gaps",
+      "AI climate modeling limitations"
+    ]
+  },
+  "nightlyReader": {
+    "minDeliveryScore": 0.62,
+    "libraryRoot": "data",
+    "stateFile": "data/nightly-reader-cube-state.json",
+    "runReportsDir": "data/library-runs",
+    "libraryFile": "data/gap-library.jsonl",
+    "libraryIndexFile": "data/gap-library-index.json",
+    "domainsDir": "data/domains",
+    "domainsConfigFile": "config/domains.json",
+    "exportsDir": "data/exports",
+    "backupDir": "backups"
+  }
+}

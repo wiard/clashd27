@@ -17,6 +17,8 @@ const _seenTitles = new Map();
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 const MIN_SCORE = 0.3;
 const MIN_CONTENT_LENGTH = 40;
+const MAX_DEDUPE_CACHE_SIZE = parseInt(process.env.CLASHD27_DEDUPE_CACHE_SIZE || '50000', 10);
+const MAX_CONTENT_LENGTH = parseInt(process.env.CLASHD27_NORMALIZED_CONTENT_LIMIT || '1200', 10);
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
@@ -48,6 +50,11 @@ function isDuplicate(signal, nowMs) {
 
   if (_seenTitles.has(key)) return true;
   _seenTitles.set(key, now);
+  while (_seenTitles.size > MAX_DEDUPE_CACHE_SIZE) {
+    const oldestKey = _seenTitles.keys().next().value;
+    if (!oldestKey) break;
+    _seenTitles.delete(oldestKey);
+  }
   return false;
 }
 
@@ -56,7 +63,7 @@ function normalizeSignal(signal) {
   return {
     ...signal,
     title: normalizeText(signal.title),
-    content: String(signal.content || '').slice(0, 500),
+    content: String(signal.content || '').slice(0, MAX_CONTENT_LENGTH),
     score: clamp(Number(signal.score) || 0, 0, 1),
     sourceWeight: Number.isFinite(signal.sourceWeight)
       ? signal.sourceWeight

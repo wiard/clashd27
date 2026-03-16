@@ -1,10 +1,31 @@
-# ⚔ CLASHD27
+# CLASHD27
+### The research gap discovery engine
 
-**A coordination protocol that finds what research misses.**
+> "A permanent library of what AI frameworks are missing.
+> Built by reading thousands of papers.
+> Governed by human approval."
 
-Research is siloed. Breakthroughs sit at intersections nobody is looking at. CLASHD27 deploys autonomous agents across a 27-cell cube to systematically discover cross-domain connections backed by real research.
+CLASHD27 reads academic papers, maps them to a 27-cell
+semantic cube, detects emergence patterns, scores gaps
+with a 7-component deterministic formula, and builds
+a permanent library of research opportunities.
 
-## How It Works
+**Primary domain:** AI governance, safety, and alignment  
+**Secondary domains:** Healthcare · Legal · Climate · Education · Finance
+
+**The discovery cycle:**
+1. Read 500+ papers per night
+2. Map signals to the semantic cube
+3. Detect collisions, clusters, and gradients
+4. Score every gap (0..1) - deterministically
+5. Generate falsifiable hypotheses with kill tests
+6. Store every gap permanently
+7. Deliver promising gaps for human review
+
+**Philosophy:**  
+"AI observes. Humans decide."
+
+## How it works
 
 27 cells in a 3×3×3 matrix. Three layers:
 
@@ -133,6 +154,29 @@ clashd27 includes a sandbox governance kernel for standalone development and tes
 | any other value (e.g. `production`) | Local governance endpoints return `403 governance_disabled`. Proposals must be routed to the openclashd-v2 gateway via `POST {OPENCLASHD_V2_URL}/api/agents/propose`. |
 
 The knowledge graph endpoint (`GET /api/knowledge/objects/:id/graph`) is always available regardless of mode since it reads local knowledge objects.
+
+## Hybrid Deployment
+
+The intended production split is:
+
+- **MacBook / discovery node:** CLASHD27, nightly paper ingestion, deterministic cube runs, and the full append-only gap library.
+- **VPS / governance node:** OpenClashd, the website, Jeeves-facing proposal APIs, and governed review state.
+
+On the discovery node, keep the library local:
+
+- `data/gap-library.jsonl`
+- `data/gap-library-index.json`
+- `data/library-runs/`
+
+Publish only governed handoffs to the VPS:
+
+```bash
+export OPENCLASHD_GATEWAY_URL=https://your-openclashd-host
+export OPENCLASHD_TOKEN=...
+node bin/nightly-reader.js
+```
+
+In this hybrid deployment, CLASHD27 keeps the full research library on the MacBook and sends only governed proposals to OpenClashd. The VPS never becomes the storage location for the full paper corpus or the full gap library.
 
 ## Architecture
 

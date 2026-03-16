@@ -11,13 +11,19 @@
     "start:public-site": "node public-site/server.js",
     "register": "node register-commands.js",
     "doctor": "node tools/doctor.js",
+    "library:run": "node bin/nightly-reader.js",
+    "library:run:domain": "node bin/nightly-reader.js --domain",
+    "library:stats": "node bin/library-stats.js",
+    "library:export": "node bin/library-export.js",
+    "library:backup": "bash bin/backup-library.sh",
+    "library:cron": "bash bin/setup-cron.sh",
     "test:cube": "node scripts/test-clashd27-cube-engine.js",
     "test:v2:cube": "node tests/cube-engine.test.js",
     "test:v2:discovery": "node tests/discovery-candidates.test.js",
     "test:gap": "node tests/gap-pipeline.test.js",
     "test:ingestion": "node tests/paper-ingestion.test.js && node tests/discovery-stream-orchestrator.test.js",
     "test:runtime-gap": "node tests/gap-runtime.test.js",
-    "test": "node scripts/test-clashd27-cube-engine.js && node tests/cube-engine.test.js && node tests/discovery-candidates.test.js && node tests/gap-pipeline.test.js && node tests/paper-ingestion.test.js && node tests/discovery-stream-orchestrator.test.js && node tests/gap-runtime.test.js"
+    "test": "node bin/test-runner.js"
   },
   "dependencies": {
     "csv-parse": "^6.1.0",

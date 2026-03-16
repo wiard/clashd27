@@ -3,17 +3,12 @@
 const https = require('https');
 
 const { extractPaperSignals, normalizeText } = require('./paper-signal-extractor');
+const { createCanonicalPaper, getPaperQueries, getSourceLimit } = require('./paper-source-config');
 const { TOPICS } = require('../queue/topics');
 
 const OPENALEX_API = 'https://api.openalex.org/works';
-const MAX_RESULTS = 50;
-const QUERIES = [
-  'AI safety',
-  'AI governance',
-  'distributed systems',
-  'multi-agent systems',
-  'software architecture'
-];
+const MAX_RESULTS = 100;
+const QUERIES = getPaperQueries();
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
@@ -68,6 +63,27 @@ function workToSignals(work) {
   });
 }
 
+function workToPaper(work) {
+  const keywords = Array.isArray(work.keywords)
+    ? work.keywords.map((keyword) => normalizeText(keyword.display_name || keyword))
+    : [];
+  return createCanonicalPaper({
+    paperId: normalizeText(work.id || work.doi || work.display_name),
+    title: normalizeText(work.display_name),
+    abstract: normalizeAbstract(work),
+    authors: Array.isArray(work.authorships)
+      ? work.authorships.map((entry) => normalizeText(entry.author && entry.author.display_name))
+      : [],
+    year: work.publication_year || null,
+    keywords,
+    citationCount: work.cited_by_count || 0,
+    references: Array.isArray(work.referenced_works) ? work.referenced_works : [],
+    url: normalizeText(work.id || ''),
+    source: 'OpenAlex',
+    domain: inferDomain(work, keywords)
+  });
+}
+
 function normalizeAbstract(work) {
   if (typeof work.abstract === 'string') {
     return normalizeText(work.abstract);
@@ -98,26 +114,40 @@ function inferDomain(work, keywords) {
 }
 
 async function fetchQuery(query, opts = {}) {
+  const bundle = await fetchQueryBundle(query, opts);
+  return bundle.signals;
+}
+
+async function fetchQueryBundle(query, opts = {}) {
   const params = new URLSearchParams({
     search: query,
-    per_page: String(Number.isFinite(opts.maxResults) ? opts.maxResults : MAX_RESULTS),
+    per_page: String(Number.isFinite(opts.maxResults) ? opts.maxResults : getSourceLimit('openAlex', MAX_RESULTS)),
     sort: 'cited_by_count:desc'
   });
   const data = await httpGet(`${OPENALEX_API}?${params.toString()}`);
   const works = Array.isArray(data && data.results) ? data.results : [];
-  return works.flatMap(workToSignals);
+  return {
+    papers: works.map(workToPaper).filter((paper) => paper.title && paper.abstract),
+    signals: works.flatMap(workToSignals)
+  };
 }
 
 async function fetchOpenAlexPapers(queue, opts = {}) {
   let fetched = 0;
   let emittedSignals = 0;
   let queries = 0;
+  const papersById = new Map();
 
-  for (const query of (opts.queries || QUERIES)) {
+  for (const query of getPaperQueries(opts)) {
     try {
-      const signals = await fetchQuery(query, opts);
+      const bundle = await fetchQueryBundle(query, opts);
       const paperIds = new Set();
-      for (const signal of signals) {
+      for (const paper of bundle.papers) {
+        if (paper.paperId && !papersById.has(paper.paperId)) {
+          papersById.set(paper.paperId, paper);
+        }
+      }
+      for (const signal of bundle.signals) {
         queue.produce(TOPICS.RAW_SIGNALS, signal);
         emittedSignals += 1;
         paperIds.add(signal.paperId);
@@ -129,11 +159,18 @@ async function fetchOpenAlexPapers(queue, opts = {}) {
     }
   }
 
-  return { fetched, emittedSignals, queries };
+  return {
+    fetched,
+    emittedSignals,
+    queries,
+    papers: Array.from(papersById.values())
+  };
 }
 
 module.exports = {
   fetchOpenAlexPapers,
   fetchQuery,
+  fetchQueryBundle,
+  workToPaper,
   workToSignals
 };

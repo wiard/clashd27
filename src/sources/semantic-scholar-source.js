@@ -2,16 +2,13 @@
 
 const https = require('https');
 const { extractPaperSignals, normalizeText } = require('./paper-signal-extractor');
+const { createCanonicalPaper, getPaperQueries, getSourceLimit } = require('./paper-source-config');
 const { TOPICS } = require('../queue/topics');
 
 const S2_API = 'https://api.semanticscholar.org/graph/v1/paper/search';
-const MAX_RESULTS = 20;
+const MAX_RESULTS = 50;
 
-const QUERIES = [
-  'AI consent architecture',
-  'governed AI systems',
-  'AI safety verification'
-];
+const QUERIES = getPaperQueries();
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
@@ -64,21 +61,51 @@ function paperToSignal(paper) {
   });
 }
 
+function paperToRecord(paper) {
+  const title = paper.title || '';
+  const abstract = paper.abstract || paper.snippet || '';
+  const year = paper.year || null;
+  const paperId = paper.paperId || '';
+  const authors = (paper.authors || []).map((author) => author.name || '');
+
+  return createCanonicalPaper({
+    paperId: `s2:${paperId}`,
+    title,
+    abstract,
+    authors,
+    year,
+    keywords: normalizeText(title).toLowerCase().split(/\s+/).slice(0, 8),
+    citationCount: paper.citationCount || 0,
+    references: Array.isArray(paper.references) ? paper.references.map((reference) => reference.paperId || reference.title || '') : [],
+    url: paper.url || `https://www.semanticscholar.org/paper/${paperId}`,
+    source: 'Semantic Scholar',
+    domain: 'ai-general'
+  });
+}
+
+async function fetchQueryBundle(query, opts = {}) {
+  const params = new URLSearchParams({
+    query,
+    limit: String(Number.isFinite(opts.maxResults) ? opts.maxResults : getSourceLimit('semanticScholar', MAX_RESULTS)),
+    fields: 'title,abstract,year,authors,venue,paperId,citationCount,references,url'
+  });
+  const url = `${S2_API}?${params}`;
+  const data = await httpGet(url);
+  const papers = (data && data.data) || [];
+  return {
+    papers: papers.map(paperToRecord).filter((paper) => paper.title && paper.abstract),
+    signals: papers.flatMap(paperToSignal)
+  };
+}
+
 /**
  * Fetch papers from Semantic Scholar for a single query.
  * @param {string} query
  * @returns {Promise<object[]>}
  */
 async function fetchQuery(query) {
-  const params = new URLSearchParams({
-    query,
-    limit: String(MAX_RESULTS),
-    fields: 'title,abstract,year,authors,venue,paperId'
-  });
-  const url = `${S2_API}?${params}`;
-  const data = await httpGet(url);
-  const papers = (data && data.data) || [];
-  return papers.flatMap(paperToSignal);
+  const bundle = await fetchQueryBundle(query);
+  return bundle.signals;
 }
 
 /**
@@ -87,16 +114,22 @@ async function fetchQuery(query) {
  * @param {import('../queue/signal-queue').SignalQueue} queue
  * @returns {Promise<{ fetched: number, queries: number }>}
  */
-async function fetchSemanticScholarPapers(queue) {
+async function fetchSemanticScholarPapers(queue, opts = {}) {
   let totalFetched = 0;
   let emittedSignals = 0;
   let queriesRun = 0;
+  const papersById = new Map();
 
-  for (const query of QUERIES) {
+  for (const query of getPaperQueries(opts)) {
     try {
-      const signals = await fetchQuery(query);
+      const bundle = await fetchQueryBundle(query, opts);
       const paperIds = new Set();
-      for (const signal of signals) {
+      for (const paper of bundle.papers) {
+        if (paper.paperId && !papersById.has(paper.paperId)) {
+          papersById.set(paper.paperId, paper);
+        }
+      }
+      for (const signal of bundle.signals) {
         queue.produce(TOPICS.RAW_SIGNALS, signal);
         emittedSignals += 1;
         paperIds.add(signal.paperId);
@@ -108,12 +141,19 @@ async function fetchSemanticScholarPapers(queue) {
     }
   }
 
-  return { fetched: totalFetched, emittedSignals, queries: queriesRun };
+  return {
+    fetched: totalFetched,
+    emittedSignals,
+    queries: queriesRun,
+    papers: Array.from(papersById.values())
+  };
 }
 
 module.exports = {
   fetchSemanticScholarPapers,
   fetchQuery,
+  fetchQueryBundle,
   paperToSignal,
+  paperToRecord,
   QUERIES
 };
