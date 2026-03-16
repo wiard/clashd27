@@ -23,6 +23,7 @@
     "bieb:export": "node bin/bieb-export.js",
     "vivant:status": "node bin/vivant-status.js",
     "vivant:beweging": "node bin/vivant-beweging.js",
+    "entropie:status": "node bin/entropie-status.js",
     "test:cube": "node scripts/test-clashd27-cube-engine.js",
     "test:v2:cube": "node tests/cube-engine.test.js",
     "test:v2:discovery": "node tests/discovery-candidates.test.js",

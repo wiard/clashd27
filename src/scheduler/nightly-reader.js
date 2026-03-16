@@ -14,6 +14,9 @@ const { resolveLibraryLayout, resolveConfiguredPath } = require('../library/libr
 const { detectBeloftes, scoreBelofteCandidate, classifyBelofte } = require('../bieb/belofte-detector');
 const { BeloofteLibrary } = require('../bieb/belofte-library');
 const { Vivant } = require('../bieb/vivant');
+const { meetEntropie, slaEntropieOp, laatsteEntropie } = require('../bieb/entropie');
+const { verwerkCel14 } = require('../bieb/cel14');
+const { ConfiguratieMemorie } = require('../bieb/configuratie-memorie');
 
 const ROOT_DIR = path.join(__dirname, '..', '..');
 const DEFAULT_CONFIG = nightlyConfig.nightlyReader || {};
@@ -252,6 +255,63 @@ async function runNightlyReader(options = {}) {
     console.error(`[NIGHTLY] VIVANT update failed: ${vivantError.message}`);
   }
 
+  // --- Entropie engine: cel 14 collision detectie ---
+  let entropieReport = { H: 0, genormaliseerd: 0, fase: 'kristallisatie', pulsGevuurd: false, emergentie: false, nieuwVerbindingen: 0 };
+  try {
+    const fs = require('fs');
+    const latestCubePath = require('path').join(ROOT_DIR, 'data', 'promise-library', 'latest-cube.json');
+    if (fs.existsSync(latestCubePath)) {
+      const cubeData = JSON.parse(fs.readFileSync(latestCubePath, 'utf8'));
+      const cells = Array.isArray(cubeData.cells) ? cubeData.cells : [];
+      const vorigeEntropie = laatsteEntropie();
+      const vorigePulse = vorigeEntropie ? vorigeEntropie.pulsGevuurd : false;
+
+      const cel14Result = verwerkCel14(cells, runId, { vorigePulse });
+      slaEntropieOp(cel14Result.entropie);
+
+      // Configuratiememorie update
+      const confMemorie = new ConfiguratieMemorie();
+      const buurPatronen = cel14Result.entropie.buurSignalen.map((s) => s.patroon);
+      confMemorie.registreer(buurPatronen, runId);
+
+      if (cel14Result.pulsGevuurd) {
+        confMemorie.updatePulse(buurPatronen);
+        // Feed pulse to VIVANT
+        if (cel14Result.expansie) {
+          try {
+            const vivant = new Vivant();
+            const pulsePatronen = cel14Result.expansie.nieuwVerbindingen.map((v) => ({
+              patroon: v.patroon,
+              domeinen: [v.patroon]
+            }));
+            if (pulsePatronen.length > 0) {
+              vivant.updateNetwerk(pulsePatronen, `${runId}-pulse`);
+            }
+          } catch (_) { /* VIVANT pulse feed is best-effort */ }
+        }
+      } else if (cel14Result.collisions.length > 0 && cel14Result.collisions[0].sterkte > 0.5) {
+        confMemorie.updateBevestiging(buurPatronen);
+      }
+
+      const hasEmergentie = cel14Result.collisions.some((c) => c.type === 'emergentie');
+
+      entropieReport = {
+        H: cel14Result.entropie.H,
+        genormaliseerd: cel14Result.entropie.genormaliseerd,
+        fase: cel14Result.entropie.fase,
+        pulsGevuurd: cel14Result.pulsGevuurd,
+        emergentie: hasEmergentie,
+        nieuwVerbindingen: cel14Result.expansie ? cel14Result.expansie.nieuwVerbindingen.length : 0,
+        collisions: cel14Result.collisions.length,
+        sterksteCollision: cel14Result.sterksteCollision ? cel14Result.sterksteCollision.type : null
+      };
+
+      console.log(`[NIGHTLY] Entropie: H=${cel14Result.entropie.H} fase=${cel14Result.entropie.fase} pulse=${cel14Result.pulsGevuurd}`);
+    }
+  } catch (entropieError) {
+    console.error(`[NIGHTLY] Entropie engine failed: ${entropieError.message}`);
+  }
+
   const stats = library.stats();
   const crossDomain = library.findCrossDomainGaps({ limit: 5 });
   const report = {
@@ -283,7 +343,8 @@ async function runNightlyReader(options = {}) {
     crossDomainGaps: crossDomain,
     delivery,
     beloftes: belofteReport,
-    vivant: vivantReport
+    vivant: vivantReport,
+    entropie: entropieReport
   };
 
   const reportPath = path.join(reportsDir, `run-${timestampId(new Date())}.json`);
