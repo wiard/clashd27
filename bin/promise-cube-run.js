@@ -63,7 +63,6 @@ function main() {
   console.log('');
   console.log(`Cube run: ${savedRun.runId}`);
   console.log(`Real gaps loaded: ${savedRun.summary.realGapsLoaded}`);
-  console.log(`Aanhaakpunten used: ${savedRun.summary.aanhaakpuntenUsed || 0} (${(savedRun.summary.aanhaakpuntenLabels || []).join(', ') || 'none'})`);
   console.log(`Fallback concepts used: ${savedRun.summary.fallbackConceptsUsed}`);
   console.log(`Domains represented: ${savedRun.summary.domainsRepresented.join(', ') || 'none'}`);
   console.log('');
