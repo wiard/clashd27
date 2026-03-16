@@ -333,6 +333,7 @@
       .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
   </style>
+<link rel="stylesheet" href="/calm-public.css" />
 </head>
 <body>
   <div id="app">
@@ -426,7 +427,7 @@
     };
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x070a11, 11, 24);
+    scene.fog = new THREE.Fog(0xeef4f6, 11, 24);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -443,14 +444,14 @@
     controls.maxDistance = 16;
     controls.autoRotate = false;
 
-    const ambient = new THREE.AmbientLight(0x8fa3ce, 0.44);
+    const ambient = new THREE.AmbientLight(0xf7fbfc, 0.78);
     scene.add(ambient);
 
-    const key = new THREE.PointLight(0x8ac8ff, 1.0, 48, 2.0);
+    const key = new THREE.PointLight(0x8eb7cb, 0.92, 48, 2.0);
     key.position.set(6, 8, 9);
     scene.add(key);
 
-    const rim = new THREE.PointLight(0xff9e72, 0.52, 30, 2.0);
+    const rim = new THREE.PointLight(0xd8c29f, 0.4, 30, 2.0);
     rim.position.set(-7, -4, -8);
     scene.add(rim);
 
@@ -495,7 +496,7 @@
       const frameGeom = new THREE.BoxGeometry(gridSpacing * 2.2, gridSpacing * 2.2, gridSpacing * 2.2);
       const frame = new THREE.LineSegments(
         new THREE.EdgesGeometry(frameGeom),
-        new THREE.LineBasicMaterial({ color: 0x2f415d, transparent: true, opacity: 0.42 })
+        new THREE.LineBasicMaterial({ color: 0x95b0bf, transparent: true, opacity: 0.38 })
       );
       cubeGroup.add(frame);
 
@@ -514,7 +515,7 @@
       bgGeom.setAttribute('position', new THREE.Float32BufferAttribute(stars, 3));
       const bg = new THREE.Points(
         bgGeom,
-        new THREE.PointsMaterial({ size: 0.03, color: 0x7f95b8, transparent: true, opacity: 0.32, depthWrite: false })
+        new THREE.PointsMaterial({ size: 0.03, color: 0x9eb4c0, transparent: true, opacity: 0.26, depthWrite: false })
       );
       scene.add(bg);
     }

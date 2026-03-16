@@ -2,11 +2,13 @@
  * CLASHD-27 — Standalone Engine (headless)
  * Thin console wrapper around TickEngine.
  */
-require("dotenv").config({ path: require("path").join(__dirname, ".env"), override: true });
+const { getEntrypointMetadata, loadClashd27Env } = require('./lib/runtime-entrypoints');
+loadClashd27Env();
 
 const { State, getActivePack, getCellLabel } = require('./lib/state');
 const { cellLabel, getLayerName } = require('./lib/cube');
 const { TickEngine } = require('./lib/tick-engine');
+const entrypoint = getEntrypointMetadata('engine');
 
 const state = new State();
 const engine = new TickEngine({ state });
@@ -128,6 +130,7 @@ engine.on('error', ({ phase, error, ctx }) => {
 // ---------------------------------------------------------------------------
 const pack = getActivePack();
 console.log(`[ENGINE] CLASHD-27 standalone engine starting`);
+console.log(`[ENGINE] Entrypoint: ${entrypoint?.kind || 'headless-runtime'}`);
 console.log(`[ENGINE] Pack: ${pack ? pack.name : 'none'}`);
 console.log(`[ENGINE] Tick interval: ${engine.tickInterval / 1000}s`);
 console.log(`[ENGINE] State: tick=${state.tick}, agents=${state.agents.size}, bonds=${state.bonds.length}`);

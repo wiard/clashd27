@@ -530,6 +530,7 @@ footer {
   .funnel-label { width: 70px; font-size: 9px; }
 }
 </style>
+<link rel="stylesheet" href="/calm-dashboard.css" />
 </head>
 <body>
 
@@ -540,6 +541,64 @@ footer {
   <div class="hero-overlay">
     <h1 class="hero-title">CLASHD27</h1>
     <p class="hero-subtitle">A coordination protocol that finds what research misses</p>
+    <div class="intelligence-formula" aria-label="Intelligence formula">
+      <div class="intelligence-formula__head">
+        <span class="intelligence-formula__label">Safety → Define → Investigate</span>
+        <span id="intelligenceCurrent" class="intelligence-formula__current">Current stage: Safety</span>
+      </div>
+      <div class="intelligence-formula__track">
+        <article id="intelligenceStageSafety" class="intelligence-stage is-current" data-stage="safety">
+          <h3>Safety</h3>
+          <p>Keep the radar grounded, bounded, and easy to trust before widening the field.</p>
+        </article>
+        <article id="intelligenceStageDefine" class="intelligence-stage" data-stage="define">
+          <h3>Define</h3>
+          <p>Turn raw cross-domain motion into readable findings, structure, and useful shape.</p>
+        </article>
+        <article id="intelligenceStageInvestigate" class="intelligence-stage" data-stage="investigate">
+          <h3>Investigate</h3>
+          <p>Lean into discovery once the field is producing stronger gaps and research pressure.</p>
+        </article>
+      </div>
+      <p id="intelligenceSummary" class="intelligence-formula__summary">
+        CLASHD27 opens in Safety until live findings show the radar is ready to define or investigate more deeply.
+      </p>
+      <p id="residueFieldHint" class="intelligence-formula__hint">
+        Residue field hint loading…
+      </p>
+      <div class="observatory-grid" aria-label="Governed observatory metrics">
+        <article class="observatory-card" data-tone="stage">
+          <div class="observatory-card__label">Current stage</div>
+          <div id="obsStageValue" class="observatory-card__value">Safety</div>
+          <div id="obsStageNote" class="observatory-card__note">Bounded observability comes first.</div>
+          <div class="observatory-card__bar"><div id="obsStageFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="entropy">
+          <div class="observatory-card__label">Entropy trend</div>
+          <div id="obsEntropyValue" class="observatory-card__value">Waiting</div>
+          <div id="obsEntropyNote" class="observatory-card__note">Reading governed entropy from the kernel.</div>
+          <div class="observatory-card__bar"><div id="obsEntropyFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="residue">
+          <div class="observatory-card__label">Residue strength</div>
+          <div id="obsResidueValue" class="observatory-card__value">—</div>
+          <div id="obsResidueNote" class="observatory-card__note">Residue becomes visible as approved interactions accumulate.</div>
+          <div class="observatory-card__bar"><div id="obsResidueFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="discovery">
+          <div class="observatory-card__label">Discovery rate</div>
+          <div id="obsDiscoveryValue" class="observatory-card__value">—</div>
+          <div id="obsDiscoveryNote" class="observatory-card__note">Discovery pressure stays separate from execution.</div>
+          <div class="observatory-card__bar"><div id="obsDiscoveryFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="patterns">
+          <div class="observatory-card__label">Pattern count</div>
+          <div id="obsPatternValue" class="observatory-card__value">—</div>
+          <div id="obsPatternNote" class="observatory-card__note">Patterns show where the field is beginning to hold shape.</div>
+          <div class="observatory-card__bar"><div id="obsPatternFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+      </div>
+    </div>
     <div class="hero-stats">
       <div class="hero-stat">
         <span class="hero-stat-val" id="stat-tick">—</span>
@@ -648,6 +707,162 @@ footer {
         <span class="result-val" id="res-rejection">—%</span>
         <span class="result-label">REJECTION RATE</span>
       </div>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Entropy to knowledge emergence strip">
+      <article class="observatory-card" data-tone="entropy">
+        <div class="observatory-card__label">Entropy trend</div>
+        <div id="emergenceEntropyValue" class="observatory-card__value">—</div>
+        <div id="emergenceEntropyNote" class="observatory-card__note">Governed uncertainty is still being measured.</div>
+        <div class="observatory-card__bar"><div id="emergenceEntropyFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="discovery">
+        <div class="observatory-card__label">Cube activity</div>
+        <div id="emergenceCubeValue" class="observatory-card__value">—</div>
+        <div id="emergenceCubeNote" class="observatory-card__note">Cells are being observed for structure and motion.</div>
+        <div class="observatory-card__bar"><div id="emergenceCubeFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Collision density</div>
+        <div id="emergenceCollisionValue" class="observatory-card__value">—</div>
+        <div id="emergenceCollisionNote" class="observatory-card__note">Cross-domain collision pressure in the cube field.</div>
+        <div class="observatory-card__bar"><div id="emergenceCollisionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="patterns">
+        <div class="observatory-card__label">Promoted knowledge</div>
+        <div id="emergenceKnowledgeValue" class="observatory-card__value">—</div>
+        <div id="emergenceKnowledgeNote" class="observatory-card__note">Recent knowledge objects promoted into operator-visible structure.</div>
+        <div class="observatory-card__bar"><div id="emergenceKnowledgeFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Cube field readings">
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Hot cells</div>
+        <div id="fieldHotValue" class="observatory-card__value">—</div>
+        <div id="fieldHotNote" class="observatory-card__note">Most active cells in the current cube field.</div>
+        <div class="observatory-card__bar"><div id="fieldHotFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Cold cells</div>
+        <div id="fieldColdValue" class="observatory-card__value">—</div>
+        <div id="fieldColdNote" class="observatory-card__note">Under-explored cells where the field is still quiet.</div>
+        <div class="observatory-card__bar"><div id="fieldColdFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Collision density</div>
+        <div id="fieldCollisionValue" class="observatory-card__value">—</div>
+        <div id="fieldCollisionNote" class="observatory-card__note">Cross-domain collision pressure inside the cube.</div>
+        <div class="observatory-card__bar"><div id="fieldCollisionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Emergence hint</div>
+        <div id="fieldEmergenceValue" class="observatory-card__value">—</div>
+        <div id="fieldEmergenceNote" class="observatory-card__note">A calm clue about where discovery may be cohering.</div>
+        <div class="observatory-card__bar"><div id="fieldEmergenceFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Collective memory strip">
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">System memory</div>
+        <div id="memoryRegionValue" class="observatory-card__value">—</div>
+        <div id="memoryRegionNote" class="observatory-card__note">Regions that repeatedly mattered will appear here.</div>
+        <div class="observatory-card__bar"><div id="memoryRegionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">Signal families</div>
+        <div id="memoryFamilyValue" class="observatory-card__value">—</div>
+        <div id="memoryFamilyNote" class="observatory-card__note">Signal families that often led to useful outcomes.</div>
+        <div class="observatory-card__bar"><div id="memoryFamilyFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">Stable structures</div>
+        <div id="memoryStructureValue" class="observatory-card__value">—</div>
+        <div id="memoryStructureNote" class="observatory-card__note">Knowledge structures that proved durable over time.</div>
+        <div class="observatory-card__bar"><div id="memoryStructureFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">Memory collisions</div>
+        <div id="memoryCollisionValue" class="observatory-card__value">—</div>
+        <div id="memoryCollisionNote" class="observatory-card__note">Recurring cross-domain collisions with structural significance.</div>
+        <div class="observatory-card__bar"><div id="memoryCollisionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Civilization strip">
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">What became durable</div>
+        <div id="civilizationZoneValue" class="observatory-card__value">—</div>
+        <div id="civilizationZoneNote" class="observatory-card__note">Durable knowledge zones will appear here once governed structure persists.</div>
+        <div class="observatory-card__bar"><div id="civilizationZoneFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">Civic risk structure</div>
+        <div id="civilizationRiskValue" class="observatory-card__value">—</div>
+        <div id="civilizationRiskNote" class="observatory-card__note">Regions with durable governed significance will remain visible here.</div>
+        <div class="observatory-card__bar"><div id="civilizationRiskFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">Trusted template</div>
+        <div id="civilizationTemplateValue" class="observatory-card__value">—</div>
+        <div id="civilizationTemplateNote" class="observatory-card__note">Bounded actions that keep proving useful will appear here.</div>
+        <div class="observatory-card__bar"><div id="civilizationTemplateFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">Long-horizon field</div>
+        <div id="civilizationFieldValue" class="observatory-card__value">—</div>
+        <div id="civilizationFieldNote" class="observatory-card__note">Long-horizon research relevance will appear here when it persists across domains.</div>
+        <div class="observatory-card__bar"><div id="civilizationFieldFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Planetary strip">
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Global risk</div>
+        <div id="planetaryRiskValue" class="observatory-card__value">—</div>
+        <div id="planetaryRiskNote" class="observatory-card__note">Cross-region governed risk structures will appear here when they persist.</div>
+        <div class="observatory-card__bar"><div id="planetaryRiskFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Cross-region field</div>
+        <div id="planetaryFieldValue" class="observatory-card__value">—</div>
+        <div id="planetaryFieldNote" class="observatory-card__note">Cross-region knowledge fields will appear here when local patterns begin to cohere globally.</div>
+        <div class="observatory-card__bar"><div id="planetaryFieldFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Global template</div>
+        <div id="planetaryTemplateValue" class="observatory-card__value">—</div>
+        <div id="planetaryTemplateNote" class="observatory-card__note">Bounded action templates with cross-region usefulness will appear here.</div>
+        <div class="observatory-card__bar"><div id="planetaryTemplateFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Planetary field</div>
+        <div id="planetaryResearchValue" class="observatory-card__value">—</div>
+        <div id="planetaryResearchNote" class="observatory-card__note">Long-horizon research fields will appear here when they persist across regions and domains.</div>
+        <div class="observatory-card__bar"><div id="planetaryResearchFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Cosmic strip">
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Enduring question</div>
+        <div id="cosmicQuestionValue" class="observatory-card__value">—</div>
+        <div id="cosmicQuestionNote" class="observatory-card__note">Themes that keep returning across governed history will appear here.</div>
+        <div class="observatory-card__bar"><div id="cosmicQuestionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Long-horizon field</div>
+        <div id="cosmicFieldValue" class="observatory-card__value">—</div>
+        <div id="cosmicFieldNote" class="observatory-card__note">Fields that keep reducing uncertainty across contexts will appear here.</div>
+        <div class="observatory-card__bar"><div id="cosmicFieldFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Deep frontier</div>
+        <div id="cosmicFrontierValue" class="observatory-card__value">—</div>
+        <div id="cosmicFrontierNote" class="observatory-card__note">Questions that deepen rather than disappear will appear here.</div>
+        <div class="observatory-card__bar"><div id="cosmicFrontierFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Stewardship pattern</div>
+        <div id="cosmicStewardshipValue" class="observatory-card__value">—</div>
+        <div id="cosmicStewardshipNote" class="observatory-card__note">Governance-safe long-horizon meaning will appear here when it persists.</div>
+        <div class="observatory-card__bar"><div id="cosmicStewardshipFill" class="observatory-card__bar-fill"></div></div>
+      </article>
     </div>
 
     <h3 class="section-heading" style="font-size:18px;margin-bottom:20px;">Latest Discoveries</h3>
@@ -1009,13 +1224,513 @@ function escapeHtml(t) {
   return d.innerHTML;
 }
 
+function computeIntelligenceFormulaStage({ state, fStats, metrics }) {
+  const totalFindings = Number(fStats && fStats.total || 0);
+  const discoveries = Number(fStats && fStats.byType && fStats.byType.discovery || 0);
+  const highValue = Number(metrics && metrics.total_high_value || 0);
+  const tick = Number(state && state.tick || 0);
+
+  if (highValue > 0 || discoveries > 0) {
+    return {
+      key: 'investigate',
+      label: 'Investigate',
+      summary: 'Investigate becomes current when the cube is already surfacing discoveries or high-value gaps worth deeper study.'
+    };
+  }
+
+  if (totalFindings > 0 || tick > 0) {
+    return {
+      key: 'define',
+      label: 'Define',
+      summary: 'Define is current when the radar is active and shaping cross-domain pressure into readable findings.'
+    };
+  }
+
+  return {
+    key: 'safety',
+    label: 'Safety',
+    summary: 'Safety remains current while the system is establishing a trustworthy baseline and bounded read of the field.'
+  };
+}
+
+function stageFromFabricState(fabricState) {
+  const phaseKey = String(fabricState && fabricState.phase || '').toLowerCase();
+  const entropyScore = Number(fabricState && fabricState.entropy_score || 0);
+  const clusterCount = Number(fabricState && fabricState.entropy_cluster_count || 0);
+  const suffix = ` Entropy ${entropyScore.toFixed(3)} across ${clusterCount} cluster${clusterCount === 1 ? '' : 's'}.`;
+
+  if (phaseKey === 'investigate') {
+    return {
+      key: 'investigate',
+      label: 'Investigate',
+      summary: 'Investigate is current because governed approvals are already reducing entropy into residue-backed knowledge.' + suffix
+    };
+  }
+
+  if (phaseKey === 'define') {
+    return {
+      key: 'define',
+      label: 'Define',
+      summary: 'Define is current because live entropy has moved into structured proposals, but the clusters are not fully resolved yet.' + suffix
+    };
+  }
+
+  if (phaseKey === 'safety') {
+    return {
+      key: 'safety',
+      label: 'Safety',
+      summary: 'Safety is current because unresolved entropy is still being detected and held inside the governed loop.' + suffix
+    };
+  }
+
+  return null;
+}
+
+function stageFromSystemIntelligence(intelligence, entropy) {
+  if (!intelligence || typeof intelligence !== 'object') {
+    return null;
+  }
+
+  const phaseKey = String(intelligence && intelligence.stage || '').toLowerCase();
+  const entropyScore = Number(intelligence && intelligence.entropy || 0);
+  const patternCount = Number(intelligence && intelligence.pattern_count || 0);
+  const trend = String(entropy && entropy.trend || 'steady');
+
+  if (phaseKey === 'investigate') {
+    return {
+      key: 'investigate',
+      label: 'Investigate',
+      summary: 'Investigate is current because governed residue and discovery pressure are already holding enough structure to justify deeper reading. Entropy ' + entropyScore.toFixed(3) + ' with ' + patternCount + ' visible patterns and trend ' + trend + '.'
+    };
+  }
+
+  if (phaseKey === 'define') {
+    return {
+      key: 'define',
+      label: 'Define',
+      summary: 'Define is current because the governed runtime is shaping discovery into clearer structure without widening authority. Entropy ' + entropyScore.toFixed(3) + ' with ' + patternCount + ' visible patterns and trend ' + trend + '.'
+    };
+  }
+
+  return {
+    key: 'safety',
+    label: 'Safety',
+    summary: 'Safety is current because the governed runtime is still holding uncertainty inside a bounded operating frame. Entropy ' + entropyScore.toFixed(3) + ' with ' + patternCount + ' visible patterns and trend ' + trend + '.'
+  };
+}
+
+function renderIntelligenceFormula(stage) {
+  const stages = ['safety', 'define', 'investigate'];
+  stages.forEach((key) => {
+    const el = document.getElementById(
+      key === 'safety'
+        ? 'intelligenceStageSafety'
+        : key === 'define'
+          ? 'intelligenceStageDefine'
+          : 'intelligenceStageInvestigate'
+    );
+    if (el) {
+      el.classList.toggle('is-current', key === stage.key);
+    }
+  });
+
+  const current = document.getElementById('intelligenceCurrent');
+  const summary = document.getElementById('intelligenceSummary');
+  if (current) current.textContent = 'Current stage: ' + stage.label;
+  if (summary) summary.textContent = stage.summary;
+}
+
+function renderResidueFieldHint(field) {
+  const hint = document.getElementById('residueFieldHint');
+  if (!hint) return;
+  const topRegion = field && Array.isArray(field.regions) ? field.regions[0] : null;
+  const topFamily = field && Array.isArray(field.signal_types) ? field.signal_types[0] : null;
+  const fieldStrength = Number(field && field.field_strength || 0);
+
+  if (!topRegion && !topFamily) {
+    hint.textContent = 'Residue field is quiet. Governed approvals will surface here once interaction begins to accumulate meaning.';
+    return;
+  }
+
+  const parts = [];
+  if (topRegion && topRegion.region) parts.push(`region ${topRegion.region}`);
+  if (topFamily && topFamily.signal_type) parts.push(`family ${String(topFamily.signal_type).replace(/_/g, ' ')}`);
+  hint.textContent = `Residue influence hint: strongest around ${parts.join(' · ')} with field strength ${(fieldStrength * 100).toFixed(0)}%.`;
+}
+
+function formatPercent(value) {
+  return Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—';
+}
+
+function formatRate(value) {
+  return Number.isFinite(value) ? `${value.toFixed(1)} / hr` : '—';
+}
+
+function stageProgress(stageKey) {
+  if (stageKey === 'investigate') return 100;
+  if (stageKey === 'define') return 68;
+  return 36;
+}
+
+function setObservatoryMetric(prefix, value, note, fillPercent) {
+  const valueEl = document.getElementById(`${prefix}Value`);
+  const noteEl = document.getElementById(`${prefix}Note`);
+  const fillEl = document.getElementById(`${prefix}Fill`);
+  if (valueEl) valueEl.textContent = value;
+  if (noteEl) noteEl.textContent = note;
+  if (fillEl) fillEl.style.width = `${Math.max(8, Math.min(100, fillPercent || 0))}%`;
+}
+
+function formatCellList(entries) {
+  if (!entries || entries.length === 0) return '—';
+  return entries.map((entry) => `#${entry.cellId}`).join(' · ');
+}
+
+function summarizeCubeTemperature(cubeData) {
+  const entries = Object.entries(cubeData && cubeData.cells || {})
+    .map(([cellId, cell]) => ({
+      cellId: Number(cellId),
+      paperCount: Number(cell && cell.paperCount || 0),
+      surpriseLabel: String(cell && cell.surpriseLabel || ''),
+      methodLabel: String(cell && cell.methodLabel || '')
+    }))
+    .filter((entry) => Number.isFinite(entry.cellId));
+
+  const hot = entries
+    .slice()
+    .sort((left, right) => {
+      if (right.paperCount !== left.paperCount) return right.paperCount - left.paperCount;
+      return left.cellId - right.cellId;
+    })
+    .slice(0, 3);
+
+  const cold = entries
+    .slice()
+    .sort((left, right) => {
+      if (left.paperCount !== right.paperCount) return left.paperCount - right.paperCount;
+      return left.cellId - right.cellId;
+    })
+    .slice(0, 3);
+
+  return { hot, cold, total: entries.length };
+}
+
+function renderObservatoryReadModel({ intelligence, entropy, residueField, collectiveMemory, emergence, cubeData }) {
+  const stageLabel = String(intelligence && intelligence.stage || 'Safety');
+  const stageKey = stageLabel.toLowerCase();
+  const entropyTrend = String(entropy && entropy.trend || 'waiting');
+  const entropyScore = Number(entropy && entropy.entropy_score || intelligence && intelligence.entropy || 0);
+  const residueStrength = Number(intelligence && intelligence.residue_strength || 0);
+  const discoveryRate = Number(intelligence && intelligence.discovery_rate || 0);
+  const patternCount = Number(intelligence && intelligence.pattern_count || 0);
+  const topRegion = residueField && Array.isArray(residueField.regions) ? residueField.regions[0] : null;
+  const topFamily = residueField && Array.isArray(residueField.signal_types) ? residueField.signal_types[0] : null;
+
+  setObservatoryMetric(
+    'obsStage',
+    stageLabel,
+    topRegion && topRegion.region
+      ? `Strongest governed residue region: ${topRegion.region}.`
+      : 'The system is holding a bounded operating posture.',
+    stageProgress(stageKey)
+  );
+  setObservatoryMetric(
+    'obsEntropy',
+    entropyTrend,
+    Number.isFinite(entropyScore)
+      ? `Entropy score ${entropyScore.toFixed(3)} from the governed kernel.`
+      : 'Entropy trend becomes visible when the kernel responds.',
+    (1 - Math.min(1, entropyScore)) * 100
+  );
+  setObservatoryMetric(
+    'obsResidue',
+    formatPercent(residueStrength),
+    topFamily && topFamily.signal_type
+      ? `Strongest family: ${String(topFamily.signal_type).replace(/_/g, ' ')}.`
+      : 'Residue is the append-only memory of approved interactions.',
+    residueStrength * 100
+  );
+  setObservatoryMetric(
+    'obsDiscovery',
+    formatRate(discoveryRate),
+    'Discovery may intensify, but execution still waits for explicit approval.',
+    Math.min(100, discoveryRate * 20)
+  );
+  setObservatoryMetric(
+    'obsPattern',
+    Number.isFinite(patternCount) ? String(patternCount) : '—',
+    'Pattern count shows where meaning is accumulating without granting authority.',
+    Math.min(100, patternCount * 16)
+  );
+
+  const temperature = summarizeCubeTemperature(cubeData);
+  const collisionCount = Number(emergence && emergence.collisions && emergence.collisions.length || 0);
+  const density = temperature.total > 0 ? collisionCount / temperature.total : 0;
+  const suggestion = Array.isArray(emergence && emergence.suggestions) && emergence.suggestions.length > 0
+    ? emergence.suggestions[0]
+    : null;
+  const strongestCell = emergence && emergence.strongestCell != null ? `#${emergence.strongestCell}` : '—';
+  const rememberedRegion = collectiveMemory && Array.isArray(collectiveMemory.region_memory) ? collectiveMemory.region_memory[0] : null;
+
+  setObservatoryMetric(
+    'fieldHot',
+    formatCellList(temperature.hot),
+    temperature.hot.length > 0
+      ? `Most active cells by current cube weight and paper concentration.`
+      : 'No hot cells are visible yet.',
+    Math.min(100, temperature.hot.length * 28)
+  );
+  setObservatoryMetric(
+    'fieldCold',
+    formatCellList(temperature.cold),
+    temperature.cold.length > 0
+      ? 'Quiet cells where the field still has room to discover.'
+      : 'Cold-cell visibility is waiting for cube data.',
+    Math.min(100, temperature.cold.length * 28)
+  );
+  setObservatoryMetric(
+    'fieldCollision',
+    `${collisionCount} / ${temperature.total || 27}`,
+    `Collision density ${Math.round(density * 100)}% across the current cube.`,
+    density * 100
+  );
+  setObservatoryMetric(
+    'fieldEmergence',
+    strongestCell,
+    suggestion
+      ? suggestion
+      : rememberedRegion && rememberedRegion.region
+      ? `Collective memory keeps pointing back to ${String((rememberedRegion && rememberedRegion.region) || '').replace(/_/g, ' ')} as governed value accumulates.`
+      : 'Emergence hints remain read-only cues for research attention.',
+    suggestion ? 78 : 16
+  );
+}
+
+function resolveKnowledgeObjects(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  if (Array.isArray(payload.objects)) return payload.objects;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  return [];
+}
+
+function renderEmergenceStrip({ entropy, emergence, cubeData, knowledgeRecent }) {
+  const temperature = summarizeCubeTemperature(cubeData);
+  const collisionCount = Number(emergence && emergence.collisions && emergence.collisions.length || 0);
+  const density = temperature.total > 0 ? collisionCount / temperature.total : 0;
+  const trend = String(entropy && entropy.trend || 'waiting');
+  const entropyScore = Number(entropy && entropy.entropy_score || 0);
+  const knowledgeObjects = resolveKnowledgeObjects(knowledgeRecent);
+  const strongestCell = emergence && emergence.strongestCell != null ? `#${emergence.strongestCell}` : '—';
+  const topSuggestion = Array.isArray(emergence && emergence.suggestions) && emergence.suggestions.length > 0
+    ? emergence.suggestions[0]
+    : 'Recent promoted knowledge becomes visible here once the kernel publishes it.';
+
+  setObservatoryMetric(
+    'emergenceEntropy',
+    trend,
+    Number.isFinite(entropyScore)
+      ? `Entropy score ${entropyScore.toFixed(3)} in the governed kernel.`
+      : 'The entropy read model is waiting for the kernel.',
+    (1 - Math.min(1, entropyScore)) * 100
+  );
+  setObservatoryMetric(
+    'emergenceCube',
+    `${temperature.total || 0} cells`,
+    `Cube activity is centered around ${strongestCell} with ${temperature.hot.length} hot cells currently standing out.`,
+    Math.min(100, (temperature.total || 0) / 27 * 100)
+  );
+  setObservatoryMetric(
+    'emergenceCollision',
+    `${Math.round(density * 100)}%`,
+    `${collisionCount} recent collisions across ${temperature.total || 27} observable cells.`,
+    density * 100
+  );
+  setObservatoryMetric(
+    'emergenceKnowledge',
+    `${knowledgeObjects.length}`,
+    topSuggestion,
+    Math.min(100, knowledgeObjects.length * 18)
+  );
+}
+
+function renderCollectiveMemoryStrip(collectiveMemory) {
+  const region = collectiveMemory && Array.isArray(collectiveMemory.region_memory) ? collectiveMemory.region_memory[0] : null;
+  const family = collectiveMemory && Array.isArray(collectiveMemory.signal_family_memory) ? collectiveMemory.signal_family_memory[0] : null;
+  const structure = collectiveMemory && Array.isArray(collectiveMemory.knowledge_structure_memory) ? collectiveMemory.knowledge_structure_memory[0] : null;
+  const collision = collectiveMemory && Array.isArray(collectiveMemory.collision_memory) ? collectiveMemory.collision_memory[0] : null;
+
+  setObservatoryMetric(
+    'memoryRegion',
+    region && region.region ? String(region.region).replace(/_/g, ' ') : '—',
+    region && region.explanation
+      ? region.explanation
+      : 'Regions that repeatedly produced governed value will appear here.',
+    Math.min(100, Number(region && region.weight || 0) * 100)
+  );
+  setObservatoryMetric(
+    'memoryFamily',
+    family && family.signal_type ? String(family.signal_type).replace(/_/g, ' ') : '—',
+    family && family.explanation
+      ? family.explanation
+      : 'Signal families with durable governed outcomes will appear here.',
+    Math.min(100, Number(family && family.weight || 0) * 100)
+  );
+  setObservatoryMetric(
+    'memoryStructure',
+    structure && structure.structure_type ? String(structure.structure_type).replace(/_/g, ' ') : '—',
+    structure && structure.explanation
+      ? structure.explanation
+      : 'Stable knowledge structures will appear here once memory has enough evidence.',
+    Math.min(100, Number(structure && structure.weight || 0) * 100)
+  );
+  setObservatoryMetric(
+    'memoryCollision',
+    collision && collision.cube_zone ? String(collision.cube_zone) : '—',
+    collision && collision.explanation
+      ? collision.explanation
+      : 'Recurring cross-domain collisions will appear here once they persist.',
+    Math.min(100, Number(collision && collision.weight || 0) * 100)
+  );
+}
+
+function renderCivilizationStrip(civilization) {
+  const zone = civilization && Array.isArray(civilization.durable_knowledge_zones) ? civilization.durable_knowledge_zones[0] : null;
+  const risk = civilization && Array.isArray(civilization.civic_risk_structures) ? civilization.civic_risk_structures[0] : null;
+  const template = civilization && Array.isArray(civilization.trusted_action_templates) ? civilization.trusted_action_templates[0] : null;
+  const field = civilization && Array.isArray(civilization.long_horizon_research_fields) ? civilization.long_horizon_research_fields[0] : null;
+
+  setObservatoryMetric(
+    'civilizationZone',
+    zone && zone.region ? String(zone.region).replace(/_/g, ' ') : '—',
+    zone && zone.explanation
+      ? zone.explanation
+      : 'Durable knowledge zones will appear once governed structure persists beyond the moment.',
+    Math.min(100, Number(zone && zone.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'civilizationRisk',
+    risk && risk.region ? String(risk.region).replace(/_/g, ' ') : '—',
+    risk && risk.explanation
+      ? risk.explanation
+      : 'Civic risk structures will appear here once a region repeatedly matters under governance.',
+    Math.min(100, Number(risk && risk.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'civilizationTemplate',
+    template && template.action_type ? String(template.action_type).replace(/_/g, ' ') : '—',
+    template && template.explanation
+      ? template.explanation
+      : 'Trusted bounded action templates will appear here once receipt-backed usefulness persists.',
+    Math.min(100, Number(template && template.bounded_usefulness || 0) * 100)
+  );
+  setObservatoryMetric(
+    'civilizationField',
+    field && field.domain ? String(field.domain).replace(/_/g, ' ') : '—',
+    field && field.explanation
+      ? field.explanation
+      : 'Long-horizon research fields will appear here once they persist across time and domains.',
+    Math.min(100, Number(field && field.persistence || 0) * 100)
+  );
+}
+
+function renderPlanetaryStrip(planetary) {
+  const risk = planetary && Array.isArray(planetary.planetary_risk_structures) ? planetary.planetary_risk_structures[0] : null;
+  const field = planetary && Array.isArray(planetary.cross_region_knowledge_fields) ? planetary.cross_region_knowledge_fields[0] : null;
+  const template = planetary && Array.isArray(planetary.trusted_action_templates) ? planetary.trusted_action_templates[0] : null;
+  const research = planetary && Array.isArray(planetary.long_horizon_research_fields) ? planetary.long_horizon_research_fields[0] : null;
+
+  setObservatoryMetric(
+    'planetaryRisk',
+    risk && risk.signal_family ? String(risk.signal_family).replace(/_/g, ' ') : '—',
+    risk && risk.explanation
+      ? risk.explanation
+      : 'Cross-region governed risk structures will appear here when they persist.',
+    Math.min(100, Number(risk && risk.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'planetaryField',
+    field && Array.isArray(field.regions) ? field.regions.join(', ').replace(/_/g, ' ') : '—',
+    field && field.explanation
+      ? field.explanation
+      : 'Cross-region knowledge fields will appear here when local structure begins to cohere globally.',
+    Math.min(100, Number(field && field.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'planetaryTemplate',
+    template && template.action_type ? String(template.action_type).replace(/_/g, ' ') : '—',
+    template && template.explanation
+      ? template.explanation
+      : 'Bounded templates with cross-region usefulness will appear here when they persist.',
+    Math.min(100, Number(template && template.cross_region_usefulness || 0) * 100)
+  );
+  setObservatoryMetric(
+    'planetaryResearch',
+    research && research.domain ? String(research.domain).replace(/_/g, ' ') : '—',
+    research && research.explanation
+      ? research.explanation
+      : 'Long-horizon research fields will appear here when they persist across regions and domains.',
+    Math.min(100, Number(research && research.persistence || 0) * 100)
+  );
+}
+
+function renderCosmicStrip(cosmic) {
+  const question = cosmic && Array.isArray(cosmic.enduring_human_questions) ? cosmic.enduring_human_questions[0] : null;
+  const field = cosmic && Array.isArray(cosmic.long_horizon_knowledge_fields) ? cosmic.long_horizon_knowledge_fields[0] : null;
+  const frontier = cosmic && Array.isArray(cosmic.recurring_exploration_frontiers) ? cosmic.recurring_exploration_frontiers[0] : null;
+  const stewardship = cosmic && Array.isArray(cosmic.stewardship_patterns) ? cosmic.stewardship_patterns[0] : null;
+
+  setObservatoryMetric(
+    'cosmicQuestion',
+    question && question.theme ? String(question.theme).replace(/_/g, ' ') : '—',
+    question && question.explanation
+      ? question.explanation
+      : 'Themes that remain open, central, and governed will appear here.',
+    Math.min(100, Number(question && question.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'cosmicField',
+    field && field.domain ? String(field.domain).replace(/_/g, ' ') : '—',
+    field && field.explanation
+      ? field.explanation
+      : 'Long-horizon fields will appear here once they keep reducing uncertainty across contexts.',
+    Math.min(100, Number(field && field.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'cosmicFrontier',
+    frontier && frontier.frontier ? String(frontier.frontier).replace(/_/g, ' ') : '—',
+    frontier && frontier.explanation
+      ? frontier.explanation
+      : 'Deep frontiers will appear here when discovery keeps returning to the same unresolved terrain.',
+    Math.min(100, Math.min(1, Number(frontier && frontier.recurrence || 0) / 8) * 100)
+  );
+  setObservatoryMetric(
+    'cosmicStewardship',
+    stewardship && stewardship.pattern_type ? String(stewardship.pattern_type).replace(/_/g, ' ') : '—',
+    stewardship && stewardship.explanation
+      ? stewardship.explanation
+      : 'Governance-safe stewardship patterns will appear here when long-horizon meaning becomes visible.',
+    Math.min(100, Number(stewardship && stewardship.persistence || 0) * 100)
+  );
+}
+
 async function loadStats() {
   try {
-    const [state, fStats, metrics, cubeData] = await Promise.all([
+    const [state, fStats, metrics, cubeData, fabricState, residueField, collectiveMemory, civilization, planetary, cosmic, systemIntelligence, systemEntropy, emergence, knowledgeRecent] = await Promise.all([
       fetch('/api/state').then(r => r.json()).catch(() => null),
       fetch('/api/findings/stats').then(r => r.json()).catch(() => null),
       fetch('/api/metrics').then(r => r.json()).catch(() => null),
-      fetch('/api/cube').then(r => r.json()).catch(() => null)
+      fetch('/api/cube').then(r => r.json()).catch(() => null),
+      fetch('/api/fabric/state').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/residue-field').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/collective-memory').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/civilization').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/planetary').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/cosmic').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/intelligence').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/entropy').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/clashd27/emergence').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/knowledge/objects/recent?limit=12').then(r => r.ok ? r.json() : null).catch(() => null)
     ]);
 
     if (state) {
@@ -1065,6 +1780,31 @@ async function loadStats() {
       setFunnel('fun-highval', hvg, maxVal);
       setFunnel('fun-verified', verified, maxVal);
     }
+
+    renderIntelligenceFormula(
+      stageFromSystemIntelligence(systemIntelligence, systemEntropy)
+      || stageFromFabricState(fabricState)
+      || computeIntelligenceFormulaStage({ state, fStats, metrics })
+    );
+    renderResidueFieldHint(residueField);
+    renderObservatoryReadModel({
+      intelligence: systemIntelligence,
+      entropy: systemEntropy,
+      residueField,
+      collectiveMemory,
+      emergence,
+      cubeData
+    });
+    renderCollectiveMemoryStrip(collectiveMemory);
+    renderCivilizationStrip(civilization);
+    renderPlanetaryStrip(planetary);
+    renderCosmicStrip(cosmic);
+    renderEmergenceStrip({
+      entropy: systemEntropy,
+      emergence,
+      cubeData,
+      knowledgeRecent
+    });
   } catch (e) {
     console.error('Stats load failed:', e);
   }
@@ -1111,6 +1851,11 @@ async function loadDiscoveries() {
 }
 
 // Initial load
+renderIntelligenceFormula({
+  key: 'safety',
+  label: 'Safety',
+  summary: 'Safety remains the opening frame until live CLASHD27 signals prove a clearer phase.'
+});
 loadStats();
 loadDiscoveries();
 setInterval(loadStats, 15000);

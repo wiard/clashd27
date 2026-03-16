@@ -3,7 +3,8 @@
  * Serves the public-facing gap catalogus on port 3028
  * Reads the same data/*.json files as the dashboard
  */
-require('dotenv').config({ path: '/home/greenbanaanas/.secrets/clashd27.env', override: true });
+const { bootstrapClashd27ServerEntrypoint, startClashd27SupportServer } = require('../lib/runtime-entrypoints');
+bootstrapClashd27ServerEntrypoint('publicSite');
 
 const express = require('express');
 const fs = require('fs');
@@ -440,6 +441,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 // --- Start ---
-app.listen(PORT, () => {
-  console.log(`[PUBLIC] Running on http://localhost:${PORT}`);
+startClashd27SupportServer(app, {
+  label: 'PUBLIC',
+  port: PORT
 });

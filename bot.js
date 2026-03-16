@@ -1,4 +1,10 @@
-require("dotenv").config({ path: require("path").join(__dirname, ".env"), override: true });
+const {
+  getCanonicalRuntimeEntrypoint,
+  getEntrypointMetadata,
+  loadClashd27Env
+} = require('./lib/runtime-entrypoints');
+loadClashd27Env();
+const entrypoint = getEntrypointMetadata('bot');
 
 // Safe boot log — never prints full keys
 {
@@ -6,6 +12,8 @@ require("dotenv").config({ path: require("path").join(__dirname, ".env"), overri
   const a = process.env.ANTHROPIC_API_KEY || '';
   const d = process.env.DISCORD_TOKEN || '';
   console.log(`[BOOT] env: openai_key_present=${!!k} openai_len=${k.length} openai_last4=${k.slice(-4) || 'n/a'} anthropic_present=${!!a} discord_present=${!!d}`);
+  console.log(`[BOOT] entrypoint=${entrypoint?.kind || 'canonical-runtime'}`);
+  console.log(`[BOOT] canonical_runtime=${getCanonicalRuntimeEntrypoint()}`);
 }
 
 /**

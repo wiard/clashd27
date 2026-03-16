@@ -1,0 +1,500 @@
+:root {
+  --bg: #f4f7f7;
+  --bg-light: #edf3f4;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --orange: #517790;
+  --green: #5f8b69;
+  --blue: #6487a4;
+  --yellow: #9a7a42;
+  --red: #9c6666;
+  --text: #21343b;
+  --muted: #697980;
+  --dim: #d6e0e4;
+  --black: #e9f0f2;
+  --dark: #ffffff;
+  --white: #ffffff;
+  --light: #fbfcfc;
+  --mid: #dce6e9;
+  --floor: #b57b5a;
+  --nha: #5d7d9c;
+  --mod: #5c8a78;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(81, 119, 144, 0.12), transparent 26%),
+    radial-gradient(circle at 82% 6%, rgba(95, 139, 105, 0.08), transparent 24%),
+    linear-gradient(180deg, #fbfcfc 0%, var(--bg) 62%, #edf3f4 100%);
+  color: var(--text);
+}
+
+header,
+.header,
+.live-stats {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(33, 52, 59, 0.12);
+}
+
+header h1,
+.header-title,
+.logo,
+.header-title,
+.agent-name,
+.hero-title,
+.pack-card h3,
+.challenge-box h3,
+.discovery-domains,
+.vision-label,
+.discoveries-header,
+.section-label,
+.label {
+  color: var(--orange);
+  text-shadow: none;
+}
+
+.header-sub,
+.tick-sub,
+.live-countdown,
+.hero-subtitle,
+.section-text,
+.hero-text,
+.hero-body,
+.discovery-connection,
+.discovery-evidence,
+.discovery-meta,
+.findings-stats,
+.findings-header,
+.loading,
+.agent-meta,
+.timeline-tick,
+.stat-label,
+.bar-signal,
+.version,
+.logo-sub,
+.elapsed,
+footer,
+.credits,
+.how p,
+.header-sub,
+.panel-heading,
+.status-label,
+.funnel-label,
+.pack-btn,
+.hit-hypo {
+  color: var(--muted);
+}
+
+.card,
+.panel,
+.pack-card,
+.pipe-step,
+.discovery-card,
+.finding-item,
+.summary,
+.json-block,
+.bond-row,
+.flow-box,
+.challenge-box,
+.vision,
+.findings-section,
+.discoveries,
+.section-dark,
+.section-mid,
+.price-card,
+.eco-item,
+.stat-item,
+.timeline-item,
+.cube-map-cell,
+.details,
+textarea,
+input,
+select {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(33, 52, 59, 0.12);
+  color: var(--text);
+  box-shadow: 0 16px 36px rgba(20, 36, 42, 0.06);
+}
+
+.vision,
+.findings-section,
+.discoveries,
+.section-dark,
+.section-mid,
+.how,
+.why,
+.live-stats {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(240, 246, 247, 0.92));
+}
+
+.finding-item.discovery {
+  background: linear-gradient(90deg, rgba(154, 122, 66, 0.14), rgba(255, 255, 255, 0.86));
+  box-shadow: none;
+}
+
+.finding-item.bond,
+.discovery-hypothesis,
+.pill,
+.badge-HEAVY {
+  background: rgba(81, 119, 144, 0.1);
+}
+
+.finding-item.bond.high-novelty,
+.discovery-card.high-novelty {
+  box-shadow: none;
+}
+
+.pack-card:hover,
+.card:hover,
+.panel:hover,
+.price-card:hover,
+.eco-item:hover,
+.pack-btn:hover,
+.example-btn:hover,
+.json-toggle:hover,
+.nav-link:hover,
+.back-link:hover {
+  box-shadow: 0 18px 40px rgba(20, 36, 42, 0.08);
+}
+
+.pack-btn,
+.example-btn,
+.json-toggle,
+.pack-btn,
+.back-link,
+.nav-link,
+.pack-btn,
+.badge,
+.ingredient,
+.findings-tab,
+.pack-btn,
+.weigh-btn {
+  border-color: rgba(81, 119, 144, 0.2);
+  color: var(--orange);
+}
+
+.weigh-btn,
+.findings-tab.active,
+.pack-btn:hover,
+.example-btn:hover,
+.json-toggle:hover {
+  background: rgba(81, 119, 144, 0.12);
+  color: var(--text);
+}
+
+textarea,
+input,
+select {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.status-alive,
+.e-hi,
+.live-dot,
+.pulse,
+.pulse-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(95, 139, 105, 0.18);
+}
+
+.status-dead,
+.e-lo {
+  background: var(--red);
+}
+
+.e-md,
+.badge-MEDIUM {
+  background: rgba(154, 122, 66, 0.18);
+}
+
+.hero-highlight,
+.summary,
+.challenge-box,
+.merkle-visual,
+.json-block {
+  border-color: rgba(81, 119, 144, 0.2);
+}
+
+.hero-highlight,
+.summary {
+  background: rgba(255, 255, 255, 0.84);
+}
+
+#hero::after {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 10px,
+    rgba(81, 119, 144, 0.03) 10px,
+    rgba(81, 119, 144, 0.03) 11px
+  );
+}
+
+.scan-line {
+  background: linear-gradient(90deg, transparent, rgba(81, 119, 144, 0.16), transparent);
+}
+
+.hero-title,
+.energy-value,
+.tick-number,
+.active-big,
+.stat-val,
+.agent-pct,
+.bar-score,
+.stat-value {
+  color: var(--orange);
+}
+
+.hero-scroll,
+.hero-stat-label,
+.live-indicator,
+.live-text,
+.vision-item p,
+.challenge-box p,
+.discovery-evidence strong,
+.price-features,
+.eco-item,
+.stat-row,
+.timeline-event,
+.relationship-item,
+.findings-tab,
+.finding-meta {
+  color: var(--muted);
+}
+
+.cube-map-cell.current,
+.cube-cell.active {
+  box-shadow: 0 0 0 2px rgba(81, 119, 144, 0.18);
+}
+
+.table,
+.table th,
+.table td {
+  border-color: rgba(33, 52, 59, 0.1);
+}
+
+.intelligence-formula {
+  margin: 0 auto 28px;
+  max-width: 860px;
+  display: grid;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.intelligence-formula__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.intelligence-formula__label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.intelligence-formula__current {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  background: rgba(81, 119, 144, 0.12);
+  border: 1px solid rgba(81, 119, 144, 0.18);
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+.intelligence-formula__track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.intelligence-stage {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(33, 52, 59, 0.12);
+  border-radius: 20px;
+  padding: 16px;
+  text-align: left;
+  box-shadow: 0 18px 40px rgba(20, 36, 42, 0.07);
+}
+
+.intelligence-stage h3 {
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.intelligence-stage p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.intelligence-stage.is-current[data-stage="safety"] {
+  background: linear-gradient(180deg, rgba(154, 122, 66, 0.16), rgba(255, 255, 255, 0.9));
+  border-color: rgba(154, 122, 66, 0.22);
+}
+
+.intelligence-stage.is-current[data-stage="define"] {
+  background: linear-gradient(180deg, rgba(81, 119, 144, 0.16), rgba(255, 255, 255, 0.9));
+  border-color: rgba(81, 119, 144, 0.22);
+}
+
+.intelligence-stage.is-current[data-stage="investigate"] {
+  background: linear-gradient(180deg, rgba(95, 139, 105, 0.16), rgba(255, 255, 255, 0.9));
+  border-color: rgba(95, 139, 105, 0.22);
+}
+
+.intelligence-formula__summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.intelligence-formula__hint {
+  margin: -2px 0 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(33, 52, 59, 0.72);
+}
+
+.observatory-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.observatory-grid--secondary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 28px;
+}
+
+.observatory-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(33, 52, 59, 0.12);
+  border-radius: 20px;
+  padding: 16px;
+  text-align: left;
+  box-shadow: 0 18px 40px rgba(20, 36, 42, 0.07);
+  display: grid;
+  gap: 8px;
+  min-height: 136px;
+}
+
+.observatory-card__label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(33, 52, 59, 0.56);
+}
+
+.observatory-card__value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #21343b;
+}
+
+.observatory-card__note {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(33, 52, 59, 0.72);
+}
+
+.observatory-card__bar {
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(33, 52, 59, 0.08);
+}
+
+.observatory-card__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0;
+  transition: width 0.7s ease;
+}
+
+.observatory-card[data-tone="stage"] .observatory-card__value,
+.observatory-card[data-tone="stage"] .observatory-card__bar-fill {
+  color: #517790;
+  background: linear-gradient(90deg, rgba(81, 119, 144, 0.36), rgba(81, 119, 144, 0.92));
+}
+
+.observatory-card[data-tone="entropy"] .observatory-card__value,
+.observatory-card[data-tone="entropy"] .observatory-card__bar-fill {
+  color: #9a7a42;
+  background: linear-gradient(90deg, rgba(154, 122, 66, 0.28), rgba(154, 122, 66, 0.9));
+}
+
+.observatory-card[data-tone="residue"] .observatory-card__value,
+.observatory-card[data-tone="residue"] .observatory-card__bar-fill {
+  color: #5f8b69;
+  background: linear-gradient(90deg, rgba(95, 139, 105, 0.28), rgba(95, 139, 105, 0.9));
+}
+
+.observatory-card[data-tone="discovery"] .observatory-card__value,
+.observatory-card[data-tone="discovery"] .observatory-card__bar-fill {
+  color: #517790;
+  background: linear-gradient(90deg, rgba(81, 119, 144, 0.18), rgba(81, 119, 144, 0.84));
+}
+
+.observatory-card[data-tone="patterns"] .observatory-card__value,
+.observatory-card[data-tone="patterns"] .observatory-card__bar-fill,
+.observatory-card[data-tone="field"] .observatory-card__value,
+.observatory-card[data-tone="field"] .observatory-card__bar-fill {
+  color: #6b8f8c;
+  background: linear-gradient(90deg, rgba(107, 143, 140, 0.22), rgba(81, 119, 144, 0.82));
+}
+
+.observatory-card[data-tone="memory"] .observatory-card__value,
+.observatory-card[data-tone="memory"] .observatory-card__bar-fill {
+  color: #8a6f52;
+  background: linear-gradient(90deg, rgba(138, 111, 82, 0.24), rgba(107, 143, 140, 0.82));
+}
+
+.observatory-card[data-tone="civilization"] .observatory-card__value,
+.observatory-card[data-tone="civilization"] .observatory-card__bar-fill {
+  color: #6f7b8f;
+  background: linear-gradient(90deg, rgba(111, 123, 143, 0.22), rgba(145, 167, 129, 0.84));
+}
+
+.observatory-card[data-tone="planetary"] .observatory-card__value,
+.observatory-card[data-tone="planetary"] .observatory-card__bar-fill {
+  color: #5b7f7e;
+  background: linear-gradient(90deg, rgba(91, 127, 126, 0.22), rgba(82, 129, 158, 0.86));
+}
+
+.observatory-card[data-tone="cosmic"] .observatory-card__value,
+.observatory-card[data-tone="cosmic"] .observatory-card__bar-fill {
+  color: #7d6f5b;
+  background: linear-gradient(90deg, rgba(125, 111, 91, 0.20), rgba(102, 139, 125, 0.82));
+}
+
+@media (max-width: 760px) {
+  .intelligence-formula__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .intelligence-formula__track {
+    grid-template-columns: 1fr;
+  }
+
+  .observatory-grid,
+  .observatory-grid--secondary {
+    grid-template-columns: 1fr;
+  }
+}

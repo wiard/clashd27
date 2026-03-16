@@ -2,7 +2,8 @@
  * CLASHD27 — Dashboard Server
  * Reads state.json, serves packs, and runs the live dashboard on port 3027
  */
-require('dotenv').config({ path: '/home/greenbanaanas/.secrets/clashd27.env', override: true });
+const { bootstrapClashd27ServerEntrypoint, startClashd27SupportServer } = require('../lib/runtime-entrypoints');
+bootstrapClashd27ServerEntrypoint('dashboard');
 
 const express = require('express');
 const fs = require('fs');
@@ -19,6 +20,8 @@ const PORT = 3027;
 const STATE_FILE = path.join(__dirname, '..', 'data', 'state.json');
 const PACKS_DIR = path.join(__dirname, '..', 'packs');
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const OPENCLASHD_GATEWAY_URL = String(process.env.OPENCLASHD_GATEWAY_URL || 'http://127.0.0.1:19001').replace(/\/$/, '');
+const OPENCLASHD_TOKEN = process.env.OPENCLASHD_TOKEN || process.env.TOKEN || '';
 
 app.use(express.json());
 app.use('/public', express.static(PUBLIC_DIR));
@@ -43,6 +46,226 @@ app.get('/api/observatory/config', (req, res) => {
   res.json({
     jeevesApprovalUrl: process.env.JEEVES_APPROVAL_URL || process.env.JEEVES_URL || 'jeeves://approval'
   });
+});
+
+app.get('/api/fabric/state', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'fabric_state_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/fabric/state', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'fabric_state_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/intelligence', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'system_intelligence_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/intelligence', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'system_intelligence_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/planetary', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'planetary_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/planetary', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'planetary_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/cosmic', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'cosmic_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/cosmic', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'cosmic_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/collective-memory', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'collective_memory_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/collective-memory', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'collective_memory_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/civilization', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'civilization_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/civilization', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'civilization_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/entropy', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'system_entropy_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/entropy', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'system_entropy_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/residue-field', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'residue_field_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/residue-field', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'residue_field_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/knowledge/objects/recent', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'knowledge_recent_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/knowledge/objects/recent', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const limit = String(req.query.limit || '').trim();
+    if (limit) {
+      upstream.searchParams.set('limit', limit);
+    }
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'knowledge_recent_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
 });
 
 // --- State ---
@@ -1954,7 +2177,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`[DASHBOARD] Running on http://localhost:${PORT}`);
+startClashd27SupportServer(app, {
+  label: 'DASHBOARD',
+  port: PORT,
+  onStarted: () => {
   console.log(`[PACK] Active: ${activePack?.name || 'none'}`);
+  }
 });

@@ -210,6 +210,54 @@ function testRunDiscoveryCycleHints() {
   assert('Result.discovery has hints field', Array.isArray(result.discovery.hints));
 }
 
+function testSystemEntropyBias() {
+  const gravityCells = [
+    {
+      cell: 0,
+      axes: { what: 'trust-model', where: 'internal', time: 'current' },
+      gravityScore: 1.2
+    },
+    {
+      cell: 1,
+      axes: { what: 'surface', where: 'internal', time: 'current' },
+      gravityScore: 1.1
+    }
+  ];
+  const emergenceSummary = {
+    collisions: [{
+      id: 'col-1',
+      cells: [0, 1],
+      emergenceScore: 0.8,
+      collisionType: 'near-field',
+      sources: ['internal', 'paper'],
+      entropyWeight: 0.2
+    }],
+    clusters: [],
+    gradients: []
+  };
+  const cubeState = {
+    cells: {
+      '0': { uniqueSourceTypes: ['internal'], evidenceScore: 0.3, ticks: [1, 2], timeSpread: 2 },
+      '1': { uniqueSourceTypes: ['paper'], evidenceScore: 0.4, ticks: [1, 2], timeSpread: 2 }
+    }
+  };
+
+  const ordered = detectDiscoveryCandidates({
+    gravityCells,
+    emergenceSummary,
+    cubeState,
+    systemEntropy: { entropy_score: 0.2 }
+  });
+  const chaotic = detectDiscoveryCandidates({
+    gravityCells,
+    emergenceSummary,
+    cubeState,
+    systemEntropy: { entropy_score: 0.9 }
+  });
+
+  assert('Low entropy raises candidate priority', ordered[0].candidateScore > chaotic[0].candidateScore);
+}
+
 // --- Test: Novelty score for emerging vs historical ---
 function testNoveltyScoreAxisWeighting() {
   // Cell on emerging time axis should score higher than historical
@@ -231,6 +279,7 @@ function run() {
   testSourceConfidenceScaling();
   testCandidateMetadata();
   testRunDiscoveryCycleHints();
+  testSystemEntropyBias();
   testNoveltyScoreAxisWeighting();
 
   console.log(`\n[SUMMARY] ${passed} passed, ${failed} failed`);
