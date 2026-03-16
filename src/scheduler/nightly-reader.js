@@ -11,6 +11,8 @@ const { runDomainCycle } = require('../domains/domain-runner');
 const { GapLibrary } = require('../library/gap-library');
 const { libraryNeedsMigration, migrateLibrary } = require('../library/gap-library-migrator');
 const { resolveLibraryLayout, resolveConfiguredPath } = require('../library/library-paths');
+const { detectBeloftes, scoreBelofteCandidate, classifyBelofte } = require('../bieb/belofte-detector');
+const { BeloofteLibrary } = require('../bieb/belofte-library');
 
 const ROOT_DIR = path.join(__dirname, '..', '..');
 const DEFAULT_CONFIG = nightlyConfig.nightlyReader || {};
@@ -182,6 +184,37 @@ async function runNightlyReader(options = {}) {
     }
   }
 
+  // --- Bieb vol Beloftes: detect cross-domain promises ---
+  let belofteReport = { found: 0, new: 0, confirmed: 0, topBelofte: null };
+  try {
+    const allGaps = library.query({ limit: 9999 });
+    const belofteCandidates = detectBeloftes(allGaps);
+    const beloofteLibrary = new BeloofteLibrary();
+    let newCount = 0;
+    let confirmedCount = 0;
+
+    for (const candidate of belofteCandidates) {
+      const result = beloofteLibrary.addOrUpdate(candidate, runId);
+      if (result.isNew) newCount += 1;
+      else confirmedCount += 1;
+    }
+
+    const topBeloftes = beloofteLibrary.query({ limit: 1 });
+    const topBelofte = topBeloftes.length > 0
+      ? { titel: topBeloftes[0].titel, type: topBeloftes[0].type, score: topBeloftes[0].score, domeinen: topBeloftes[0].domeinen }
+      : null;
+
+    belofteReport = {
+      found: belofteCandidates.length,
+      new: newCount,
+      confirmed: confirmedCount,
+      topBelofte
+    };
+    console.log(`[NIGHTLY] Beloftes detected: ${belofteReport.found} (${belofteReport.new} new, ${belofteReport.confirmed} confirmed)`);
+  } catch (belofteError) {
+    console.error(`[NIGHTLY] Belofte detection failed: ${belofteError.message}`);
+  }
+
   const stats = library.stats();
   const crossDomain = library.findCrossDomainGaps({ limit: 5 });
   const report = {
@@ -211,7 +244,8 @@ async function runNightlyReader(options = {}) {
     migration,
     topGaps: library.query({ limit: 10, sortBy: 'score' }),
     crossDomainGaps: crossDomain,
-    delivery
+    delivery,
+    beloftes: belofteReport
   };
 
   const reportPath = path.join(reportsDir, `run-${timestampId(new Date())}.json`);
