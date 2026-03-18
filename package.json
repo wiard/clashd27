@@ -2,6 +2,7 @@
   "name": "clashd-27",
   "version": "1.0.0",
   "description": "27 cells. One clock. Agents clash.",
+  "type": "module",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
@@ -15,30 +16,6 @@
     "library:run:domain": "node bin/nightly-reader.js --domain",
     "library:stats": "node bin/library-stats.js",
     "library:export": "node bin/library-export.js",
-    "library:backup": "bash bin/backup-library.sh",
-    "library:cron": "bash bin/setup-cron.sh",
-    "bieb:run": "node bin/promise-cube-run.js",
-    "bieb:detect": "node bin/bieb-detect.js",
-    "bieb:stats": "node bin/bieb-stats.js",
-    "bieb:export": "node bin/bieb-export.js",
-    "vivant:status": "node bin/vivant-status.js",
-    "vivant:beweging": "node bin/vivant-beweging.js",
-    "entropie:status": "node bin/entropie-status.js",
-    "test:cube": "node scripts/test-clashd27-cube-engine.js",
-    "test:v2:cube": "node tests/cube-engine.test.js",
-    "test:v2:discovery": "node tests/discovery-candidates.test.js",
-    "test:gap": "node tests/gap-pipeline.test.js",
-    "test:ingestion": "node tests/paper-ingestion.test.js && node tests/discovery-stream-orchestrator.test.js",
-    "test:runtime-gap": "node tests/gap-runtime.test.js",
-    "test": "node bin/test-runner.js"
-  },
-  "dependencies": {
-    "csv-parse": "^6.1.0",
-    "discord.js": "^14.0.0",
-    "dotenv": "^16.6.1",
-    "express": "^5.2.1",
-    "ml-kmeans": "^7.0.0",
-    "natural": "^8.1.0",
-    "xml2js": "^0.6.2"
+    "library:backup": "bash bin/backup-library.sh"
   }
 }
