@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Top Gaps</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --amber: #FFB020;
+  --text: #e0e0e0;
+  --muted: #7b7b7b;
+  --border: #1a1a1a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.header-nav a { color: var(--muted); text-decoration: none; }
+.header-nav a:hover { color: var(--orange); }
+.main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.hero {
+  margin-bottom: 28px;
+}
+.hero h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.hero p {
+  max-width: 720px;
+  color: #a1a1a1;
+  line-height: 1.8;
+}
+.stack {
+  display: grid;
+  gap: 16px;
+}
+.gap-card {
+  display: grid;
+  grid-template-columns: 76px 1fr auto;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20,20,20,0.98), rgba(16,16,16,0.98));
+}
+.rank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--orange);
+  letter-spacing: 1px;
+}
+.gap-body {
+  min-width: 0;
+}
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.gap-title {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.gap-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.score-badge {
+  min-width: 92px;
+  text-align: center;
+  padding: 14px 12px;
+  border-radius: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 800;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+.score-good {
+  color: #001f10;
+  background: var(--green);
+  border-color: rgba(0,255,136,0.4);
+}
+.score-mid {
+  color: #fff4d6;
+  background: rgba(255,176,32,0.18);
+  border-color: rgba(255,176,32,0.35);
+}
+.score-low {
+  color: #d5d8df;
+  background: rgba(255,255,255,0.06);
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text);
+  text-decoration: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+.btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.empty-state {
+  padding: 30px 24px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: #a1a1a1;
+  line-height: 1.9;
+}
+.loading {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .gap-card {
+    grid-template-columns: 1fr;
+  }
+  .score-wrap {
+    align-items: flex-start;
+  }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <span class="header-nav"><a href="/">Home</a> / <a href="/gaps">Gaps</a> / Top Gaps</span>
+</div>
+<div class="main">
+  <div class="hero">
+    <h1>Top Gaps</h1>
+    <p>De hoogst scorende onderzoeksgaten van de afgelopen 7 dagen, gesorteerd op score.</p>
+  </div>
+  <div id="top-gaps" class="stack">
+    <div class="loading">Loading top gaps...</div>
+  </div>
+</div>
+<script>
+(function() {
+  var disciplineColors = {
+    'ai-health': '#E74C3C',
+    'ai-legal': '#8E44AD',
+    'ai-general': '#2980B9',
+    'biological': '#27AE60',
+    'robotical': '#E67E22',
+    'cancer-research': '#E74C3C',
+    'ai-governance': '#8E44AD',
+    'healthcare-ai': '#27AE60',
+    'finance-ai': '#2980B9'
+  };
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function truncate(value, length) {
+    var text = String(value || '').trim();
+    if (text.length <= length) return text;
+    return text.slice(0, length).trimEnd() + '...';
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Onbekende datum';
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString('nl-NL', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function scoreClass(score) {
+    if (score >= 80) return 'score-good';
+    if (score >= 60) return 'score-mid';
+    return 'score-low';
+  }
+
+  function fallbackOpportunityLabel(score) {
+    if (score >= 80) return 'Vroeg stadium';
+    if (score >= 40) return 'Opkomend';
+    return 'Verzadigd';
+  }
+
+  function resolveOpportunityLabel(gap, score) {
+    return gap.opportunityLabel || gap.opportunity_label || fallbackOpportunityLabel(score);
+  }
+
+  function disciplineInfo(gap) {
+    var label = gap.domainLabel || gap.domainId || gap.corridor || 'Onbekend domein';
+    var key = gap.domainId || '';
+    var color = disciplineColors[key] || '#5F6B7A';
+    return { label: label, color: color };
+  }
+
+  function renderEmpty(container) {
+    container.innerHTML = '<div class="empty-state">Het systeem is actief en genereert de eerste rapporten. Kom over enkele uren terug.</div>';
+  }
+
+  function renderGaps(gaps) {
+    var container = document.getElementById('top-gaps');
+    if (!Array.isArray(gaps) || gaps.length === 0) {
+      renderEmpty(container);
+      return;
+    }
+
+    container.innerHTML = gaps.map(function(gap, index) {
+      var info = disciplineInfo(gap);
+      var score = Number(gap.score || gap.opportunityScore || gap.opportunity_score || 0);
+      var hypothesis = truncate(gap.claim || gap.hypothesis || '', 120);
+      return '<article class="gap-card">' +
+        '<div class="rank">#' + (index + 1) + '</div>' +
+        '<div class="gap-body">' +
+          '<div class="meta-row">' +
+            '<span class="badge" style="background:' + info.color + '22;border-color:' + info.color + '55;color:' + info.color + '">' + escapeHtml(info.label) + '</span>' +
+            '<span class="badge">' + escapeHtml(resolveOpportunityLabel(gap, score)) + '</span>' +
+          '</div>' +
+          '<div class="gap-title">' + escapeHtml(hypothesis) + '</div>' +
+          '<div class="gap-date">' + escapeHtml(formatDate(gap.date || gap.discoveredAtIso || gap.lastSeenAtIso)) + '</div>' +
+        '</div>' +
+        '<div class="score-wrap">' +
+          '<div class="score-badge ' + scoreClass(score) + '">' + Math.round(score) + '</div>' +
+          '<div class="actions">' +
+            '<a class="btn" href="/gaps/' + encodeURIComponent(gap.id) + '">Lees rapport</a>' +
+            '<a class="btn" href="/api/gaps/' + encodeURIComponent(gap.id) + '/pdf">Download PDF</a>' +
+          '</div>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  }
+
+  fetch('/api/gaps?sort=score&limit=10&days=7')
+    .then(function(response) { return response.json(); })
+    .then(function(payload) {
+      renderGaps(payload && payload.gaps ? payload.gaps : []);
+    })
+    .catch(function() {
+      renderEmpty(document.getElementById('top-gaps'));
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2205 @@
+/**
+ * CLASHD27 — Dashboard Server
+ * Reads state.json, serves packs, and runs the live dashboard on port 3027
+ */
+const { bootstrapClashd27ServerEntrypoint, startClashd27SupportServer } = require('../lib/runtime-entrypoints');
+bootstrapClashd27ServerEntrypoint('dashboard');
+
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const { Clashd27CubeEngine, cellToCoords, AXIS_WHAT, AXIS_WHERE, AXIS_TIME } = require('../lib/clashd27-cube-engine');
+const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
+const { buildPaperDiscoveryFeed } = require('../lib/paper-discovery-feed');
+const { enrichCandidates, candidateToProposalPayload } = require('../lib/proposal-metadata');
+const { persistDiscoveryCandidate, persistFinding, getRecentKnowledgeObjects, getKnowledgeObjectsByKind, getKnowledgeObject, getKnowledgeGraph, linkKnowledgeObjects, persistDecisionChain } = require('../lib/knowledge-persistence');
+const { isSandboxMode, GOVERNANCE_MODE, submitProposal, decideProposal, getProposals, getRankedProposals, getDecidedProposals, getProposal, executeProposalAction, attachActionResult } = require('../lib/governance-kernel');
+const { generateChipCubeDiscoveries } = require('../src/chip/chip-discovery-engine');
+
+const app = express();
+const PORT = 3027;
+const STATE_FILE = path.join(__dirname, '..', 'data', 'state.json');
+const PACKS_DIR = path.join(__dirname, '..', 'packs');
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const OPENCLASHD_GATEWAY_URL = String(process.env.OPENCLASHD_GATEWAY_URL || 'http://127.0.0.1:19001').replace(/\/$/, '');
+const OPENCLASHD_TOKEN = process.env.OPENCLASHD_TOKEN || process.env.TOKEN || '';
+
+app.use(express.json());
+app.use('/public', express.static(PUBLIC_DIR));
+
+// --- Admin Auth ---
+const ADMIN_TOKEN = process.env.DASHBOARD_ADMIN_TOKEN || process.env.ADMIN_TOKEN || '';
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({ error: 'Admin token not configured' });
+  }
+  const headerToken = req.headers['x-admin-token'];
+  const authHeader = req.headers.authorization || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const token = headerToken || bearer;
+  if (!token || token !== ADMIN_TOKEN) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  return next();
+}
+
+app.get('/api/observatory/config', (req, res) => {
+  res.json({
+    jeevesApprovalUrl: process.env.JEEVES_APPROVAL_URL || process.env.JEEVES_URL || 'jeeves://approval'
+  });
+});
+
+app.get('/api/fabric/state', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'fabric_state_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/fabric/state', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'fabric_state_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/intelligence', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'system_intelligence_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/intelligence', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'system_intelligence_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/planetary', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'planetary_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/planetary', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'planetary_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/cosmic', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'cosmic_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/cosmic', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'cosmic_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/collective-memory', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'collective_memory_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/collective-memory', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'collective_memory_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/civilization', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'civilization_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/civilization', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'civilization_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/entropy', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'system_entropy_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/entropy', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'system_entropy_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/system/residue-field', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'residue_field_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/system/residue-field', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'residue_field_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+app.get('/api/knowledge/objects/recent', async (req, res) => {
+  if (!OPENCLASHD_TOKEN) {
+    return res.status(503).json({ error: 'knowledge_recent_token_missing' });
+  }
+
+  try {
+    const upstream = new URL('/api/knowledge/objects/recent', OPENCLASHD_GATEWAY_URL);
+    upstream.searchParams.set('token', OPENCLASHD_TOKEN);
+    const limit = String(req.query.limit || '').trim();
+    if (limit) {
+      upstream.searchParams.set('limit', limit);
+    }
+    const response = await fetch(upstream, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${OPENCLASHD_TOKEN}`
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    return res.status(response.status).json(payload);
+  } catch (error) {
+    return res.status(502).json({
+      error: 'knowledge_recent_unavailable',
+      reason: error instanceof Error ? error.message : 'upstream_fetch_failed'
+    });
+  }
+});
+
+function handleChipCubeDiscoveries(req, res) {
+  try {
+    const limit = Number.parseInt(String(req.query.limit || '10'), 10);
+    const payload = generateChipCubeDiscoveries({
+      limit: Number.isFinite(limit) ? limit : 10
+    });
+    return res.json(payload);
+  } catch (error) {
+    return res.status(500).json({
+      error: 'chip_cube_discoveries_unavailable',
+      reason: error instanceof Error ? error.message : 'unknown_error'
+    });
+  }
+}
+
+app.get('/chip/cube/discoveries', handleChipCubeDiscoveries);
+app.get('/api/chip/cube/discoveries', handleChipCubeDiscoveries);
+
+// --- State ---
+function readState() {
+  try {
+    const raw = fs.readFileSync(STATE_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+// --- Pack System ---
+let activePack = null;
+
+function loadPack(packId) {
+  try {
+    const packPath = path.join(PACKS_DIR, packId + '.json');
+    const raw = fs.readFileSync(packPath, 'utf8');
+    activePack = JSON.parse(raw);
+    console.log(`[PACK] Loaded: ${activePack.name}`);
+    return activePack;
+  } catch (e) {
+    console.error(`[PACK] Failed to load ${packId}:`, e.message);
+    return null;
+  }
+}
+
+function listPacks() {
+  try {
+    return fs.readdirSync(PACKS_DIR)
+      .filter(f => f.endsWith('.json'))
+      .map(f => {
+        try {
+          const raw = fs.readFileSync(path.join(PACKS_DIR, f), 'utf8');
+          const pack = JSON.parse(raw);
+          return { id: pack.id, name: pack.name, description: pack.description };
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+}
+
+// Load default pack on startup
+loadPack('open-arena');
+
+// --- API: Cube State ---
+app.get('/api/state', (req, res) => {
+  const state = readState();
+  if (!state) return res.status(500).json({ error: 'State not found' });
+
+  const agents = Object.values(state.agents || {});
+  const alive = agents.filter(a => a.alive);
+  const dead = agents.filter(a => !a.alive);
+  const activeCell = state.tick % 27;
+
+  const leaderboard = [...alive].sort((a, b) => b.energy - a.energy);
+
+  const cellOccupancy = {};
+  for (let i = 0; i < 27; i++) cellOccupancy[i] = [];
+  for (const agent of alive) {
+    cellOccupancy[agent.currentCell].push(agent.displayName);
+  }
+
+  const recentBonds = (state.bonds || []).slice(-20).reverse();
+
+  // Include active pack cell label
+  const activeCellLabel = activePack?.cells?.[String(activeCell)]?.label || null;
+
+  res.json({
+    tick: state.tick,
+    activeCell,
+    activeCellLabel,
+    cycle: Math.floor(state.tick / 27),
+    totalAgents: agents.length,
+    aliveAgents: alive.length,
+    deadAgents: dead.length,
+    totalBonds: (state.bonds || []).length,
+    leaderboard,
+    cellOccupancy,
+    recentBonds,
+    agents,
+    pack: activePack ? { id: activePack.id, name: activePack.name } : null,
+  });
+});
+
+// --- API: Pack System ---
+app.get('/api/pack', (req, res) => {
+  if (!activePack) return res.status(404).json({ error: 'No pack loaded' });
+  res.json(activePack);
+});
+
+app.get('/api/packs', (req, res) => {
+  res.json({ packs: listPacks(), active: activePack?.id || null });
+});
+
+app.post('/api/pack/load', (req, res) => {
+  const { packId } = req.body;
+  if (!packId) return res.status(400).json({ error: 'packId required' });
+  const pack = loadPack(packId);
+  if (!pack) return res.status(404).json({ error: 'Pack not found' });
+  res.json({ loaded: pack.id, name: pack.name });
+});
+
+app.get('/api/cell/:id', (req, res) => {
+  if (!activePack) return res.status(404).json({ error: 'No pack loaded' });
+  const cell = activePack.cells[req.params.id];
+  if (!cell) return res.status(404).json({ error: 'Cell not found' });
+
+  const state = readState();
+  const agents = state ? Object.values(state.agents || {}) : [];
+  const occupants = agents.filter(a => a.alive && a.currentCell === parseInt(req.params.id));
+
+  res.json({
+    ...cell,
+    cellId: parseInt(req.params.id),
+    occupants: occupants.map(a => a.displayName),
+    pack: activePack.id
+  });
+});
+
+// --- API: Daily Research ---
+const RESEARCH_FILE = path.join(__dirname, '..', 'data', 'daily-research.json');
+
+function readResearch() {
+  try {
+    if (fs.existsSync(RESEARCH_FILE)) {
+      return JSON.parse(fs.readFileSync(RESEARCH_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[RESEARCH] Read failed:', e.message);
+  }
+  return null;
+}
+
+app.get('/api/research/today', (req, res) => {
+  const research = readResearch();
+  if (!research) return res.json({ date: null, briefings: [] });
+  res.json(research);
+});
+
+app.get('/api/research/:cell', (req, res) => {
+  const cellId = parseInt(req.params.cell);
+  const research = readResearch();
+  if (!research) return res.json({ cell: cellId, articles: [] });
+
+  const briefing = research.briefings.find(b => b.cell === cellId);
+  res.json({
+    cell: cellId,
+    cellLabel: briefing?.cellLabel || null,
+    articles: briefing?.articles || [],
+    date: research.date
+  });
+});
+
+// --- API: Agent Profiles ---
+const HISTORY_FILE = path.join(__dirname, '..', 'data', 'agent-history.json');
+
+function readAgentHistory() {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[HISTORY] Read failed:', e.message);
+  }
+  return { events: [] };
+}
+
+app.get('/api/agent/:name', (req, res) => {
+  const name = req.params.name;
+  const state = readState();
+  if (!state) return res.status(500).json({ error: 'State not found' });
+
+  const agents = Object.values(state.agents || {});
+  const agent = agents.find(a => a.displayName === name);
+  if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+  // Calculate stats
+  const bonds = (state.bonds || []).filter(b => b.agent1 === name || b.agent2 === name);
+  const crossLayerBonds = bonds.filter(b => b.crossLayer);
+
+  // Cell visit frequency from history
+  const history = readAgentHistory();
+  const agentEvents = history.events.filter(e => e.agent === name);
+  const cellVisits = {};
+  for (let i = 0; i < 27; i++) cellVisits[i] = 0;
+  for (const e of agentEvents) {
+    if (e.cell !== undefined) cellVisits[e.cell]++;
+  }
+
+  // Find favorite cell and layer
+  let favoriteCell = 0;
+  let maxVisits = 0;
+  for (const [cell, visits] of Object.entries(cellVisits)) {
+    if (visits > maxVisits) {
+      maxVisits = visits;
+      favoriteCell = parseInt(cell);
+    }
+  }
+
+  const layerVisits = [0, 0, 0];
+  for (const [cell, visits] of Object.entries(cellVisits)) {
+    const layer = Math.floor(parseInt(cell) / 9);
+    layerVisits[layer] += visits;
+  }
+  const favoriteLayer = layerVisits.indexOf(Math.max(...layerVisits));
+
+  const uniqueCellsVisited = Object.values(cellVisits).filter(v => v > 0).length;
+  const crossLayerPct = bonds.length > 0 ? Math.round((crossLayerBonds.length / bonds.length) * 100) : 0;
+
+  // Get insights by this agent
+  const insights = readInsights().filter(i => i.agentName === name || i.agentName?.includes(name));
+
+  // Bond relationships
+  const bondPartners = {};
+  for (const bond of bonds) {
+    const partner = bond.agent1 === name ? bond.agent2 : bond.agent1;
+    if (!bondPartners[partner]) bondPartners[partner] = { count: 0, crossLayer: 0, cells: [] };
+    bondPartners[partner].count++;
+    if (bond.crossLayer) bondPartners[partner].crossLayer++;
+    if (!bondPartners[partner].cells.includes(bond.cell)) {
+      bondPartners[partner].cells.push(bond.cell);
+    }
+  }
+
+  const relationships = Object.entries(bondPartners)
+    .map(([partner, data]) => ({
+      agent: partner,
+      bondCount: data.count,
+      crossLayerBonds: data.crossLayer,
+      sharedCells: data.cells.length
+    }))
+    .sort((a, b) => b.bondCount - a.bondCount);
+
+  // Leaderboard rank
+  const leaderboard = [...agents].filter(a => a.alive).sort((a, b) => b.energy - a.energy);
+  const rank = leaderboard.findIndex(a => a.displayName === name) + 1;
+
+  // Get cell label for current cell
+  const currentCellLabel = activePack?.cells?.[String(agent.currentCell)]?.label || null;
+  const homeCellLabel = activePack?.cells?.[String(agent.homeCell)]?.label || null;
+  const favoriteCellLabel = activePack?.cells?.[String(favoriteCell)]?.label || null;
+
+  res.json({
+    ...agent,
+    currentCellLabel,
+    homeCellLabel,
+    rank: rank || null,
+    totalInLeaderboard: leaderboard.length,
+    stats: {
+      favoriteCell,
+      favoriteCellLabel,
+      favoriteLayer,
+      uniqueCellsVisited,
+      crossLayerBondPct: crossLayerPct,
+      insightsGenerated: insights.length
+    },
+    cellVisits,
+    relationships,
+    recentBonds: bonds.slice(-10).reverse()
+  });
+});
+
+app.get('/api/agent/:name/history', (req, res) => {
+  const name = req.params.name;
+  const limit = parseInt(req.query.limit) || 100;
+  const history = readAgentHistory();
+  const agentEvents = history.events
+    .filter(e => e.agent === name)
+    .slice(-limit)
+    .reverse();
+
+  res.json({
+    agent: name,
+    events: agentEvents,
+    total: history.events.filter(e => e.agent === name).length
+  });
+});
+
+app.get('/api/agent/:name/insights', (req, res) => {
+  const name = req.params.name;
+  const limit = parseInt(req.query.limit) || 50;
+  const insights = readInsights().filter(i => i.agentName === name || i.agentName?.includes(name));
+
+  res.json({
+    agent: name,
+    insights: insights.slice(-limit).reverse(),
+    total: insights.length
+  });
+});
+
+// --- API: Insights ---
+const INSIGHTS_FILE = path.join(__dirname, '..', 'data', 'insights.json');
+
+function readInsights() {
+  try {
+    if (fs.existsSync(INSIGHTS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(INSIGHTS_FILE, 'utf8'));
+      return data.insights || [];
+    }
+  } catch (e) {
+    console.error('[INSIGHTS] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/insights', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const insights = readInsights();
+  res.json({
+    insights: insights.slice(-limit).reverse(),
+    total: insights.length
+  });
+});
+
+app.get('/api/insights/:cell', (req, res) => {
+  const cellId = parseInt(req.params.cell);
+  const limit = parseInt(req.query.limit) || 20;
+  const insights = readInsights().filter(i => i.cell === cellId);
+  res.json({
+    cell: cellId,
+    insights: insights.slice(-limit).reverse(),
+    total: insights.length
+  });
+});
+
+// --- API: Discoveries ---
+const DISCOVERIES_FILE = path.join(__dirname, '..', 'data', 'discoveries.json');
+
+function readDiscoveries() {
+  try {
+    if (fs.existsSync(DISCOVERIES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DISCOVERIES_FILE, 'utf8'));
+      return data.discoveries || [];
+    }
+  } catch (e) {
+    console.error('[DISCOVERIES] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/discoveries', (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  const pack = req.query.pack || null;
+  let discoveries = readDiscoveries();
+
+  // Also include discovery-type findings (gap packets from researcher.js)
+  const findings = readFindings();
+  const discoveryFindings = findings.filter(f => f.type === 'discovery' || f.type === 'draft');
+  const existingIds = new Set(discoveries.map(d => d.id));
+  for (const f of discoveryFindings) {
+    if (!existingIds.has(f.id)) {
+      discoveries.push({
+        id: f.id,
+        tick: f.tick,
+        cell: f.cell,
+        cellLabel: f.cellLabel,
+        agents: f.agents,
+        agentDomains: f.cellLabels,
+        connection: f.discovery || f.hypothesis || '',
+        hypothesis: f.hypothesis || '',
+        evidence: '',
+        source: f.source || '',
+        novelty: f.novelty || 'medium',
+        pack: f.pack,
+        type: f.type,
+        timestamp: f.timestamp,
+        abc_chain: f.abc_chain,
+        bridge: f.bridge,
+        supporting_sources: f.supporting_sources,
+        limiting_sources: f.limiting_sources,
+        kill_test: f.kill_test,
+        cheapest_validation: f.cheapest_validation,
+        clinical_relevance: f.clinical_relevance,
+        verdict: f.verdict,
+        feasibility: f.feasibility,
+        impact: f.impact,
+        goldenCollision: f.goldenCollision || null,
+        sources: f.sources || []
+      });
+    }
+  }
+
+  // Filter by pack if specified
+  if (pack) {
+    discoveries = discoveries.filter(d => d.pack === pack);
+  }
+
+  // Enrich with verification data from deep-dives
+  const dives = readDeepDives();
+  const diveMap = {};
+  for (const dive of dives) diveMap[dive.discovery_id] = dive;
+
+  const enriched = discoveries.map(d => {
+    const dive = diveMap[d.id];
+    if (dive) {
+      const verifications = dive.verifications || [];
+      d.verificationCount = verifications.filter(v => v.verified).length;
+      d.verificationTotal = verifications.length;
+      d.diveScore = dive.scores?.total || 0;
+      d.diveScoreDelta = verifications.reduce((sum, v) => sum + (v.verified ? 5 : -10), 0);
+    }
+    return d;
+  });
+
+  // Sort by timestamp
+  enriched.sort((a, b) => {
+    const ta = a.timestamp || '';
+    const tb = b.timestamp || '';
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  });
+
+  res.json({
+    discoveries: enriched.slice(-limit).reverse(),
+    total: enriched.length
+  });
+});
+
+app.get('/api/discoveries/high-novelty', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const discoveries = readDiscoveries().filter(d => d.novelty === 'high');
+  res.json({
+    discoveries: discoveries.slice(-limit).reverse(),
+    total: discoveries.length
+  });
+});
+
+app.get('/api/discoveries/stats', (req, res) => {
+  const discoveries = readDiscoveries();
+
+  // Count per pack
+  const byPack = {};
+  // Count per cell
+  const byCell = {};
+  // Count by novelty
+  const byNovelty = { high: 0, medium: 0, low: 0 };
+
+  for (const d of discoveries) {
+    byPack[d.pack] = (byPack[d.pack] || 0) + 1;
+    byCell[d.cell] = (byCell[d.cell] || 0) + 1;
+    if (d.novelty) byNovelty[d.novelty] = (byNovelty[d.novelty] || 0) + 1;
+  }
+
+  res.json({
+    total: discoveries.length,
+    highNovelty: byNovelty.high,
+    byPack,
+    byCell,
+    byNovelty
+  });
+});
+
+app.get('/api/discoveries/agent/:name', (req, res) => {
+  const name = req.params.name;
+  const limit = parseInt(req.query.limit) || 50;
+  const discoveries = readDiscoveries().filter(d =>
+    d.agents && d.agents.includes(name)
+  );
+  res.json({
+    agent: name,
+    discoveries: discoveries.slice(-limit).reverse(),
+    total: discoveries.length,
+    discoveryRate: discoveries.length > 0 ? discoveries.length : 0
+  });
+});
+
+// --- API: Findings (Active Research Output) ---
+const FINDINGS_FILE = path.join(__dirname, '..', 'data', 'findings.json');
+const RATINGS_FILE = path.join(__dirname, '..', 'data', 'ratings.json');
+
+function readRatings() {
+  try {
+    if (fs.existsSync(RATINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(RATINGS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[RATINGS] Read failed:', e.message);
+  }
+  return {};
+}
+
+function writeRatings(ratings) {
+  fs.writeFileSync(RATINGS_FILE, JSON.stringify(ratings, null, 2));
+}
+
+function readFindings() {
+  try {
+    if (fs.existsSync(FINDINGS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(FINDINGS_FILE, 'utf8'));
+      return data.findings || [];
+    }
+  } catch (e) {
+    console.error('[FINDINGS] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/findings', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const type = req.query.type || null;
+  const novelty = req.query.novelty || null;
+
+  let findings = readFindings();
+  const ratings = readRatings();
+
+  if (type) findings = findings.filter(f => f.type === type);
+  if (novelty) findings = findings.filter(f => f.novelty === novelty);
+
+  const merged = findings.slice(-limit).reverse().map(f => ({
+    ...f,
+    ratings: ratings[f.id] || { up: 0, down: 0 }
+  }));
+
+  res.json({
+    findings: merged,
+    total: findings.length
+  });
+});
+
+app.post('/api/findings/:id/rate', (req, res) => {
+  const findingId = req.params.id;
+  const { rating } = req.body;
+  if (rating !== 'up' && rating !== 'down') {
+    return res.status(400).json({ error: 'rating must be "up" or "down"' });
+  }
+  const ratings = readRatings();
+  if (!ratings[findingId]) ratings[findingId] = { up: 0, down: 0 };
+  ratings[findingId][rating]++;
+  writeRatings(ratings);
+  res.json({ id: findingId, ratings: ratings[findingId] });
+});
+
+app.get('/api/findings/rated', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const type = req.query.type || null;
+  const ratings = readRatings();
+  let findings = readFindings();
+
+  if (type) findings = findings.filter(f => f.type === type);
+
+  // Enrich discoveries with verification data from deep-dives
+  const dives = readDeepDives();
+  const diveMap = {};
+  for (const dive of dives) {
+    diveMap[dive.discovery_id] = dive;
+  }
+
+  const merged = findings.map(f => {
+    const r = ratings[f.id] || { up: 0, down: 0 };
+    const entry = { ...f, ratings: r, netRating: r.up - r.down };
+    // Attach verification info for discoveries
+    if (f.type === 'discovery' && diveMap[f.id]) {
+      const dive = diveMap[f.id];
+      const verifications = dive.verifications || [];
+      const verified = verifications.filter(v => v.verified).length;
+      entry.verificationCount = verified;
+      entry.verificationTotal = verifications.length;
+      entry.diveScore = dive.scores?.total || 0;
+      entry.diveScoreDelta = verifications.reduce((sum, v) => sum + (v.verified ? 5 : -10), 0);
+    }
+    return entry;
+  });
+
+  merged.sort((a, b) => b.netRating - a.netRating);
+
+  res.json({
+    findings: merged.slice(0, limit),
+    total: merged.length
+  });
+});
+
+app.get('/api/findings/stats', (req, res) => {
+  const findings = readFindings();
+  const byType = { cell: 0, bond: 0, discovery: 0, draft: 0 };
+  const byNovelty = { high: 0, medium: 0, low: 0 };
+
+  for (const f of findings) {
+    if (byType[f.type] !== undefined) byType[f.type]++;
+    if (f.novelty && byNovelty[f.novelty] !== undefined) byNovelty[f.novelty]++;
+  }
+
+  res.json({ total: findings.length, byType, byNovelty });
+});
+
+app.get('/api/findings/cell/:id', (req, res) => {
+  const cellId = parseInt(req.params.id);
+  const limit = parseInt(req.query.limit) || 20;
+  const findings = readFindings().filter(f => f.cell === cellId);
+  res.json({
+    cell: cellId,
+    findings: findings.slice(-limit).reverse(),
+    total: findings.length
+  });
+});
+
+app.get('/api/agent/:name/findings', (req, res) => {
+  const name = req.params.name;
+  const limit = parseInt(req.query.limit) || 50;
+  const findings = readFindings().filter(f =>
+    f.agent === name || (f.agents && f.agents.includes(name))
+  );
+  res.json({
+    agent: name,
+    findings: findings.slice(-limit).reverse(),
+    total: findings.length
+  });
+});
+
+app.get('/api/agent/:name/keywords', (req, res) => {
+  const name = req.params.name;
+  const state = readState();
+  if (!state) return res.status(500).json({ error: 'State not found' });
+
+  const agents = Object.values(state.agents || {});
+  const agent = agents.find(a => a.displayName === name);
+  if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+  res.json({
+    agent: name,
+    keywords: agent.keywords || [],
+    findingsCount: agent.findingsCount || 0,
+    bondsWithFindings: agent.bondsWithFindings || 0,
+    discoveriesCount: agent.discoveriesCount || 0,
+    lastCells: agent.lastCells || []
+  });
+});
+
+// --- API: Deep Dives ---
+const DEEP_DIVES_FILE = path.join(__dirname, '..', 'data', 'deep-dives.json');
+
+function readDeepDives() {
+  try {
+    if (fs.existsSync(DEEP_DIVES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DEEP_DIVES_FILE, 'utf8'));
+      return data.dives || [];
+    }
+  } catch (e) {
+    console.error('[DEEP-DIVES] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/deep-dives', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const dives = readDeepDives();
+  res.json({
+    dives: dives.slice(-limit).reverse(),
+    total: dives.length
+  });
+});
+
+app.get('/api/deep-dives/:id', (req, res) => {
+  const id = req.params.id;
+  const dives = readDeepDives();
+  const dive = dives.find(d => d.discovery_id === id);
+  if (!dive) return res.status(404).json({ error: 'Deep-dive not found' });
+  res.json(dive);
+});
+
+// --- API: Verifications (GPT-4o Independent Review) ---
+const VERIFICATIONS_FILE = path.join(__dirname, '..', 'data', 'verifications.json');
+
+function readVerifications() {
+  try {
+    if (fs.existsSync(VERIFICATIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(VERIFICATIONS_FILE, 'utf8'));
+      return data.verifications || [];
+    }
+  } catch (e) {
+    console.error('[VERIFICATIONS] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/verifications', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const verifications = readVerifications();
+  res.json({
+    verifications: verifications.slice(-limit).reverse(),
+    total: verifications.length
+  });
+});
+
+// --- API: Validations (Pre-Experiment Validation) ---
+const VALIDATIONS_FILE = path.join(__dirname, '..', 'data', 'validations.json');
+
+function readValidationsData() {
+  try {
+    if (fs.existsSync(VALIDATIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(VALIDATIONS_FILE, 'utf8'));
+      return data.validations || [];
+    }
+  } catch (e) {
+    console.error('[VALIDATIONS] Read failed:', e.message);
+  }
+  return [];
+}
+
+app.get('/api/validations', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const validations = readValidationsData();
+  res.json({
+    validations: validations.slice(-limit).reverse(),
+    total: validations.length
+  });
+});
+
+app.get('/api/validations/:id', (req, res) => {
+  const id = req.params.id;
+  const validations = readValidationsData();
+  const validation = validations.find(v => v.discovery_id === id);
+  if (!validation) return res.status(404).json({ error: 'Validation not found' });
+  res.json(validation);
+});
+
+// --- API: Post Weigher Proxy ---
+app.post('/api/weigh', async (req, res) => {
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_APIKEY || process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- API: Metrics ---
+const METRICS_FILE = path.join(__dirname, '..', 'data', 'metrics.json');
+
+app.get('/api/metrics', (req, res) => {
+  try {
+    if (fs.existsSync(METRICS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(METRICS_FILE, 'utf8'));
+      // Strip internal tracking fields
+      const clean = { ...data };
+      delete clean._score_sum;
+      delete clean._score_count;
+      delete clean._bridge_sum;
+      delete clean._bridge_count;
+      delete clean._spec_sum;
+      delete clean._spec_count;
+      delete clean._cost_date;
+      // Augment with cube data
+      const cube = readCube();
+      if (cube) {
+        clean.cube_generation = cube.generation || 0;
+        clean.cube_papers = cube.totalPapers || 0;
+        clean.retraction_enriched = cube.retractionEnriched || 0;
+      }
+      res.json(clean);
+    } else {
+      res.json({});
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to read metrics' });
+  }
+});
+
+// --- API: Retrospective ---
+const RETRO_FILE = path.join(__dirname, '..', 'data', 'retrospective.json');
+
+app.get('/api/retrospective', (req, res) => {
+  try {
+    if (fs.existsSync(RETRO_FILE)) {
+      const data = JSON.parse(fs.readFileSync(RETRO_FILE, 'utf8'));
+      res.json(data);
+    } else {
+      res.json({ outcomes: [] });
+    }
+  } catch (e) {
+    res.json({ outcomes: [] });
+  }
+});
+
+// --- API: Labels (Human Review) ---
+const LABELS_FILE = path.join(__dirname, '..', 'data', 'labels.json');
+
+function readLabels() {
+  try {
+    if (fs.existsSync(LABELS_FILE)) {
+      return JSON.parse(fs.readFileSync(LABELS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[LABELS] Read failed:', e.message);
+  }
+  return [];
+}
+
+function writeLabels(labels) {
+  const tmpFile = LABELS_FILE + '.tmp';
+  fs.writeFileSync(tmpFile, JSON.stringify(labels, null, 2));
+  fs.renameSync(tmpFile, LABELS_FILE);
+}
+
+function computePrecision(labels, findings, k) {
+  // Get most recent K HIGH-VALUE GAP discoveries that have labels
+  const hvFindings = findings.filter(f => {
+    const v = (f.verdict && f.verdict.verdict) || f.verdict || '';
+    return f.type === 'discovery' && (v === 'HIGH-VALUE GAP' || v === 'CONFIRMED DIRECTION');
+  });
+  // Sort by timestamp descending
+  hvFindings.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+  const labelMap = {};
+  for (const l of labels) labelMap[l.id] = l;
+
+  let count = 0, tp = 0;
+  for (const f of hvFindings) {
+    if (count >= k) break;
+    const label = labelMap[f.id];
+    if (!label) continue;
+    count++;
+    if (label.labels.novel === 1 && label.labels.testable === 1 && label.labels.wrong === 0) {
+      tp++;
+    }
+  }
+  return count > 0 ? Math.round((tp / k) * 1000) / 1000 : null;
+}
+
+function updatePrecisionMetrics(labels) {
+  const findings = readFindings();
+  const labeledHV = labels.filter(l => {
+    const f = findings.find(ff => ff.id === l.id);
+    if (!f) return false;
+    const v = (f.verdict && f.verdict.verdict) || f.verdict || '';
+    return v === 'HIGH-VALUE GAP' || v === 'CONFIRMED DIRECTION';
+  }).length;
+
+  // Update metrics file
+  const metricsFile = path.join(__dirname, '..', 'data', 'metrics.json');
+  try {
+    let m = {};
+    if (fs.existsSync(metricsFile)) m = JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
+    m.labeled_total = labels.length;
+    m.labeled_high_value = labeledHV;
+
+    // Precision@k: only compute when enough labels exist
+    if (labeledHV >= 5) {
+      m.precision_at_5 = computePrecision(labels, findings, 5);
+      delete m.precision_at_5_status;
+    } else {
+      m.precision_at_5 = null;
+      m.precision_at_5_status = 'INSUFFICIENT_LABELS';
+    }
+    if (labeledHV >= 10) {
+      m.precision_at_10 = computePrecision(labels, findings, 10);
+      delete m.precision_at_10_status;
+    } else {
+      m.precision_at_10 = null;
+      m.precision_at_10_status = 'INSUFFICIENT_LABELS';
+    }
+
+    m.last_updated = new Date().toISOString();
+    const tmpM = metricsFile + '.tmp';
+    fs.writeFileSync(tmpM, JSON.stringify(m, null, 2));
+    fs.renameSync(tmpM, metricsFile);
+  } catch (e) {
+    console.error('[LABELS] Metrics update failed:', e.message);
+  }
+}
+
+app.get('/api/review/:id', (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+  const labels = readLabels().filter(l => l.id === id);
+  res.json({ finding, review_pack: finding.review_pack || null, labels });
+});
+
+app.post('/api/review/:id/label', (req, res) => {
+  const id = req.params.id;
+  const { reviewer, labels: labelData } = req.body;
+  if (!reviewer || !labelData) {
+    return res.status(400).json({ error: 'reviewer and labels required' });
+  }
+  if (typeof labelData.novel !== 'number' || typeof labelData.testable !== 'number') {
+    return res.status(400).json({ error: 'labels.novel and labels.testable are required (0 or 1)' });
+  }
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  const labels = readLabels();
+  labels.push({
+    id,
+    timestamp: new Date().toISOString(),
+    reviewer,
+    labels: {
+      novel: labelData.novel ? 1 : 0,
+      testable: labelData.testable ? 1 : 0,
+      obvious: labelData.obvious ? 1 : 0,
+      wrong: labelData.wrong ? 1 : 0,
+      confidence: Math.min(5, Math.max(1, parseInt(labelData.confidence) || 3)),
+      notes: (labelData.notes || '').substring(0, 500)
+    }
+  });
+  writeLabels(labels);
+  updatePrecisionMetrics(labels);
+  res.json({ ok: true, total_labels: labels.length });
+});
+
+app.get('/api/labels', (req, res) => {
+  res.json(readLabels());
+});
+
+// --- API: Cube (Anomaly Magnet v2.0) ---
+const CUBE_FILE = path.join(__dirname, '..', 'data', 'cube.json');
+const CLASHD27_CUBE_STATE_FILE = path.join(__dirname, '..', 'data', 'clashd27-cube-state.json');
+
+function readCube() {
+  try {
+    if (fs.existsSync(CUBE_FILE)) {
+      return JSON.parse(fs.readFileSync(CUBE_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[CUBE] Read failed:', e.message);
+  }
+  return null;
+}
+
+function readClashd27CubeSnapshot() {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const snapshot = engine.summarizeEmergence({ persist: false });
+    const state = engine.getState();
+    return {
+      clock: snapshot.clock,
+      state,
+      snapshot,
+      ascii: engine.renderAscii(snapshot)
+    };
+  } catch (e) {
+    return {
+      clock: 0,
+      state: null,
+      snapshot: {
+        clock: 0,
+        heatmap: [],
+        collisions: [],
+        clusters: [],
+        gradients: [],
+        corridors: [],
+        strongestCell: null,
+        topCells: [],
+        topRoutes: [],
+        suggestions: []
+      },
+      ascii: ''
+    };
+  }
+}
+
+app.get('/api/cube', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.json({ active: false });
+  // Return cube without full paper arrays (just counts) for overview
+  const overview = {
+    active: true,
+    generation: cube.generation,
+    createdAtTick: cube.createdAtTick,
+    timestamp: cube.timestamp,
+    totalPapers: cube.totalPapers,
+    axisLabels: cube.axisLabels,
+    distribution: cube.distribution,
+    sourceBreakdown: cube.sourceBreakdown || {},
+    retractionEnriched: cube.retractionEnriched || 0,
+    shuffleDurationMs: cube.shuffleDurationMs || 0,
+    cells: {}
+  };
+  for (const [key, cell] of Object.entries(cube.cells || {})) {
+    // Count sources per cell
+    const sourceCounts = {};
+    let retractedCount = 0;
+    for (const p of (cell.papers || [])) {
+      const src = p.source || 'unknown';
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+      if (p.isRetracted) retractedCount++;
+    }
+
+    overview.cells[key] = {
+      x: cell.x, y: cell.y, z: cell.z,
+      methodLabel: cell.methodLabel,
+      surpriseLabel: cell.surpriseLabel,
+      clusterLabel: cell.clusterLabel,
+      paperCount: cell.paperCount,
+      sourceCounts,
+      retractedCount,
+      topPapers: (cell.papers || []).slice(0, 3).map(p => ({
+        title: p.title, year: p.year, citationCount: p.citationCount,
+        source: p.source || 'unknown', isRetracted: p.isRetracted || false
+      }))
+    };
+  }
+  res.json(overview);
+});
+
+app.get('/api/cube/cell/:id', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.status(404).json({ error: 'No cube active' });
+  const cell = cube.cells[req.params.id];
+  if (!cell) return res.status(404).json({ error: 'Cell not found' });
+  res.json({
+    cellId: parseInt(req.params.id),
+    ...cell,
+    generation: cube.generation
+  });
+});
+
+app.get('/api/cube/golden/:cellA/:cellB', (req, res) => {
+  const cube = readCube();
+  if (!cube) return res.status(404).json({ error: 'No cube active' });
+  const a = cube.cells[req.params.cellA];
+  const b = cube.cells[req.params.cellB];
+  if (!a || !b) return res.status(404).json({ error: 'Cell not found' });
+
+  const methodDistance = Math.abs(a.x - b.x) / 2;
+  const yA = a.y / 2;
+  const yB = b.y / 2;
+  const surprisePair = 0.2 + 0.8 * (0.6 * ((yA + yB) / 2) + 0.4 * Math.sqrt(yA * yB));
+  const semanticDistance = a.z !== b.z ? 1.0 : 0.3;
+  const raw = (0.45 * methodDistance) + (0.35 * surprisePair) + (0.20 * semanticDistance);
+  const score = Math.round(Math.max(0, Math.min(1, raw)) * 1000) / 1000;
+
+  res.json({
+    score,
+    golden: score > 0.5,
+    components: { methodDistance, surprisePair: Math.round(surprisePair * 100) / 100, semanticDistance },
+    cellA: { cell: parseInt(req.params.cellA), method: a.methodLabel, surprise: a.surpriseLabel, cluster: a.clusterLabel, papers: a.paperCount },
+    cellB: { cell: parseInt(req.params.cellB), method: b.methodLabel, surprise: b.surpriseLabel, cluster: b.clusterLabel, papers: b.paperCount }
+  });
+});
+
+// --- API: CLASHD27 Semantic Cube ---
+app.get('/api/clashd27/state', (req, res) => {
+  const payload = readClashd27CubeSnapshot();
+  const snap = payload.snapshot;
+  res.json({
+    clock: snap.clock,
+    heatmap: snap.heatmap,
+    topCells: snap.topCells,
+    topRoutes: snap.topRoutes,
+    clusters: snap.clusters,
+    gravityWells: snap.gravityWells,
+    momentum: snap.momentum,
+    topology: snap.topology,
+    suggestions: snap.suggestions,
+    strongestCell: snap.strongestCell
+  });
+});
+
+app.get('/api/clashd27/emergence', (req, res) => {
+  const payload = readClashd27CubeSnapshot();
+  const snap = payload.snapshot;
+  res.json({
+    clock: snap.clock,
+    heatmap: snap.heatmap,
+    topCells: snap.topCells,
+    topRoutes: snap.topRoutes,
+    clusters: snap.clusters,
+    gradients: snap.gradients,
+    corridors: snap.corridors,
+    collisions: snap.collisions,
+    gravityWells: snap.gravityWells,
+    momentum: snap.momentum,
+    optimalRoutes: snap.optimalRoutes,
+    topology: snap.topology,
+    phaseTransitions: snap.phaseTransitions,
+    suggestions: snap.suggestions,
+    strongestCell: snap.strongestCell,
+    ascii: payload.ascii
+  });
+});
+
+app.get('/api/clashd27/discovery-feed', (req, res) => {
+  try {
+    const signalLimit = parseInt(req.query.signalLimit || '120', 10);
+    const maxSignals = Number.isFinite(signalLimit)
+      ? Math.max(10, Math.min(300, signalLimit))
+      : 120;
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const cube = readCube();
+    const payload = buildPaperDiscoveryFeed({
+      engine,
+      cube,
+      maxSignals
+    });
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({
+      tick: 0,
+      timestamp: new Date().toISOString(),
+      counts: {
+        signal_detected: 0,
+        emergence_cluster: 0,
+        gravity_hotspot: 0,
+        discovery_candidate: 0
+      },
+      events: [],
+      error: e.message
+    });
+  }
+});
+
+app.get('/api/clashd27/gravity', (req, res) => {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const wells = engine.computeGravityField();
+    const momentum = engine.computeMomentumSnapshot();
+    res.json({ wells, momentum });
+  } catch (e) {
+    res.json({ wells: [], momentum: [] });
+  }
+});
+
+app.get('/api/clashd27/topology', (req, res) => {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const topology = engine.computeTopology();
+    const phaseHistory = engine.getPhaseHistory();
+    const transitions = engine.getPhaseTransitions();
+    res.json({ topology, phaseHistory: phaseHistory.slice(-27), transitions });
+  } catch (e) {
+    res.json({ topology: null, phaseHistory: [], transitions: [] });
+  }
+});
+
+app.get('/api/clashd27/sources', (req, res) => {
+  try {
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const state = engine.getState();
+    const emergence = engine.summarizeEmergence({ persist: false });
+    const scores = scoreSignalSources(state, emergence.collisions, state.emergenceEvents);
+    const adjustments = suggestWeightAdjustments(scores);
+    res.json({ sources: scores, adjustments });
+  } catch (e) {
+    res.json({ sources: [], adjustments: {} });
+  }
+});
+
+app.get('/api/clashd27/routes/:cellId', (req, res) => {
+  try {
+    const cellId = parseInt(req.params.cellId, 10);
+    if (!Number.isFinite(cellId) || cellId < 0 || cellId > 26) {
+      return res.status(400).json({ error: 'cellId must be 0-26' });
+    }
+    const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+    const routes = engine.computeOptimalRoutes(cellId, {
+      maxDepth: parseInt(req.query.depth || '5', 10),
+      topK: parseInt(req.query.topK || '5', 10)
+    });
+    res.json({ cellId, routes });
+  } catch (e) {
+    res.json({ cellId: req.params.cellId, routes: [] });
+  }
+});
+
+// --- API: PubMed & Trials (per finding, live enrichment) ---
+
+app.get('/api/findings/:id/pubmed', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const pubmed = require('../lib/pubmed');
+    const refs = await pubmed.enrichWithReferences(finding);
+    res.json({
+      finding_id: id,
+      pubmed_references: refs,
+      mesh_terms: finding.mesh_terms || [],
+      total: refs.length
+    });
+  } catch (e) {
+    res.status(500).json({ error: `PubMed enrichment failed: ${e.message}` });
+  }
+});
+
+app.get('/api/findings/:id/trials', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const clinicaltrials = require('../lib/clinicaltrials');
+    const trials = await clinicaltrials.searchTrials(finding);
+    const assessment = clinicaltrials.assessTrialOverlap(finding, trials);
+    res.json({
+      finding_id: id,
+      ...assessment
+    });
+  } catch (e) {
+    res.status(500).json({ error: `ClinicalTrials check failed: ${e.message}` });
+  }
+});
+
+// --- API: Funding & Enrichment ---
+
+app.get('/api/findings/:id/funding', (req, res) => {
+  const id = req.params.id;
+  const validations = readValidationsData();
+  const validation = validations.find(v => v.discovery_id === id);
+  if (!validation) return res.status(404).json({ error: 'No funding data for this finding' });
+  res.json({
+    discovery_id: id,
+    nih_funding: validation.nih_funding || null,
+    eu_funding: validation.eu_funding || null
+  });
+});
+
+app.get('/api/funding/stats', (req, res) => {
+  const validations = readValidationsData();
+  let nihTotal = 0, nihCross = 0, euTotal = 0, euFunded = 0;
+  let withNih = 0, withEu = 0;
+
+  for (const v of validations) {
+    if (v.nih_funding) {
+      withNih++;
+      nihTotal += v.nih_funding.total_projects_found || 0;
+      nihCross += v.nih_funding.cross_domain_projects || 0;
+    }
+    if (v.eu_funding) {
+      withEu++;
+      euTotal += v.eu_funding.total_found || 0;
+      euFunded += v.eu_funding.eu_funded_count || 0;
+    }
+  }
+
+  res.json({
+    validations_with_funding: { nih: withNih, eu: withEu, total: validations.length },
+    nih: { total_projects: nihTotal, cross_domain: nihCross },
+    eu: { total_papers: euTotal, eu_funded: euFunded }
+  });
+});
+
+app.get('/api/findings/:id/brief', async (req, res) => {
+  const id = req.params.id;
+  const findings = readFindings();
+  const finding = findings.find(f => f.id === id);
+  if (!finding) return res.status(404).json({ error: 'Finding not found' });
+
+  try {
+    const { enrichGapBrief } = require('../lib/brief-enricher');
+    const brief = await enrichGapBrief(finding);
+    res.json({ finding_id: id, ...brief });
+  } catch (e) {
+    res.status(500).json({ error: `Enrichment failed: ${e.message}` });
+  }
+});
+
+app.get('/api/credibility/stats', (req, res) => {
+  const findings = readFindings();
+  const discoveries = findings.filter(f => f.type === 'discovery');
+
+  try {
+    const { scoreGapQuality } = require('../lib/brief-enricher');
+    const scores = discoveries.map(d => {
+      const gq = scoreGapQuality(d);
+      return {
+        id: d.id,
+        gap_quality_score: gq.score,
+        gap_quality_passed: gq.passed,
+        gap_quality_total: gq.total,
+        // source_credibility_score requires live API calls, so only gap_quality is shown here
+        score: gq.score  // backward-compatible
+      };
+    });
+
+    const avg = scores.length > 0
+      ? Math.round(scores.reduce((s, c) => s + c.gap_quality_score, 0) / scores.length)
+      : 0;
+
+    const distribution = { high: 0, medium: 0, low: 0 };
+    for (const s of scores) {
+      if (s.gap_quality_score >= 70) distribution.high++;
+      else if (s.gap_quality_score >= 40) distribution.medium++;
+      else distribution.low++;
+    }
+
+    res.json({
+      total_scored: scores.length,
+      average_gap_quality_score: avg,
+      average_score: avg,  // backward-compatible
+      distribution,
+      note: 'source_credibility_score requires live API enrichment via /api/findings/:id/brief',
+      recent: scores.slice(-20).reverse()
+    });
+  } catch (e) {
+    res.status(500).json({ error: `Credibility scoring failed: ${e.message}` });
+  }
+});
+
+// --- API: Engine Control (Command Center) ---
+const BUDGET_FILE = path.join(__dirname, '..', 'data', 'budget.json');
+const ENGINE_CMD_FILE = path.join(__dirname, '..', 'data', '.engine-cmd.json');
+const CUBE_FILE_ENGINE = path.join(__dirname, '..', 'data', 'cube.json');
+
+// Engine status: read from data files since engine runs in a separate process
+app.get('/api/engine/status', (req, res) => {
+  const state = readState();
+  const metrics = readJSON(METRICS_FILE);
+  const budgetData = readJSON(BUDGET_FILE);
+  const cube = readJSON(CUBE_FILE_ENGINE);
+  const cmdState = readJSON(ENGINE_CMD_FILE);
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const budgetToday = (budgetData && budgetData.date === today) ? budgetData.spent || 0 : 0;
+  const budgetLimit = parseFloat(process.env.DAILY_BUDGET_USD || '2.00');
+
+  res.json({
+    running: !(cmdState && cmdState.paused),
+    paused: !!(cmdState && cmdState.paused),
+    tick: state ? state.tick : 0,
+    pack: activePack ? { id: activePack.id, name: activePack.name } : null,
+    budget_today: Math.round(budgetToday * 100) / 100,
+    budget_limit: budgetLimit,
+    cube_generation: cube ? cube.generation || 0 : 0,
+    cube_papers: cube ? cube.totalPapers || 0 : 0,
+    cube_timestamp: cube ? cube.timestamp || null : null,
+    agents_total: state ? Object.keys(state.agents || {}).length : 0,
+    agents_alive: state ? Object.values(state.agents || {}).filter(a => a.alive).length : 0,
+    total_bonds: state ? (state.bonds || []).length : 0,
+    metrics: metrics || {}
+  });
+});
+
+// Pipeline funnel: aggregate counts from findings
+app.get('/api/pipeline/funnel', (req, res) => {
+  const findings = readFindings();
+  const dives = readDeepDives();
+  const verifications = readVerifications();
+  const validations = readValidationsData();
+  const metrics = readJSON(METRICS_FILE);
+
+  const cube = readJSON(CUBE_FILE_ENGINE);
+  const papers = cube ? cube.totalPapers || 0 : 0;
+
+  const classified = papers; // all papers in cube are classified
+  const allFindings = findings.length;
+  const discoveries = findings.filter(f => f.type === 'discovery' || f.type === 'draft').length;
+  const attempts = findings.filter(f => f.type === 'attempt' || f.type === 'duplicate').length;
+
+  // Golden collisions (discoveries that had a golden collision score)
+  const golden = findings.filter(f =>
+    (f.type === 'discovery' || f.type === 'draft') &&
+    f.goldenCollision && (typeof f.goldenCollision === 'number' ? f.goldenCollision > 0.5 : f.goldenCollision?.score > 0.5)
+  ).length;
+
+  // Investigated = total findings minus duplicates
+  const investigated = findings.filter(f => f.type !== 'duplicate').length;
+
+  // High-score = discoveries with score >= 75
+  const highScore = findings.filter(f =>
+    (f.type === 'discovery' || f.type === 'draft') &&
+    f.scores && f.scores.total >= 75
+  ).length;
+
+  const deepDived = dives.length;
+  const verified = verifications.length;
+  const validated = validations.length;
+
+  res.json({
+    papers,
+    classified,
+    findings: allFindings,
+    golden: golden || metrics?.golden_collisions || 0,
+    investigated,
+    discoveries,
+    attempts,
+    high_score: highScore || metrics?.total_high_value || 0,
+    deep_dived: deepDived,
+    verified,
+    validated
+  });
+});
+
+// Force shuffle: write command file for engine to pick up
+app.post('/api/shuffle/force', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.forceShuffle = true;
+    cmd.forceShuffleAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Shuffle command queued' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Pause engine: write pause signal
+app.post('/api/engine/pause', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.paused = true;
+    cmd.pausedAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Engine pause signal sent' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Resume engine: clear pause signal
+app.post('/api/engine/resume', (req, res) => {
+  try {
+    const cmd = readJSON(ENGINE_CMD_FILE) || {};
+    cmd.paused = false;
+    cmd.resumedAt = new Date().toISOString();
+    const tmp = ENGINE_CMD_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cmd, null, 2));
+    fs.renameSync(tmp, ENGINE_CMD_FILE);
+    res.json({ ok: true, message: 'Engine resume signal sent' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Export all gaps as JSON download
+app.get('/api/export/gaps', (req, res) => {
+  const findings = readFindings();
+  const discoveries = findings.filter(f => f.type === 'discovery' || f.type === 'draft');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="clashd27-gaps.json"');
+  res.json({ exported_at: new Date().toISOString(), gaps: discoveries });
+});
+
+// --- Gap Leaderboard ---
+app.get('/api/leaderboard', (req, res) => {
+  try {
+    const { computeLeaderboard } = require('../lib/gap-leaderboard');
+    res.json(computeLeaderboard());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/leaderboard/:repo', (req, res) => {
+  try {
+    const { getGapsForRepo } = require('../lib/gap-index');
+    const { generateDraft } = require('../lib/x-post-generator');
+    const { repo, gaps } = getGapsForRepo(req.params.repo);
+    const sorted = gaps.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const latest = sorted[0] || null;
+    const repoInfo = latest ? (latest.repos || []).find(r => r.repo === repo) : null;
+    const draft = latest ? generateDraft(latest, repoInfo) : null;
+    res.json({ repo, gaps: sorted, latest_draft: draft });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/gap/:id/status', requireAdmin, (req, res) => {
+  try {
+    const status = req.body?.status;
+    if (!['open', 'posted', 'responded', 'resolved'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    const { updateGapStatus } = require('../lib/gap-index');
+    const result = updateGapStatus(req.params.id, status);
+    if (!result.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Helper for new endpoints
+function readJSON(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+  } catch (e) { }
+  return null;
+}
+
+// --- GitHub Monitor API ---
+app.get('/api/github/trending', async (req, res) => {
+  try {
+    const { scanTrending, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, repos: [], message: 'GitHub monitor disabled or no token' });
+    }
+    const repos = await scanTrending();
+    res.json({ enabled: true, count: repos.length, repos: repos.slice(0, 20) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/watchlist', async (req, res) => {
+  try {
+    const { checkWatchlist, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, repos: [], message: 'GitHub monitor disabled or no token' });
+    }
+    const repos = await checkWatchlist();
+    res.json({ enabled: true, count: repos.length, repos });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/gaps', (req, res) => {
+  try {
+    const { getPersistedGaps } = require('../lib/paper-code-matcher');
+    const limit = parseInt(req.query.limit || '50', 10);
+    const type = req.query.type || null;
+    const gaps = getPersistedGaps({ limit, type });
+    res.json({ count: gaps.length, gaps });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/collisions', (req, res) => {
+  try {
+    const { readCollisions } = require('../lib/dependency-graph');
+    const data = readCollisions();
+    res.json({
+      count: data.total || 0,
+      updated: data.updated,
+      collisions: (data.collisions || []).slice(0, 50)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/issues', async (req, res) => {
+  try {
+    const { mineIssues, ENABLED } = require('../lib/github-monitor');
+    if (!ENABLED || !process.env.GITHUB_TOKEN) {
+      return res.json({ enabled: false, issues: [] });
+    }
+    const maxPerRepo = parseInt(req.query.max || '5', 10);
+    const issues = await mineIssues({ maxPerRepo });
+    res.json({ count: issues.length, issues: issues.slice(0, 50) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/github/status', (req, res) => {
+  try {
+    const { ENABLED, WATCHLIST } = require('../lib/github-monitor');
+    const hasToken = !!process.env.GITHUB_TOKEN;
+    res.json({
+      enabled: ENABLED && hasToken,
+      has_token: hasToken,
+      watchlist_count: WATCHLIST.length,
+      scan_interval: parseInt(process.env.GITHUB_SCAN_INTERVAL || '3600000', 10),
+      watchlist_interval: parseInt(process.env.GITHUB_WATCHLIST_INTERVAL || '1800000', 10),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Enriched Proposals & Knowledge ---
+
+app.get('/api/clashd27/proposals/enriched', (req, res) => {
+  try {
+    const { detectDiscoveryCandidates } = require('../lib/discovery-candidates');
+    const { computeResearchGravity } = require('../lib/clashd27-cube-engine');
+    const cubeState = cubeEngine.getFullState();
+    const gravityCells = computeResearchGravity(cubeState);
+    const emergenceSummary = cubeEngine.summarizeEmergence ? cubeEngine.summarizeEmergence() : { collisions: [], clusters: [], gradients: [] };
+    const candidates = detectDiscoveryCandidates({ gravityCells, emergenceSummary, cubeState });
+    const enriched = enrichCandidates(candidates);
+    const proposals = enriched.map(c => candidateToProposalPayload(c, 'clashd27'));
+    res.json({
+      ok: true,
+      proposals,
+      enrichedCandidates: enriched,
+      meta: {
+        candidateCount: enriched.length,
+        timestamp: new Date().toISOString(),
+        tick: cubeState.clock || 0
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/clashd27/discovery/:candidateId/context', (req, res) => {
+  try {
+    const { detectDiscoveryCandidates } = require('../lib/discovery-candidates');
+    const { computeResearchGravity } = require('../lib/clashd27-cube-engine');
+    const { extractEvidenceRefs, extractPrimaryCells, extractDomainAxes, buildCandidateSummary, buildReasoningTraceShort, deriveRecommendedActionKind } = require('../lib/proposal-metadata');
+    const cubeState = cubeEngine.getFullState();
+    const gravityCells = computeResearchGravity(cubeState);
+    const emergenceSummary = cubeEngine.summarizeEmergence ? cubeEngine.summarizeEmergence() : { collisions: [], clusters: [], gradients: [] };
+    const candidates = detectDiscoveryCandidates({ gravityCells, emergenceSummary, cubeState });
+    const enriched = enrichCandidates(candidates);
+    const candidate = enriched.find(c => c.id === req.params.candidateId);
+
+    if (!candidate) {
+      return res.status(404).json({ error: 'candidate_not_found' });
+    }
+
+    res.json({
+      ok: true,
+      candidateId: candidate.id,
+      candidateType: candidate.candidateType,
+      candidateScore: candidate.candidateScore,
+      candidateSummary: buildCandidateSummary(candidate),
+      reasoningTraceShort: buildReasoningTraceShort(candidate),
+      recommendedActionKind: deriveRecommendedActionKind(candidate),
+      ranking: {
+        noveltyScore: candidate.noveltyScore,
+        evidenceDensity: candidate.evidenceDensity,
+        crossDomainScore: candidate.crossDomainScore,
+        sourceConfidence: candidate.sourceConfidence,
+        governanceValue: candidate.governanceValue,
+        supportingSourceCount: candidate.supportingSourceCount,
+        collisionCount: candidate.collisionCount,
+        clusterStrength: candidate.clusterStrength
+      },
+      evidenceRefs: extractEvidenceRefs(candidate),
+      primaryCells: extractPrimaryCells(candidate),
+      domainAxes: extractDomainAxes(candidate),
+      explanation: candidate.explanation,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clashd27/knowledge/persist-candidate', (req, res) => {
+  try {
+    const candidate = req.body;
+    if (!candidate || !candidate.id) {
+      return res.status(400).json({ error: 'candidate with id required' });
+    }
+    const object = persistDiscoveryCandidate(candidate);
+    res.json({ ok: true, object });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/clashd27/knowledge/persist-finding', (req, res) => {
+  try {
+    const finding = req.body;
+    if (!finding) {
+      return res.status(400).json({ error: 'finding body required' });
+    }
+    const object = persistFinding(finding);
+    res.json({ ok: true, object });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/clashd27/knowledge/objects', (req, res) => {
+  try {
+    const kind = req.query.kind;
+    const limit = parseInt(req.query.limit || '20', 10);
+    const objects = kind ? getKnowledgeObjectsByKind(kind, limit) : getRecentKnowledgeObjects(limit);
+    res.json({ ok: true, objects });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/clashd27/knowledge/objects/:objectId', (req, res) => {
+  try {
+    const object = getKnowledgeObject(req.params.objectId);
+    if (!object) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+    res.json({ ok: true, object });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Governance Kernel (sandbox mode only) ---
+// In production the canonical governance kernel lives in openclashd-v2.
+// These endpoints are enabled only when GOVERNANCE_MODE=sandbox (default).
+
+function sandboxOnly(req, res, next) {
+  if (!isSandboxMode()) {
+    return res.status(403).json({
+      error: 'governance_disabled',
+      message: `Local governance endpoints are disabled (GOVERNANCE_MODE=${GOVERNANCE_MODE}). ` +
+        'Route proposals to openclashd-v2 gateway instead.'
+    });
+  }
+  return next();
+}
+
+app.post('/api/agents/propose', sandboxOnly, (req, res) => {
+  try {
+    const { agentId, title, intent } = req.body;
+    if (!title) return res.status(400).json({ error: 'title required' });
+    const proposal = submitProposal({ agentId, title, intent });
+    res.json({ ok: true, proposal, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals', sandboxOnly, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '50', 10);
+    const proposals = getProposals(limit);
+    res.json({ ok: true, proposals, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals/ranked', sandboxOnly, (req, res) => {
+  try {
+    const ranked = getRankedProposals();
+    res.json({ ok: true, proposals: ranked, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals/decided', sandboxOnly, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '20', 10);
+    const decided = getDecidedProposals(limit);
+    res.json({ ok: true, proposals: decided, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agents/proposals/:id', sandboxOnly, (req, res) => {
+  try {
+    const proposal = getProposal(req.params.id);
+    if (!proposal) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true, proposal, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function axesFromCellId(cellId) {
+  if (!Number.isInteger(cellId) || cellId < 0 || cellId > 26) return null;
+  const { a, b, c } = cellToCoords(cellId);
+  return {
+    what: AXIS_WHAT[a] || null,
+    where: AXIS_WHERE[b] || null,
+    time: AXIS_TIME[c] || null
+  };
+}
+
+function compactEvidenceRefs(evidenceRefs) {
+  return (evidenceRefs || []).slice(0, 5).map(ref => ({
+    sourceType: ref.sourceType || ref.type || 'unknown',
+    sourceId: ref.sourceId || ref.source || ref.id || '',
+    label: (ref.label || ref.claim || ref.title || '').toString().slice(0, 120)
+  }));
+}
+
+app.get('/api/clashd27/proposals/:id/observatory-context', (req, res) => {
+  try {
+    const proposal = getProposal(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
+    const payload = (proposal.intent && proposal.intent.payload) || {};
+    const candidateId = payload.candidateId || payload.parentCandidateId || null;
+
+    const cells = [];
+    if (Array.isArray(payload.cells)) {
+      for (const cell of payload.cells) {
+        if (Number.isInteger(cell) && cell >= 0 && cell < 27) cells.push(cell);
+      }
+    }
+    if (Array.isArray(payload.primaryCells)) {
+      for (const cell of payload.primaryCells) {
+        const cellId = cell && Number.isInteger(cell.cellId) ? cell.cellId : null;
+        if (Number.isInteger(cellId) && cellId >= 0 && cellId < 27) cells.push(cellId);
+      }
+    }
+
+    let originCell = cells.length > 0 ? cells[0] : null;
+    let axes = payload.axes && payload.axes[0]
+      ? payload.axes[0]
+      : axesFromCellId(originCell);
+    let candidateScore = Number(payload.candidateScore || payload.noveltyScore || payload.novelty || 0);
+    let discoveryEvidence = compactEvidenceRefs(payload.evidenceRefs || []);
+    let discoverySummary = (payload.candidateSummary || payload.finding || proposal.title || '').toString().slice(0, 180);
+
+    if ((!Number.isInteger(originCell) || candidateScore === 0 || discoveryEvidence.length === 0) && candidateId) {
+      try {
+        const engine = new Clashd27CubeEngine({ stateFile: CLASHD27_CUBE_STATE_FILE });
+        const feed = buildPaperDiscoveryFeed({
+          engine,
+          cube: readCube(),
+          maxSignals: 120
+        });
+        const candidates = (feed.discovery && feed.discovery.candidates) || [];
+        const candidateEvents = (feed.discovery && feed.discovery.candidateEvents) || [];
+        const match = candidates.find(c => c.id === candidateId) || candidateEvents.find(c => c.candidateId === candidateId);
+        if (match) {
+          const matchCells = Array.isArray(match.cells) ? match.cells.filter(v => Number.isInteger(v)) : [];
+          if (!Number.isInteger(originCell) && matchCells.length > 0) {
+            originCell = matchCells[0];
+            axes = axesFromCellId(originCell);
+          }
+          if (candidateScore === 0) candidateScore = Number(match.candidateScore || 0);
+          if (discoveryEvidence.length === 0) {
+            discoveryEvidence = compactEvidenceRefs((match.sources || []).map(s => ({ sourceType: 'signal', sourceId: s })));
+          }
+          if (discoverySummary.length === 0) {
+            discoverySummary = (match.explanation || candidateId || proposal.title || '').toString().slice(0, 180);
+          }
+        }
+      } catch (_) {
+        // non-fatal enrichment fallback
+      }
+    }
+
+    res.json({
+      proposalId: proposal.id,
+      title: proposal.title,
+      status: proposal.status,
+      candidateId,
+      originCell,
+      axes: axes || { what: null, where: null, time: null },
+      discoverySummary,
+      discoveryEvidence,
+      candidateScore,
+      reasoningTraceShort: (proposal.reasoningTraceShort || payload.reasoningTraceShort || '').toString().slice(0, 220)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/agents/proposals/:id/decide', sandboxOnly, (req, res) => {
+  try {
+    const { decision, reason } = req.body;
+    if (!decision || (decision !== 'approved' && decision !== 'denied')) {
+      return res.status(400).json({ error: 'decision must be "approved" or "denied"' });
+    }
+    const proposal = decideProposal(req.params.id, decision, reason);
+    if (!proposal) return res.status(404).json({ error: 'not_found' });
+
+    let actionResult = null;
+    if (decision === 'approved') {
+      actionResult = executeProposalAction(proposal, {
+        persistKnowledgeObject: require('../lib/knowledge-persistence').persistKnowledgeObject,
+        linkKnowledgeObjects
+      });
+    }
+
+    res.json({ ok: true, proposal: getProposal(req.params.id), actionResult, _sandbox: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Knowledge Graph (always available — read-only) ---
+
+app.get('/api/knowledge/objects/:id/graph', (req, res) => {
+  try {
+    const { root, linked } = getKnowledgeGraph(req.params.id);
+    if (!root) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true, root, linked });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Static files & Dashboard ---
+app.use(express.static(__dirname));
+
+app.get('/leaderboard', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'leaderboard.html'));
+});
+
+app.get('/observatory', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'observatory.html'));
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+startClashd27SupportServer(app, {
+  label: 'DASHBOARD',
+  port: PORT,
+  onStarted: () => {
+  console.log(`[PACK] Active: ${activePack?.name || 'none'}`);
+  }
+});

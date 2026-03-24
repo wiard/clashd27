@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Research Intelligence Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --bg-card-soft: #101010;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --amber: #FFB020;
+  --text: #e0e0e0;
+  --muted: #7b7b7b;
+  --border: #1a1a1a;
+  --ai-health: #E74C3C;
+  --ai-legal: #8E44AD;
+  --ai-general: #2980B9;
+  --biological: #27AE60;
+  --robotical: #E67E22;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.header-nav a { color: var(--muted); text-decoration: none; }
+.header-nav a:hover,
+.header-nav a.active { color: var(--orange); }
+.main {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.hero { margin-bottom: 28px; }
+.hero h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.hero p {
+  max-width: 780px;
+  color: #a4a4a4;
+  line-height: 1.85;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 26px;
+}
+.discipline-card {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  background: linear-gradient(180deg, rgba(20,20,20,0.98), rgba(14,14,14,0.98));
+  padding: 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.discipline-card:hover,
+.discipline-card.active {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.28);
+}
+.discipline-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.discipline-meta {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: #9d9d9d;
+}
+.discipline-meta strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-end;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 1px;
+}
+.section-copy { color: var(--muted); font-size: 14px; }
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-card-soft);
+}
+.filter-block {
+  display: grid;
+  gap: 6px;
+}
+.filter-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.select,
+.search,
+.range {
+  width: 100%;
+}
+.select,
+.search {
+  background: #0f0f0f;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  font-family: inherit;
+}
+.range-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+.gap-stack {
+  display: grid;
+  gap: 14px;
+}
+.gap-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20,20,20,0.98), rgba(16,16,16,0.98));
+}
+.gap-card-copy { display: grid; gap: 12px; }
+.gap-hypothesis {
+  color: #e2e2e2;
+  line-height: 1.8;
+}
+.gap-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.gap-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+.score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.score-badge {
+  min-width: 92px;
+  text-align: center;
+  padding: 12px 10px;
+  border-radius: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 800;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.score-high {
+  border-color: rgba(0,255,136,0.26);
+  color: #022313;
+  background: var(--green);
+}
+.score-mid {
+  border-color: rgba(255,176,32,0.3);
+  background: rgba(255,176,32,0.18);
+  color: #ffe8b5;
+}
+.score-low {
+  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
+  color: #d7dbe2;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 13px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text);
+  text-decoration: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  background: transparent;
+}
+.btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.empty-state,
+.loading-state {
+  padding: 22px 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: #a4a4a4;
+}
+@media (max-width: 760px) {
+  .header { align-items: flex-start; flex-direction: column; }
+  .gap-card { grid-template-columns: 1fr; }
+  .score-wrap,
+  .actions { align-items: flex-start; justify-content: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <nav class="header-nav">
+    <a href="/">Home</a>
+    <a href="/disciplines" class="active">Disciplines</a>
+    <a href="/gaps">Gaps</a>
+    <a href="/method">Methode</a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="hero">
+    <h1>Research Intelligence Platform</h1>
+    <p>CLASHD27 scant dagelijks papers in vijf disciplines en publiceert de meest waardevolle onderzoeksgaten.</p>
+  </div>
+
+  <div id="discipline-grid" class="grid">
+    <div class="loading-state">Disciplines laden...</div>
+  </div>
+
+  <div class="section-head">
+    <div>
+      <div id="selected-title" class="section-title">Selecteer een discipline</div>
+      <div id="selected-copy" class="section-copy">Kies hierboven een discipline om de actuele gaps en rapporten te laden.</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-block">
+      <label class="filter-label" for="sort-select">Sorteer op</label>
+      <select id="sort-select" class="select">
+        <option value="score">Score</option>
+        <option value="date">Datum</option>
+        <option value="novelty">Novelty</option>
+      </select>
+    </div>
+    <div class="filter-block">
+      <label class="filter-label" for="score-slider">Minimum score</label>
+      <input id="score-slider" class="range" type="range" min="60" max="100" step="1" value="60" />
+      <div id="score-slider-value" class="range-value">60%</div>
+    </div>
+    <div class="filter-block">
+      <label class="filter-label" for="search-input">Zoek in hypotheses</label>
+      <input id="search-input" class="search" type="search" placeholder="bijv. biomarkers, robotics, legal audit" />
+    </div>
+  </div>
+
+  <div id="gap-list" class="gap-stack">
+    <div class="empty-state">Kies hierboven een discipline om de actuele gap-rapporten te laden.</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var disciplineMap = {
+    'ai-health': { label: 'AI & Health', color: 'var(--ai-health)' },
+    'ai-legal': { label: 'Juridisch & AI', color: 'var(--ai-legal)' },
+    'ai-general': { label: 'AI Algemeen', color: 'var(--ai-general)' },
+    'biological': { label: 'Biologie & Geneeskunde', color: 'var(--biological)' },
+    'robotical': { label: 'Robotica', color: 'var(--robotical)' }
+  };
+
+  var state = {
+    disciplines: [],
+    summariesById: {},
+    gapsById: {},
+    selectedDisciplineId: '',
+    minScore: 60,
+    sortBy: 'score',
+    searchQuery: ''
+  };
+
+  var gridEl = document.getElementById('discipline-grid');
+  var titleEl = document.getElementById('selected-title');
+  var copyEl = document.getElementById('selected-copy');
+  var listEl = document.getElementById('gap-list');
+  var sortEl = document.getElementById('sort-select');
+  var scoreSliderEl = document.getElementById('score-slider');
+  var scoreValueEl = document.getElementById('score-slider-value');
+  var searchEl = document.getElementById('search-input');
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function truncate(text, max) {
+    var value = String(text || '').trim();
+    if (value.length <= max) return value;
+    return value.slice(0, max).trimEnd() + '...';
+  }
+
+  function scorePercent(value) {
+    var numeric = Number(value || 0);
+    if (!Number.isFinite(numeric)) return 0;
+    return numeric <= 1 ? Math.round(numeric * 100) : Math.round(numeric);
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Onbekende datum';
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString('nl-NL', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function scoreClass(score) {
+    if (score >= 80) return 'score-high';
+    if (score >= 60) return 'score-mid';
+    return 'score-low';
+  }
+
+  function summaryFor(disciplineId) {
+    return state.summariesById[disciplineId] || {};
+  }
+
+  function selectedDiscipline() {
+    return state.disciplines.find(function(item) { return item.id === state.selectedDisciplineId; }) || null;
+  }
+
+  function updateHash(disciplineId) {
+    if (!disciplineId) return;
+    window.history.replaceState({}, '', '/disciplines#' + encodeURIComponent(disciplineId));
+  }
+
+  function renderGrid() {
+    if (!state.disciplines.length) {
+      gridEl.innerHTML = '<div class="empty-state">De disciplinegegevens konden niet worden geladen.</div>';
+      return;
+    }
+
+    gridEl.innerHTML = state.disciplines.map(function(item) {
+      var summary = summaryFor(item.id);
+      var avgScore = scorePercent(summary.avgScore || 0);
+      var gapCount = Number(summary.totalGaps || item.gapCount || 0);
+      var accent = item.color || (disciplineMap[item.id] && disciplineMap[item.id].color) || '#5F6B7A';
+      return '' +
+        '<button class="discipline-card' + (item.id === state.selectedDisciplineId ? ' active' : '') + '" data-discipline-id="' + escapeHtml(item.id) + '" style="border-left-color:' + accent + '">' +
+          '<div class="discipline-title" style="color:' + accent + '">' + escapeHtml((disciplineMap[item.id] && disciplineMap[item.id].label) || item.label) + '</div>' +
+          '<div class="discipline-meta">' +
+            '<div>Gaps beschikbaar: <strong>' + gapCount + '</strong></div>' +
+            '<div>Gemiddelde score: <strong>' + avgScore + '%</strong></div>' +
+            '<div>Laatste update: <strong>' + escapeHtml(formatDate(summary.lastUpdated || item.lastRun)) + '</strong></div>' +
+          '</div>' +
+        '</button>';
+    }).join('');
+
+    Array.prototype.forEach.call(gridEl.querySelectorAll('[data-discipline-id]'), function(button) {
+      button.addEventListener('click', function() {
+        selectDiscipline(button.getAttribute('data-discipline-id') || '');
+      });
+    });
+  }
+
+  function visibleGaps() {
+    var gaps = state.gapsById[state.selectedDisciplineId] || [];
+    var filtered = gaps.filter(function(gap) {
+      var score = scorePercent(gap.score);
+      var hypothesis = String(gap.hypothesis || gap.claim || '').toLowerCase();
+      return score >= state.minScore && hypothesis.indexOf(state.searchQuery) >= 0;
+    });
+
+    filtered.sort(function(left, right) {
+      if (state.sortBy === 'date') {
+        return String(right.createdAtIso || '').localeCompare(String(left.createdAtIso || ''));
+      }
+      if (state.sortBy === 'novelty') {
+        return Number((right.componentScores && right.componentScores.novelty) || 0) - Number((left.componentScores && left.componentScores.novelty) || 0);
+      }
+      return scorePercent(right.score) - scorePercent(left.score);
+    });
+
+    return filtered;
+  }
+
+  function renderGaps() {
+    var discipline = selectedDiscipline();
+    if (!discipline) {
+      titleEl.textContent = 'Selecteer een discipline';
+      copyEl.textContent = 'Kies hierboven een discipline om de actuele gaps en rapporten te laden.';
+      listEl.innerHTML = '<div class="empty-state">Kies hierboven een discipline om de actuele gap-rapporten te laden.</div>';
+      return;
+    }
+
+    titleEl.textContent = ((disciplineMap[discipline.id] && disciplineMap[discipline.id].label) || discipline.label) + ' — research gaps';
+    copyEl.textContent = 'Gefilterd op minimaal ' + state.minScore + '% score. Gebruik sortering, novelty en zoekfilter om de meest kansrijke rapporten te vinden.';
+
+    var gaps = visibleGaps();
+    if (!gaps.length) {
+      listEl.innerHTML = '<div class="empty-state">Geen gaps zichtbaar met de huidige filters voor ' + escapeHtml(discipline.label) + '.</div>';
+      return;
+    }
+
+    listEl.innerHTML = gaps.map(function(gap) {
+      var score = scorePercent(gap.score);
+      var papers = Array.isArray(gap.sourcePapers) ? gap.sourcePapers.length : 0;
+      return '' +
+        '<article class="gap-card">' +
+          '<div class="gap-card-copy">' +
+            '<div class="gap-hypothesis">' + escapeHtml(truncate(gap.hypothesis || gap.claim || gap.title || '', 150)) + '</div>' +
+            '<div class="gap-meta">' +
+              '<span class="gap-chip">Datum: ' + escapeHtml(formatDate(gap.createdAtIso || gap.lastSeenAtIso || gap.date)) + '</span>' +
+              '<span class="gap-chip">Supporting papers: ' + papers + '</span>' +
+              '<span class="gap-chip">Novelty: ' + scorePercent(gap.componentScores && gap.componentScores.novelty) + '%</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="score-wrap">' +
+            '<div class="score-badge ' + scoreClass(score) + '">' + score + '%</div>' +
+            '<div class="actions">' +
+              '<a class="btn" href="/gap-summary/' + encodeURIComponent(discipline.id) + '/' + encodeURIComponent(gap.id) + '">Bekijk rapport</a>' +
+              '<a class="btn" href="/api/disciplines/' + encodeURIComponent(discipline.id) + '/gaps/' + encodeURIComponent(gap.id) + '/pdf">Download PDF</a>' +
+            '</div>' +
+          '</div>' +
+        '</article>';
+    }).join('');
+  }
+
+  function loadGaps(disciplineId) {
+    listEl.innerHTML = '<div class="loading-state">Gap-rapporten laden...</div>';
+    fetch('/api/disciplines/' + encodeURIComponent(disciplineId) + '/gaps?minScore=0.60')
+      .then(function(response) {
+        if (!response.ok) throw new Error('discipline_gaps_failed');
+        return response.json();
+      })
+      .then(function(gaps) {
+        state.gapsById[disciplineId] = Array.isArray(gaps) ? gaps : [];
+        renderGaps();
+      })
+      .catch(function() {
+        listEl.innerHTML = '<div class="empty-state">De disciplinegegevens zijn tijdelijk niet beschikbaar. Probeer het later opnieuw.</div>';
+      });
+  }
+
+  function selectDiscipline(disciplineId) {
+    if (!disciplineId) return;
+    state.selectedDisciplineId = disciplineId;
+    updateHash(disciplineId);
+    renderGrid();
+    if (!state.gapsById[disciplineId]) {
+      loadGaps(disciplineId);
+      return;
+    }
+    renderGaps();
+  }
+
+  function bootstrapDisciplines() {
+    fetch('/api/disciplines')
+      .then(function(response) {
+        if (!response.ok) throw new Error('disciplines_failed');
+        return response.json();
+      })
+      .then(function(items) {
+        state.disciplines = Array.isArray(items) ? items : [];
+        return Promise.all(state.disciplines.map(function(item) {
+          return fetch('/api/disciplines/' + encodeURIComponent(item.id) + '/summary')
+            .then(function(response) { return response.ok ? response.json() : null; })
+            .then(function(summary) { state.summariesById[item.id] = summary || {}; })
+            .catch(function() { state.summariesById[item.id] = {}; });
+        }));
+      })
+      .then(function() {
+        renderGrid();
+        var requested = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
+        var initialId = state.disciplines.some(function(item) { return item.id === requested; })
+          ? requested
+          : (state.disciplines[0] && state.disciplines[0].id) || '';
+        if (initialId) selectDiscipline(initialId);
+      })
+      .catch(function() {
+        gridEl.innerHTML = '<div class="empty-state">De disciplinegegevens konden niet worden geladen.</div>';
+      });
+  }
+
+  sortEl.addEventListener('change', function() {
+    state.sortBy = sortEl.value || 'score';
+    renderGaps();
+  });
+  scoreSliderEl.addEventListener('input', function() {
+    state.minScore = Number(scoreSliderEl.value || 60);
+    scoreValueEl.textContent = state.minScore + '%';
+    renderGaps();
+  });
+  searchEl.addEventListener('input', function() {
+    state.searchQuery = String(searchEl.value || '').trim().toLowerCase();
+    renderGaps();
+  });
+  window.addEventListener('hashchange', function() {
+    var nextId = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
+    if (nextId && nextId !== state.selectedDisciplineId) {
+      selectDiscipline(nextId);
+    }
+  });
+
+  bootstrapDisciplines();
+})();
+</script>
+</body>
+</html>

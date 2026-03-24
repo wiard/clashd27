@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — A coordination protocol that finds what research misses</title>
+<meta name="description" content="27 cells. 3 layers. 1 clock. Autonomous agents discover cross-domain research gaps that humans miss.">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   CLASHD27 Landing — Bloomberg terminal meets research lab
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg: #0a0a0a;
+  --bg-light: #111111;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --text: #e0e0e0;
+  --muted: #666;
+  --dim: #333;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Utility ── */
+.mono { font-family: 'JetBrains Mono', monospace; }
+.accent { color: var(--orange); }
+.green { color: var(--green); }
+.blue { color: var(--blue); }
+
+/* ═══════════════════════════════
+   SECTION 1: HERO + 3D CUBE
+   ═══════════════════════════════ */
+#hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#cube-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+}
+/* Scan line */
+#hero::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,69,0,0.015) 2px,
+    rgba(255,69,0,0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+.scan-line {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,69,0,0.25), transparent);
+  z-index: 3;
+  animation: scanMove 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes scanMove {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+.hero-overlay {
+  position: relative;
+  z-index: 4;
+  text-align: center;
+  pointer-events: none;
+  padding: 0 20px;
+}
+.hero-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(36px, 7vw, 72px);
+  font-weight: 800;
+  color: var(--orange);
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  text-shadow: 0 0 60px rgba(255,69,0,0.3);
+}
+.hero-subtitle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: clamp(14px, 2vw, 18px);
+  color: #999;
+  font-weight: 300;
+  letter-spacing: 1px;
+  margin-bottom: 40px;
+}
+.hero-stats {
+  display: flex;
+  gap: clamp(16px, 4vw, 48px);
+  justify-content: center;
+  flex-wrap: wrap;
+  pointer-events: auto;
+}
+.hero-stat {
+  text-align: center;
+}
+.hero-stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(20px, 3vw, 32px);
+  font-weight: 700;
+  color: var(--orange);
+  display: block;
+}
+.hero-stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.hero-scroll {
+  position: absolute;
+  bottom: 32px;
+  z-index: 4;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  animation: scrollBounce 2s ease-in-out infinite;
+  pointer-events: auto;
+  text-decoration: none;
+}
+.hero-scroll:hover { color: var(--orange); }
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+/* Live dot */
+.live-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: livePulse 1.5s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+  50% { opacity: 0.3; box-shadow: none; }
+}
+
+/* ═══════════════════════════════
+   SECTION 2: THE PROBLEM
+   ═══════════════════════════════ */
+.section {
+  padding: clamp(60px, 10vw, 120px) clamp(20px, 5vw, 80px);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.section-dark {
+  background: var(--bg);
+}
+.section-mid {
+  background: var(--bg-light);
+}
+.section-heading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 24px;
+  line-height: 1.2;
+}
+.section-text {
+  font-size: clamp(15px, 1.8vw, 18px);
+  color: #999;
+  line-height: 1.9;
+  max-width: 700px;
+}
+.section-text strong { color: var(--orange); font-weight: 600; }
+
+/* Venn visual */
+.venn-container {
+  position: relative;
+  width: 280px;
+  height: 200px;
+  margin: 48px auto 0;
+}
+.venn-circle {
+  position: absolute;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  opacity: 0.6;
+}
+.venn-circle:nth-child(1) { border-color: var(--green); top: 0; left: 40px; }
+.venn-circle:nth-child(2) { border-color: var(--blue); top: 20px; left: 120px; }
+.venn-circle:nth-child(3) { border-color: var(--orange); top: 70px; left: 80px; }
+.venn-glow {
+  position: absolute;
+  width: 14px; height: 14px;
+  background: var(--orange);
+  border-radius: 50%;
+  top: 68px; left: 128px;
+  box-shadow: 0 0 20px var(--orange), 0 0 40px rgba(255,69,0,0.3);
+  animation: glowPulse 2s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px var(--orange), 0 0 40px rgba(255,69,0,0.3); }
+  50% { box-shadow: 0 0 30px var(--orange), 0 0 60px rgba(255,69,0,0.5); }
+}
+.venn-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  position: absolute;
+}
+.venn-label:nth-of-type(1) { top: -18px; left: 52px; color: var(--green); }
+.venn-label:nth-of-type(2) { top: 2px; left: 186px; color: var(--blue); }
+.venn-label:nth-of-type(3) { top: 168px; left: 76px; color: var(--orange); }
+
+/* ═══════════════════════════════
+   SECTION 3: HOW IT WORKS
+   ═══════════════════════════════ */
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 2px;
+  margin: 48px 0 32px;
+}
+.pipe-step {
+  background: var(--bg-card);
+  border: 1px solid #1a1a1a;
+  padding: 24px 16px;
+  text-align: center;
+  position: relative;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s, transform 0.5s, border-color 0.3s;
+}
+.pipe-step.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.pipe-step:hover {
+  border-color: var(--orange);
+}
+.pipe-step::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid var(--dim);
+}
+.pipe-step:last-child::after { display: none; }
+.pipe-icon {
+  font-size: 24px;
+  margin-bottom: 12px;
+  display: block;
+}
+.pipe-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.pipe-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.pipeline-proof {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  border: 1px solid #1a1a1a;
+  padding: 14px 20px;
+  margin-top: 8px;
+}
+.pipeline-proof span { color: var(--orange); }
+
+/* ═══════════════════════════════
+   SECTION 4: LIVE RESULTS
+   ═══════════════════════════════ */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 16px;
+  margin-bottom: 48px;
+}
+.result-card {
+  background: var(--bg-card);
+  border: 1px solid #1a1a1a;
+  padding: 20px;
+  text-align: center;
+}
+.result-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 700;
+  color: var(--orange);
+  display: block;
+}
+.result-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.result-card:nth-child(4) .result-val { color: var(--green); }
+
+.discovery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+.disc-card {
+  background: var(--bg-card);
+  border-left: 3px solid var(--orange);
+  padding: 20px 24px;
+  transition: border-color 0.3s;
+}
+.disc-card:hover { border-left-color: #ff6a33; }
+.disc-card.high-value { border-left-color: #ffd700; }
+.disc-domains {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.disc-hypo {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+.disc-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.disc-score { color: var(--orange); }
+.disc-verdict-high { color: #ffd700; font-weight: 700; }
+.disc-verdict-confirmed { color: var(--green); }
+.disc-verdict-low { color: var(--muted); }
+
+/* Funnel */
+.funnel-container {
+  max-width: 500px;
+  margin: 0 auto;
+}
+.funnel-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 12px;
+}
+.funnel-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  width: 100px;
+  text-align: right;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.funnel-bar-track {
+  flex: 1;
+  height: 24px;
+  background: #1a1a1a;
+  position: relative;
+  overflow: hidden;
+}
+.funnel-bar {
+  height: 100%;
+  transition: width 1s ease-out;
+  position: relative;
+}
+.funnel-bar-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #fff;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ═══════════════════════════════
+   SECTION 5: THE CUBE EXPLAINED
+   ═══════════════════════════════ */
+.layers-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin: 40px 0;
+}
+@media (min-width: 700px) {
+  .layers-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.layer-card {
+  border: 1px solid #1a1a1a;
+  padding: 24px;
+  transition: border-color 0.3s, background 0.3s;
+  cursor: default;
+}
+.layer-card:hover {
+  background: rgba(255,255,255,0.02);
+}
+.layer-card[data-layer="0"] { border-top: 3px solid var(--green); }
+.layer-card[data-layer="1"] { border-top: 3px solid var(--blue); }
+.layer-card[data-layer="2"] { border-top: 3px solid var(--orange); }
+.layer-card:hover[data-layer="0"] { border-color: var(--green); }
+.layer-card:hover[data-layer="1"] { border-color: var(--blue); }
+.layer-card:hover[data-layer="2"] { border-color: var(--orange); }
+.layer-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.layer-card[data-layer="0"] .layer-tag { color: var(--green); }
+.layer-card[data-layer="1"] .layer-tag { color: var(--blue); }
+.layer-card[data-layer="2"] .layer-tag { color: var(--orange); }
+.layer-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.layer-domains {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.clock-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  border: 1px solid #1a1a1a;
+  padding: 16px 20px;
+  margin-top: 8px;
+  line-height: 1.8;
+}
+.clock-line strong { color: var(--text); font-weight: 500; }
+
+/* ═══════════════════════════════
+   SECTION 6: FOOTER
+   ═══════════════════════════════ */
+footer {
+  border-top: 1px solid #1a1a1a;
+  padding: 48px 20px;
+  text-align: center;
+}
+.footer-built {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.footer-links {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.footer-links a {
+  color: var(--orange);
+  text-decoration: none;
+  margin: 0 12px;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: #ff6a33; }
+.footer-next {
+  font-size: 12px;
+  color: #444;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════ */
+@media (max-width: 600px) {
+  .hero-title { letter-spacing: 4px; }
+  .hero-stats { gap: 12px; }
+  .pipeline { grid-template-columns: 1fr 1fr; }
+  .pipe-step::after { display: none; }
+  .results-grid { grid-template-columns: 1fr 1fr; }
+  .disc-meta { flex-direction: column; gap: 4px; }
+  .funnel-label { width: 70px; font-size: 9px; }
+}
+</style>
+<link rel="stylesheet" href="/calm-dashboard.css" />
+</head>
+<body>
+
+<!-- ═══════════════ SECTION 1: HERO ═══════════════ -->
+<section id="hero">
+  <canvas id="cube-canvas"></canvas>
+  <div class="scan-line"></div>
+  <div class="hero-overlay">
+    <h1 class="hero-title">CLASHD27</h1>
+    <p class="hero-subtitle">A coordination protocol that finds what research misses</p>
+    <div class="intelligence-formula" aria-label="Intelligence formula">
+      <div class="intelligence-formula__head">
+        <span class="intelligence-formula__label">Safety → Define → Investigate</span>
+        <span id="intelligenceCurrent" class="intelligence-formula__current">Current stage: Safety</span>
+      </div>
+      <div class="intelligence-formula__track">
+        <article id="intelligenceStageSafety" class="intelligence-stage is-current" data-stage="safety">
+          <h3>Safety</h3>
+          <p>Keep the radar grounded, bounded, and easy to trust before widening the field.</p>
+        </article>
+        <article id="intelligenceStageDefine" class="intelligence-stage" data-stage="define">
+          <h3>Define</h3>
+          <p>Turn raw cross-domain motion into readable findings, structure, and useful shape.</p>
+        </article>
+        <article id="intelligenceStageInvestigate" class="intelligence-stage" data-stage="investigate">
+          <h3>Investigate</h3>
+          <p>Lean into discovery once the field is producing stronger gaps and research pressure.</p>
+        </article>
+      </div>
+      <p id="intelligenceSummary" class="intelligence-formula__summary">
+        CLASHD27 opens in Safety until live findings show the radar is ready to define or investigate more deeply.
+      </p>
+      <p id="residueFieldHint" class="intelligence-formula__hint">
+        Residue field hint loading…
+      </p>
+      <div class="observatory-grid" aria-label="Governed observatory metrics">
+        <article class="observatory-card" data-tone="stage">
+          <div class="observatory-card__label">Current stage</div>
+          <div id="obsStageValue" class="observatory-card__value">Safety</div>
+          <div id="obsStageNote" class="observatory-card__note">Bounded observability comes first.</div>
+          <div class="observatory-card__bar"><div id="obsStageFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="entropy">
+          <div class="observatory-card__label">Entropy trend</div>
+          <div id="obsEntropyValue" class="observatory-card__value">Waiting</div>
+          <div id="obsEntropyNote" class="observatory-card__note">Reading governed entropy from the kernel.</div>
+          <div class="observatory-card__bar"><div id="obsEntropyFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="residue">
+          <div class="observatory-card__label">Residue strength</div>
+          <div id="obsResidueValue" class="observatory-card__value">—</div>
+          <div id="obsResidueNote" class="observatory-card__note">Residue becomes visible as approved interactions accumulate.</div>
+          <div class="observatory-card__bar"><div id="obsResidueFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="discovery">
+          <div class="observatory-card__label">Discovery rate</div>
+          <div id="obsDiscoveryValue" class="observatory-card__value">—</div>
+          <div id="obsDiscoveryNote" class="observatory-card__note">Discovery pressure stays separate from execution.</div>
+          <div class="observatory-card__bar"><div id="obsDiscoveryFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+        <article class="observatory-card" data-tone="patterns">
+          <div class="observatory-card__label">Pattern count</div>
+          <div id="obsPatternValue" class="observatory-card__value">—</div>
+          <div id="obsPatternNote" class="observatory-card__note">Patterns show where the field is beginning to hold shape.</div>
+          <div class="observatory-card__bar"><div id="obsPatternFill" class="observatory-card__bar-fill"></div></div>
+        </article>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-tick">—</span>
+        <span class="hero-stat-label"><span class="live-dot"></span>TICK</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-findings">—</span>
+        <span class="hero-stat-label">FINDINGS</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-discoveries">—</span>
+        <span class="hero-stat-label">DISCOVERIES</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-val" id="stat-highvalue">—</span>
+        <span class="hero-stat-label">HIGH-VALUE GAPS</span>
+      </div>
+    </div>
+  </div>
+  <a href="#problem" class="hero-scroll">scroll to learn more ↓</a>
+</section>
+
+<!-- ═══════════════ SECTION 2: THE PROBLEM ═══════════════ -->
+<section id="problem" class="section-dark">
+  <div class="section">
+    <h2 class="section-heading">Research is siloed</h2>
+    <p class="section-text">
+      A genomics lab doesn't read immunology papers. A climate scientist misses connections to economics.
+      <strong>The breakthroughs sit at intersections nobody is looking at.</strong>
+    </p>
+    <p class="section-text" style="margin-top:16px;">
+      In 1986, Don Swanson discovered fish oil could treat Raynaud's syndrome — not through lab work, but by connecting two literatures that had never cited each other. Thousands of these connections exist right now, buried across millions of papers.
+    </p>
+    <div class="venn-container">
+      <div class="venn-circle"></div>
+      <div class="venn-circle"></div>
+      <div class="venn-circle"></div>
+      <div class="venn-glow"></div>
+      <span class="venn-label">GENOMICS</span>
+      <span class="venn-label">IMMUNOLOGY</span>
+      <span class="venn-label">PHARMACOLOGY</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 3: HOW IT WORKS ═══════════════ -->
+<section id="how" class="section-mid">
+  <div class="section">
+    <h2 class="section-heading">The structure makes discovery inevitable</h2>
+    <div class="pipeline" id="pipeline">
+      <div class="pipe-step">
+        <span class="pipe-icon">◉</span>
+        <div class="pipe-title">SCAN</div>
+        <div class="pipe-desc">Agents search real papers across 27 domains</div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">⚡</span>
+        <div class="pipe-title">COLLIDE</div>
+        <div class="pipe-desc">Cross-layer agents meet, forcing unexpected intersections</div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">◈</span>
+        <div class="pipe-title">HYPOTHESIZE</div>
+        <div class="pipe-desc">PI-grade gap packets: falsifiable, sourced, testable</div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">✕</span>
+        <div class="pipe-title">FILTER</div>
+        <div class="pipe-desc">Red flags, speculation index, scoring rubric 0–100</div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">⚔</span>
+        <div class="pipe-title">CHALLENGE</div>
+        <div class="pipe-desc">Independent AI adversarial review tries to disprove</div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-icon">✓</span>
+        <div class="pipe-title">VALIDATE</div>
+        <div class="pipe-desc">Search datasets, trials, labs. Ready to test.</div>
+      </div>
+    </div>
+    <div class="pipeline-proof" id="pipeline-proof">
+      <span id="proof-rejected">—</span> hypotheses rejected. <span id="proof-passed">—</span> passed. That's the system working.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 4: LIVE RESULTS ═══════════════ -->
+<section id="results" class="section-dark">
+  <div class="section">
+    <h2 class="section-heading">Right now</h2>
+    <div class="results-grid" id="results-grid">
+      <div class="result-card">
+        <span class="result-val" id="res-total">—</span>
+        <span class="result-label">TOTAL FINDINGS</span>
+      </div>
+      <div class="result-card">
+        <span class="result-val" id="res-discoveries">—</span>
+        <span class="result-label">DISCOVERIES</span>
+      </div>
+      <div class="result-card">
+        <span class="result-val" id="res-highvalue">—</span>
+        <span class="result-label">HIGH-VALUE GAPS</span>
+      </div>
+      <div class="result-card">
+        <span class="result-val" id="res-rejection">—%</span>
+        <span class="result-label">REJECTION RATE</span>
+      </div>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Entropy to knowledge emergence strip">
+      <article class="observatory-card" data-tone="entropy">
+        <div class="observatory-card__label">Entropy trend</div>
+        <div id="emergenceEntropyValue" class="observatory-card__value">—</div>
+        <div id="emergenceEntropyNote" class="observatory-card__note">Governed uncertainty is still being measured.</div>
+        <div class="observatory-card__bar"><div id="emergenceEntropyFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="discovery">
+        <div class="observatory-card__label">Cube activity</div>
+        <div id="emergenceCubeValue" class="observatory-card__value">—</div>
+        <div id="emergenceCubeNote" class="observatory-card__note">Cells are being observed for structure and motion.</div>
+        <div class="observatory-card__bar"><div id="emergenceCubeFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Collision density</div>
+        <div id="emergenceCollisionValue" class="observatory-card__value">—</div>
+        <div id="emergenceCollisionNote" class="observatory-card__note">Cross-domain collision pressure in the cube field.</div>
+        <div class="observatory-card__bar"><div id="emergenceCollisionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="patterns">
+        <div class="observatory-card__label">Promoted knowledge</div>
+        <div id="emergenceKnowledgeValue" class="observatory-card__value">—</div>
+        <div id="emergenceKnowledgeNote" class="observatory-card__note">Recent knowledge objects promoted into operator-visible structure.</div>
+        <div class="observatory-card__bar"><div id="emergenceKnowledgeFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Cube field readings">
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Hot cells</div>
+        <div id="fieldHotValue" class="observatory-card__value">—</div>
+        <div id="fieldHotNote" class="observatory-card__note">Most active cells in the current cube field.</div>
+        <div class="observatory-card__bar"><div id="fieldHotFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Cold cells</div>
+        <div id="fieldColdValue" class="observatory-card__value">—</div>
+        <div id="fieldColdNote" class="observatory-card__note">Under-explored cells where the field is still quiet.</div>
+        <div class="observatory-card__bar"><div id="fieldColdFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Collision density</div>
+        <div id="fieldCollisionValue" class="observatory-card__value">—</div>
+        <div id="fieldCollisionNote" class="observatory-card__note">Cross-domain collision pressure inside the cube.</div>
+        <div class="observatory-card__bar"><div id="fieldCollisionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="field">
+        <div class="observatory-card__label">Emergence hint</div>
+        <div id="fieldEmergenceValue" class="observatory-card__value">—</div>
+        <div id="fieldEmergenceNote" class="observatory-card__note">A calm clue about where discovery may be cohering.</div>
+        <div class="observatory-card__bar"><div id="fieldEmergenceFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Collective memory strip">
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">System memory</div>
+        <div id="memoryRegionValue" class="observatory-card__value">—</div>
+        <div id="memoryRegionNote" class="observatory-card__note">Regions that repeatedly mattered will appear here.</div>
+        <div class="observatory-card__bar"><div id="memoryRegionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">Signal families</div>
+        <div id="memoryFamilyValue" class="observatory-card__value">—</div>
+        <div id="memoryFamilyNote" class="observatory-card__note">Signal families that often led to useful outcomes.</div>
+        <div class="observatory-card__bar"><div id="memoryFamilyFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">Stable structures</div>
+        <div id="memoryStructureValue" class="observatory-card__value">—</div>
+        <div id="memoryStructureNote" class="observatory-card__note">Knowledge structures that proved durable over time.</div>
+        <div class="observatory-card__bar"><div id="memoryStructureFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="memory">
+        <div class="observatory-card__label">Memory collisions</div>
+        <div id="memoryCollisionValue" class="observatory-card__value">—</div>
+        <div id="memoryCollisionNote" class="observatory-card__note">Recurring cross-domain collisions with structural significance.</div>
+        <div class="observatory-card__bar"><div id="memoryCollisionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Civilization strip">
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">What became durable</div>
+        <div id="civilizationZoneValue" class="observatory-card__value">—</div>
+        <div id="civilizationZoneNote" class="observatory-card__note">Durable knowledge zones will appear here once governed structure persists.</div>
+        <div class="observatory-card__bar"><div id="civilizationZoneFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">Civic risk structure</div>
+        <div id="civilizationRiskValue" class="observatory-card__value">—</div>
+        <div id="civilizationRiskNote" class="observatory-card__note">Regions with durable governed significance will remain visible here.</div>
+        <div class="observatory-card__bar"><div id="civilizationRiskFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">Trusted template</div>
+        <div id="civilizationTemplateValue" class="observatory-card__value">—</div>
+        <div id="civilizationTemplateNote" class="observatory-card__note">Bounded actions that keep proving useful will appear here.</div>
+        <div class="observatory-card__bar"><div id="civilizationTemplateFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="civilization">
+        <div class="observatory-card__label">Long-horizon field</div>
+        <div id="civilizationFieldValue" class="observatory-card__value">—</div>
+        <div id="civilizationFieldNote" class="observatory-card__note">Long-horizon research relevance will appear here when it persists across domains.</div>
+        <div class="observatory-card__bar"><div id="civilizationFieldFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Planetary strip">
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Global risk</div>
+        <div id="planetaryRiskValue" class="observatory-card__value">—</div>
+        <div id="planetaryRiskNote" class="observatory-card__note">Cross-region governed risk structures will appear here when they persist.</div>
+        <div class="observatory-card__bar"><div id="planetaryRiskFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Cross-region field</div>
+        <div id="planetaryFieldValue" class="observatory-card__value">—</div>
+        <div id="planetaryFieldNote" class="observatory-card__note">Cross-region knowledge fields will appear here when local patterns begin to cohere globally.</div>
+        <div class="observatory-card__bar"><div id="planetaryFieldFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Global template</div>
+        <div id="planetaryTemplateValue" class="observatory-card__value">—</div>
+        <div id="planetaryTemplateNote" class="observatory-card__note">Bounded action templates with cross-region usefulness will appear here.</div>
+        <div class="observatory-card__bar"><div id="planetaryTemplateFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="planetary">
+        <div class="observatory-card__label">Planetary field</div>
+        <div id="planetaryResearchValue" class="observatory-card__value">—</div>
+        <div id="planetaryResearchNote" class="observatory-card__note">Long-horizon research fields will appear here when they persist across regions and domains.</div>
+        <div class="observatory-card__bar"><div id="planetaryResearchFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+    <div class="observatory-grid observatory-grid--secondary" aria-label="Cosmic strip">
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Enduring question</div>
+        <div id="cosmicQuestionValue" class="observatory-card__value">—</div>
+        <div id="cosmicQuestionNote" class="observatory-card__note">Themes that keep returning across governed history will appear here.</div>
+        <div class="observatory-card__bar"><div id="cosmicQuestionFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Long-horizon field</div>
+        <div id="cosmicFieldValue" class="observatory-card__value">—</div>
+        <div id="cosmicFieldNote" class="observatory-card__note">Fields that keep reducing uncertainty across contexts will appear here.</div>
+        <div class="observatory-card__bar"><div id="cosmicFieldFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Deep frontier</div>
+        <div id="cosmicFrontierValue" class="observatory-card__value">—</div>
+        <div id="cosmicFrontierNote" class="observatory-card__note">Questions that deepen rather than disappear will appear here.</div>
+        <div class="observatory-card__bar"><div id="cosmicFrontierFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+      <article class="observatory-card" data-tone="cosmic">
+        <div class="observatory-card__label">Stewardship pattern</div>
+        <div id="cosmicStewardshipValue" class="observatory-card__value">—</div>
+        <div id="cosmicStewardshipNote" class="observatory-card__note">Governance-safe long-horizon meaning will appear here when it persists.</div>
+        <div class="observatory-card__bar"><div id="cosmicStewardshipFill" class="observatory-card__bar-fill"></div></div>
+      </article>
+    </div>
+
+    <h3 class="section-heading" style="font-size:18px;margin-bottom:20px;">Latest Discoveries</h3>
+    <div class="discovery-list" id="discovery-list">
+      <div style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;">Loading discoveries...</div>
+    </div>
+
+    <h3 class="section-heading" style="font-size:18px;margin-bottom:20px;">Pipeline Funnel</h3>
+    <div class="funnel-container" id="funnel">
+      <div class="funnel-row"><span class="funnel-label">ATTEMPTS</span><div class="funnel-bar-track"><div class="funnel-bar" id="fun-attempts" style="width:0;background:var(--blue);"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">GAPS</span><div class="funnel-bar-track"><div class="funnel-bar" id="fun-gaps" style="width:0;background:var(--orange);"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">HIGH-VALUE</span><div class="funnel-bar-track"><div class="funnel-bar" id="fun-highval" style="width:0;background:#ffd700;"></div></div></div>
+      <div class="funnel-row"><span class="funnel-label">VERIFIED</span><div class="funnel-bar-track"><div class="funnel-bar" id="fun-verified" style="width:0;background:var(--green);"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 5: THE CUBE EXPLAINED ═══════════════ -->
+<section id="cube-explained" class="section-mid">
+  <div class="section">
+    <h2 class="section-heading">27 cells. 3 layers. 1 clock.</h2>
+    <div class="layers-grid">
+      <div class="layer-card" data-layer="0">
+        <div class="layer-tag">Layer 0</div>
+        <div class="layer-name">DATA</div>
+        <div class="layer-domains">Genomics, Proteomics, Clinical Trials, Epidemiology, Patient Records, Imaging, Biobanks, Lab Results, Literature Mining</div>
+      </div>
+      <div class="layer-card" data-layer="1">
+        <div class="layer-tag">Layer 1</div>
+        <div class="layer-name">ANALYSIS</div>
+        <div class="layer-domains">Drug Interactions, Immune Response, Biomarkers, Pathways, Resistance Mechanisms, Toxicology, Dosimetry, Pharmacokinetics, Meta-Analysis</div>
+      </div>
+      <div class="layer-card" data-layer="2">
+        <div class="layer-tag">Layer 2</div>
+        <div class="layer-name">HYPOTHESIS</div>
+        <div class="layer-domains">Novel Combinations, Cross-Domain Links, Repurposed Drugs, Synthetic Lethality, Biomarker Panels, Combination Therapy, Resistance Reversal, Precision Targeting, Translational Gaps</div>
+      </div>
+    </div>
+    <div class="clock-line">
+      Every <strong>5 minutes</strong>, tick % 27 selects a cell. All agents move.
+      Collisions between layers create research.<br>
+      <strong>4 agents</strong>. <strong>5 cross-layer pairs</strong>. <strong>27 cells</strong>. The clock never stops.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SECTION 6: FOOTER ═══════════════ -->
+<footer>
+  <div class="footer-built">Built by greenbanaanas</div>
+  <div class="footer-links">
+    <a href="/arena.html">Dashboard</a>
+    <a href="https://github.com/greenbanaanas" target="_blank">GitHub</a>
+    <a href="https://x.com/greenbanaanas" target="_blank">@greenbanaanas</a>
+  </div>
+  <div class="footer-next">Cancer Research active. Climate & Obesity next.</div>
+</footer>
+
+<!-- ═══════════════ THREE.JS ═══════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   3D CUBE — Three.js r128
+   ═══════════════════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('cube-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(6, 5, 8);
+  camera.lookAt(0, 0, 0);
+
+  const LAYER_COLORS = [0x00FF88, 0x4488FF, 0xFF4500];
+  const ACTIVE_COLOR = 0xFFDD00;
+  const BOND_COLOR = 0xFF4500;
+  const cubeGroup = new THREE.Group();
+  scene.add(cubeGroup);
+
+  // Cell positions: 3x3x3 grid, centered
+  const cellPositions = [];
+  const cellMeshes = [];
+  const spacing = 1.4;
+  for (let i = 0; i < 27; i++) {
+    const layer = Math.floor(i / 9);
+    const rem = i % 9;
+    const row = Math.floor(rem / 3);
+    const col = rem % 3;
+    const x = (col - 1) * spacing;
+    const y = (layer - 1) * spacing;
+    const z = (row - 1) * spacing;
+    cellPositions.push(new THREE.Vector3(x, y, z));
+  }
+
+  // Draw cell nodes
+  const cellGeo = new THREE.SphereGeometry(0.08, 8, 8);
+  for (let i = 0; i < 27; i++) {
+    const layer = Math.floor(i / 9);
+    const mat = new THREE.MeshBasicMaterial({ color: LAYER_COLORS[layer], transparent: true, opacity: 0.5 });
+    const mesh = new THREE.Mesh(cellGeo, mat);
+    mesh.position.copy(cellPositions[i]);
+    cubeGroup.add(mesh);
+    cellMeshes.push(mesh);
+  }
+
+  // Wireframe edges
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.35 });
+  // Connect adjacent cells within each layer (horizontal)
+  for (let layer = 0; layer < 3; layer++) {
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const idx = layer * 9 + row * 3 + col;
+        // right
+        if (col < 2) {
+          const idx2 = layer * 9 + row * 3 + (col + 1);
+          const geo = new THREE.BufferGeometry().setFromPoints([cellPositions[idx], cellPositions[idx2]]);
+          cubeGroup.add(new THREE.Line(geo, edgeMat));
+        }
+        // forward
+        if (row < 2) {
+          const idx2 = layer * 9 + (row + 1) * 3 + col;
+          const geo = new THREE.BufferGeometry().setFromPoints([cellPositions[idx], cellPositions[idx2]]);
+          cubeGroup.add(new THREE.Line(geo, edgeMat));
+        }
+        // up
+        if (layer < 2) {
+          const idx2 = (layer + 1) * 9 + row * 3 + col;
+          const geo = new THREE.BufferGeometry().setFromPoints([cellPositions[idx], cellPositions[idx2]]);
+          cubeGroup.add(new THREE.Line(geo, edgeMat));
+        }
+      }
+    }
+  }
+
+  // Active cell glow
+  const glowGeo = new THREE.SphereGeometry(0.18, 16, 16);
+  const glowMat = new THREE.MeshBasicMaterial({ color: ACTIVE_COLOR, transparent: true, opacity: 0.4 });
+  const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+  cubeGroup.add(glowMesh);
+  let activeCell = 0;
+
+  // Agent spheres
+  const agentColors = [0x00FF88, 0xFF4500, 0x4488FF, 0xFFDD00];
+  const agentHomes = [0, 4, 9, 18];
+  const agents = [];
+  const agentGeo = new THREE.SphereGeometry(0.12, 12, 12);
+  for (let i = 0; i < 4; i++) {
+    const mat = new THREE.MeshBasicMaterial({ color: agentColors[i], transparent: true, opacity: 0.85 });
+    const mesh = new THREE.Mesh(agentGeo, mat);
+    mesh.position.copy(cellPositions[agentHomes[i]]);
+    cubeGroup.add(mesh);
+    agents.push({ mesh, target: cellPositions[agentHomes[i]].clone(), current: agentHomes[i] });
+  }
+
+  // Bond lines between agents
+  const bondLines = [];
+  const bondMat = new THREE.LineBasicMaterial({ color: BOND_COLOR, transparent: true, opacity: 0.4 });
+  for (let i = 0; i < agents.length; i++) {
+    for (let j = i + 1; j < agents.length; j++) {
+      const geo = new THREE.BufferGeometry().setFromPoints([
+        agents[i].mesh.position.clone(),
+        agents[j].mesh.position.clone()
+      ]);
+      const line = new THREE.Line(geo, bondMat.clone());
+      cubeGroup.add(line);
+      bondLines.push({ line, a: i, b: j });
+    }
+  }
+
+  // Drag rotation
+  let isDragging = false;
+  let prevMouse = { x: 0, y: 0 };
+  let rotVel = { x: 0, y: 0 };
+  canvas.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    prevMouse = { x: e.clientX, y: e.clientY };
+  });
+  window.addEventListener('pointerup', () => { isDragging = false; });
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    rotVel.y += dx * 0.003;
+    rotVel.x += dy * 0.003;
+    prevMouse = { x: e.clientX, y: e.clientY };
+  });
+  // Scroll zoom
+  canvas.addEventListener('wheel', (e) => {
+    camera.position.multiplyScalar(e.deltaY > 0 ? 1.05 : 0.95);
+    camera.position.clampLength(4, 20);
+  }, { passive: true });
+
+  // Move agents to random cells periodically
+  function moveAgents() {
+    for (const agent of agents) {
+      const newCell = Math.floor(Math.random() * 27);
+      agent.target.copy(cellPositions[newCell]);
+      agent.current = newCell;
+    }
+  }
+  setInterval(moveAgents, 5000);
+
+  // Update active cell from API
+  function updateActiveCell(cell) {
+    activeCell = cell;
+    glowMesh.position.copy(cellPositions[activeCell]);
+  }
+
+  // Animation
+  const clock = new THREE.Clock();
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+    const t = clock.getElapsedTime();
+
+    // Auto-rotate
+    if (!isDragging) {
+      cubeGroup.rotation.y += 0.003;
+      cubeGroup.rotation.x += 0.001;
+    }
+    // Apply drag momentum
+    cubeGroup.rotation.y += rotVel.y;
+    cubeGroup.rotation.x += rotVel.x;
+    rotVel.x *= 0.95;
+    rotVel.y *= 0.95;
+
+    // Active cell pulse
+    const pulse = 0.3 + Math.sin(t * 3) * 0.2;
+    glowMat.opacity = pulse;
+    glowMesh.scale.setScalar(1 + Math.sin(t * 3) * 0.2);
+
+    // Lerp agents
+    for (const agent of agents) {
+      agent.mesh.position.lerp(agent.target, 0.02);
+    }
+
+    // Update bond lines
+    for (const b of bondLines) {
+      const posArr = b.line.geometry.attributes.position.array;
+      const pa = agents[b.a].mesh.position;
+      const pb = agents[b.b].mesh.position;
+      posArr[0] = pa.x; posArr[1] = pa.y; posArr[2] = pa.z;
+      posArr[3] = pb.x; posArr[4] = pb.y; posArr[5] = pb.z;
+      b.line.geometry.attributes.position.needsUpdate = true;
+      // Cross-layer bonds brighter
+      const layerA = Math.floor(agents[b.a].current / 9);
+      const layerB = Math.floor(agents[b.b].current / 9);
+      b.line.material.opacity = (layerA !== layerB) ? 0.6 : 0.15;
+    }
+
+    // Cell node pulse for active cell
+    for (let i = 0; i < 27; i++) {
+      const layer = Math.floor(i / 9);
+      if (i === activeCell) {
+        cellMeshes[i].material.color.setHex(ACTIVE_COLOR);
+        cellMeshes[i].material.opacity = 0.8 + Math.sin(t * 4) * 0.2;
+        cellMeshes[i].scale.setScalar(1.3);
+      } else {
+        cellMeshes[i].material.color.setHex(LAYER_COLORS[layer]);
+        cellMeshes[i].material.opacity = 0.4;
+        cellMeshes[i].scale.setScalar(1);
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // Resize
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // v2.0: Update cell colors/sizes from cube data (method DNA colors, paper count sizing)
+  const METHOD_COLORS = {
+    'imaging/observation': 0xFF3333, // red
+    'computational': 0x3366FF,       // blue
+    'experimental': 0x22CC44         // green
+  };
+  const SURPRISE_OPACITY = {
+    'confirmatory': 0.3,
+    'deviation': 0.55,
+    'anomalous': 0.85
+  };
+  window._cubeSetData = function(cubeData) {
+    if (!cubeData || !cubeData.cells) return;
+    for (let i = 0; i < 27; i++) {
+      const cell = cubeData.cells[i];
+      if (!cell || i === activeCell) continue;
+      const color = METHOD_COLORS[cell.methodLabel] || LAYER_COLORS[Math.floor(i / 9)];
+      cellMeshes[i].material.color.setHex(color);
+      cellMeshes[i].material.opacity = SURPRISE_OPACITY[cell.surpriseLabel] || 0.4;
+      // Scale by paper count (min 0.8, max 2.0)
+      const paperScale = Math.min(2.0, Math.max(0.8, (cell.paperCount || 0) / 50));
+      cellMeshes[i].scale.setScalar(paperScale);
+    }
+  };
+
+  // Expose for data updates
+  window._cubeSetActive = updateActiveCell;
+  window._cubeSetAgents = function(positions) {
+    for (let i = 0; i < Math.min(positions.length, agents.length); i++) {
+      if (positions[i] >= 0 && positions[i] < 27) {
+        agents[i].target.copy(cellPositions[positions[i]]);
+        agents[i].current = positions[i];
+      }
+    }
+  };
+})();
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL ANIMATIONS
+   ═══════════════════════════════════════════════════════ */
+// Pipeline step fade-in
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      // Stagger pipeline steps
+      const steps = entry.target.querySelectorAll('.pipe-step');
+      if (steps.length) {
+        steps.forEach((step, i) => {
+          setTimeout(() => step.classList.add('visible'), i * 120);
+        });
+      }
+      // Count-up animation
+      entry.target.querySelectorAll('[data-countup]').forEach(el => {
+        countUp(el, parseInt(el.dataset.countup) || 0);
+      });
+    }
+  });
+}, { threshold: 0.2 });
+
+document.querySelectorAll('#pipeline, #results-grid, #funnel').forEach(el => observer.observe(el));
+
+function countUp(el, target) {
+  if (el._counted) return;
+  el._counted = true;
+  const duration = 1200;
+  const start = performance.now();
+  function tick(now) {
+    const pct = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - pct, 3);
+    el.textContent = Math.round(target * ease).toLocaleString();
+    if (pct < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DATA FETCHING
+   ═══════════════════════════════════════════════════════ */
+function escapeHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function computeIntelligenceFormulaStage({ state, fStats, metrics }) {
+  const totalFindings = Number(fStats && fStats.total || 0);
+  const discoveries = Number(fStats && fStats.byType && fStats.byType.discovery || 0);
+  const highValue = Number(metrics && metrics.total_high_value || 0);
+  const tick = Number(state && state.tick || 0);
+
+  if (highValue > 0 || discoveries > 0) {
+    return {
+      key: 'investigate',
+      label: 'Investigate',
+      summary: 'Investigate becomes current when the cube is already surfacing discoveries or high-value gaps worth deeper study.'
+    };
+  }
+
+  if (totalFindings > 0 || tick > 0) {
+    return {
+      key: 'define',
+      label: 'Define',
+      summary: 'Define is current when the radar is active and shaping cross-domain pressure into readable findings.'
+    };
+  }
+
+  return {
+    key: 'safety',
+    label: 'Safety',
+    summary: 'Safety remains current while the system is establishing a trustworthy baseline and bounded read of the field.'
+  };
+}
+
+function stageFromFabricState(fabricState) {
+  const phaseKey = String(fabricState && fabricState.phase || '').toLowerCase();
+  const entropyScore = Number(fabricState && fabricState.entropy_score || 0);
+  const clusterCount = Number(fabricState && fabricState.entropy_cluster_count || 0);
+  const suffix = ` Entropy ${entropyScore.toFixed(3)} across ${clusterCount} cluster${clusterCount === 1 ? '' : 's'}.`;
+
+  if (phaseKey === 'investigate') {
+    return {
+      key: 'investigate',
+      label: 'Investigate',
+      summary: 'Investigate is current because governed approvals are already reducing entropy into residue-backed knowledge.' + suffix
+    };
+  }
+
+  if (phaseKey === 'define') {
+    return {
+      key: 'define',
+      label: 'Define',
+      summary: 'Define is current because live entropy has moved into structured proposals, but the clusters are not fully resolved yet.' + suffix
+    };
+  }
+
+  if (phaseKey === 'safety') {
+    return {
+      key: 'safety',
+      label: 'Safety',
+      summary: 'Safety is current because unresolved entropy is still being detected and held inside the governed loop.' + suffix
+    };
+  }
+
+  return null;
+}
+
+function stageFromSystemIntelligence(intelligence, entropy) {
+  if (!intelligence || typeof intelligence !== 'object') {
+    return null;
+  }
+
+  const phaseKey = String(intelligence && intelligence.stage || '').toLowerCase();
+  const entropyScore = Number(intelligence && intelligence.entropy || 0);
+  const patternCount = Number(intelligence && intelligence.pattern_count || 0);
+  const trend = String(entropy && entropy.trend || 'steady');
+
+  if (phaseKey === 'investigate') {
+    return {
+      key: 'investigate',
+      label: 'Investigate',
+      summary: 'Investigate is current because governed residue and discovery pressure are already holding enough structure to justify deeper reading. Entropy ' + entropyScore.toFixed(3) + ' with ' + patternCount + ' visible patterns and trend ' + trend + '.'
+    };
+  }
+
+  if (phaseKey === 'define') {
+    return {
+      key: 'define',
+      label: 'Define',
+      summary: 'Define is current because the governed runtime is shaping discovery into clearer structure without widening authority. Entropy ' + entropyScore.toFixed(3) + ' with ' + patternCount + ' visible patterns and trend ' + trend + '.'
+    };
+  }
+
+  return {
+    key: 'safety',
+    label: 'Safety',
+    summary: 'Safety is current because the governed runtime is still holding uncertainty inside a bounded operating frame. Entropy ' + entropyScore.toFixed(3) + ' with ' + patternCount + ' visible patterns and trend ' + trend + '.'
+  };
+}
+
+function renderIntelligenceFormula(stage) {
+  const stages = ['safety', 'define', 'investigate'];
+  stages.forEach((key) => {
+    const el = document.getElementById(
+      key === 'safety'
+        ? 'intelligenceStageSafety'
+        : key === 'define'
+          ? 'intelligenceStageDefine'
+          : 'intelligenceStageInvestigate'
+    );
+    if (el) {
+      el.classList.toggle('is-current', key === stage.key);
+    }
+  });
+
+  const current = document.getElementById('intelligenceCurrent');
+  const summary = document.getElementById('intelligenceSummary');
+  if (current) current.textContent = 'Current stage: ' + stage.label;
+  if (summary) summary.textContent = stage.summary;
+}
+
+function renderResidueFieldHint(field) {
+  const hint = document.getElementById('residueFieldHint');
+  if (!hint) return;
+  const topRegion = field && Array.isArray(field.regions) ? field.regions[0] : null;
+  const topFamily = field && Array.isArray(field.signal_types) ? field.signal_types[0] : null;
+  const fieldStrength = Number(field && field.field_strength || 0);
+
+  if (!topRegion && !topFamily) {
+    hint.textContent = 'Residue field is quiet. Governed approvals will surface here once interaction begins to accumulate meaning.';
+    return;
+  }
+
+  const parts = [];
+  if (topRegion && topRegion.region) parts.push(`region ${topRegion.region}`);
+  if (topFamily && topFamily.signal_type) parts.push(`family ${String(topFamily.signal_type).replace(/_/g, ' ')}`);
+  hint.textContent = `Residue influence hint: strongest around ${parts.join(' · ')} with field strength ${(fieldStrength * 100).toFixed(0)}%.`;
+}
+
+function formatPercent(value) {
+  return Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—';
+}
+
+function formatRate(value) {
+  return Number.isFinite(value) ? `${value.toFixed(1)} / hr` : '—';
+}
+
+function stageProgress(stageKey) {
+  if (stageKey === 'investigate') return 100;
+  if (stageKey === 'define') return 68;
+  return 36;
+}
+
+function setObservatoryMetric(prefix, value, note, fillPercent) {
+  const valueEl = document.getElementById(`${prefix}Value`);
+  const noteEl = document.getElementById(`${prefix}Note`);
+  const fillEl = document.getElementById(`${prefix}Fill`);
+  if (valueEl) valueEl.textContent = value;
+  if (noteEl) noteEl.textContent = note;
+  if (fillEl) fillEl.style.width = `${Math.max(8, Math.min(100, fillPercent || 0))}%`;
+}
+
+function formatCellList(entries) {
+  if (!entries || entries.length === 0) return '—';
+  return entries.map((entry) => `#${entry.cellId}`).join(' · ');
+}
+
+function summarizeCubeTemperature(cubeData) {
+  const entries = Object.entries(cubeData && cubeData.cells || {})
+    .map(([cellId, cell]) => ({
+      cellId: Number(cellId),
+      paperCount: Number(cell && cell.paperCount || 0),
+      surpriseLabel: String(cell && cell.surpriseLabel || ''),
+      methodLabel: String(cell && cell.methodLabel || '')
+    }))
+    .filter((entry) => Number.isFinite(entry.cellId));
+
+  const hot = entries
+    .slice()
+    .sort((left, right) => {
+      if (right.paperCount !== left.paperCount) return right.paperCount - left.paperCount;
+      return left.cellId - right.cellId;
+    })
+    .slice(0, 3);
+
+  const cold = entries
+    .slice()
+    .sort((left, right) => {
+      if (left.paperCount !== right.paperCount) return left.paperCount - right.paperCount;
+      return left.cellId - right.cellId;
+    })
+    .slice(0, 3);
+
+  return { hot, cold, total: entries.length };
+}
+
+function renderObservatoryReadModel({ intelligence, entropy, residueField, collectiveMemory, emergence, cubeData }) {
+  const stageLabel = String(intelligence && intelligence.stage || 'Safety');
+  const stageKey = stageLabel.toLowerCase();
+  const entropyTrend = String(entropy && entropy.trend || 'waiting');
+  const entropyScore = Number(entropy && entropy.entropy_score || intelligence && intelligence.entropy || 0);
+  const residueStrength = Number(intelligence && intelligence.residue_strength || 0);
+  const discoveryRate = Number(intelligence && intelligence.discovery_rate || 0);
+  const patternCount = Number(intelligence && intelligence.pattern_count || 0);
+  const topRegion = residueField && Array.isArray(residueField.regions) ? residueField.regions[0] : null;
+  const topFamily = residueField && Array.isArray(residueField.signal_types) ? residueField.signal_types[0] : null;
+
+  setObservatoryMetric(
+    'obsStage',
+    stageLabel,
+    topRegion && topRegion.region
+      ? `Strongest governed residue region: ${topRegion.region}.`
+      : 'The system is holding a bounded operating posture.',
+    stageProgress(stageKey)
+  );
+  setObservatoryMetric(
+    'obsEntropy',
+    entropyTrend,
+    Number.isFinite(entropyScore)
+      ? `Entropy score ${entropyScore.toFixed(3)} from the governed kernel.`
+      : 'Entropy trend becomes visible when the kernel responds.',
+    (1 - Math.min(1, entropyScore)) * 100
+  );
+  setObservatoryMetric(
+    'obsResidue',
+    formatPercent(residueStrength),
+    topFamily && topFamily.signal_type
+      ? `Strongest family: ${String(topFamily.signal_type).replace(/_/g, ' ')}.`
+      : 'Residue is the append-only memory of approved interactions.',
+    residueStrength * 100
+  );
+  setObservatoryMetric(
+    'obsDiscovery',
+    formatRate(discoveryRate),
+    'Discovery may intensify, but execution still waits for explicit approval.',
+    Math.min(100, discoveryRate * 20)
+  );
+  setObservatoryMetric(
+    'obsPattern',
+    Number.isFinite(patternCount) ? String(patternCount) : '—',
+    'Pattern count shows where meaning is accumulating without granting authority.',
+    Math.min(100, patternCount * 16)
+  );
+
+  const temperature = summarizeCubeTemperature(cubeData);
+  const collisionCount = Number(emergence && emergence.collisions && emergence.collisions.length || 0);
+  const density = temperature.total > 0 ? collisionCount / temperature.total : 0;
+  const suggestion = Array.isArray(emergence && emergence.suggestions) && emergence.suggestions.length > 0
+    ? emergence.suggestions[0]
+    : null;
+  const strongestCell = emergence && emergence.strongestCell != null ? `#${emergence.strongestCell}` : '—';
+  const rememberedRegion = collectiveMemory && Array.isArray(collectiveMemory.region_memory) ? collectiveMemory.region_memory[0] : null;
+
+  setObservatoryMetric(
+    'fieldHot',
+    formatCellList(temperature.hot),
+    temperature.hot.length > 0
+      ? `Most active cells by current cube weight and paper concentration.`
+      : 'No hot cells are visible yet.',
+    Math.min(100, temperature.hot.length * 28)
+  );
+  setObservatoryMetric(
+    'fieldCold',
+    formatCellList(temperature.cold),
+    temperature.cold.length > 0
+      ? 'Quiet cells where the field still has room to discover.'
+      : 'Cold-cell visibility is waiting for cube data.',
+    Math.min(100, temperature.cold.length * 28)
+  );
+  setObservatoryMetric(
+    'fieldCollision',
+    `${collisionCount} / ${temperature.total || 27}`,
+    `Collision density ${Math.round(density * 100)}% across the current cube.`,
+    density * 100
+  );
+  setObservatoryMetric(
+    'fieldEmergence',
+    strongestCell,
+    suggestion
+      ? suggestion
+      : rememberedRegion && rememberedRegion.region
+      ? `Collective memory keeps pointing back to ${String((rememberedRegion && rememberedRegion.region) || '').replace(/_/g, ' ')} as governed value accumulates.`
+      : 'Emergence hints remain read-only cues for research attention.',
+    suggestion ? 78 : 16
+  );
+}
+
+function resolveKnowledgeObjects(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  if (Array.isArray(payload.objects)) return payload.objects;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  return [];
+}
+
+function renderEmergenceStrip({ entropy, emergence, cubeData, knowledgeRecent }) {
+  const temperature = summarizeCubeTemperature(cubeData);
+  const collisionCount = Number(emergence && emergence.collisions && emergence.collisions.length || 0);
+  const density = temperature.total > 0 ? collisionCount / temperature.total : 0;
+  const trend = String(entropy && entropy.trend || 'waiting');
+  const entropyScore = Number(entropy && entropy.entropy_score || 0);
+  const knowledgeObjects = resolveKnowledgeObjects(knowledgeRecent);
+  const strongestCell = emergence && emergence.strongestCell != null ? `#${emergence.strongestCell}` : '—';
+  const topSuggestion = Array.isArray(emergence && emergence.suggestions) && emergence.suggestions.length > 0
+    ? emergence.suggestions[0]
+    : 'Recent promoted knowledge becomes visible here once the kernel publishes it.';
+
+  setObservatoryMetric(
+    'emergenceEntropy',
+    trend,
+    Number.isFinite(entropyScore)
+      ? `Entropy score ${entropyScore.toFixed(3)} in the governed kernel.`
+      : 'The entropy read model is waiting for the kernel.',
+    (1 - Math.min(1, entropyScore)) * 100
+  );
+  setObservatoryMetric(
+    'emergenceCube',
+    `${temperature.total || 0} cells`,
+    `Cube activity is centered around ${strongestCell} with ${temperature.hot.length} hot cells currently standing out.`,
+    Math.min(100, (temperature.total || 0) / 27 * 100)
+  );
+  setObservatoryMetric(
+    'emergenceCollision',
+    `${Math.round(density * 100)}%`,
+    `${collisionCount} recent collisions across ${temperature.total || 27} observable cells.`,
+    density * 100
+  );
+  setObservatoryMetric(
+    'emergenceKnowledge',
+    `${knowledgeObjects.length}`,
+    topSuggestion,
+    Math.min(100, knowledgeObjects.length * 18)
+  );
+}
+
+function renderCollectiveMemoryStrip(collectiveMemory) {
+  const region = collectiveMemory && Array.isArray(collectiveMemory.region_memory) ? collectiveMemory.region_memory[0] : null;
+  const family = collectiveMemory && Array.isArray(collectiveMemory.signal_family_memory) ? collectiveMemory.signal_family_memory[0] : null;
+  const structure = collectiveMemory && Array.isArray(collectiveMemory.knowledge_structure_memory) ? collectiveMemory.knowledge_structure_memory[0] : null;
+  const collision = collectiveMemory && Array.isArray(collectiveMemory.collision_memory) ? collectiveMemory.collision_memory[0] : null;
+
+  setObservatoryMetric(
+    'memoryRegion',
+    region && region.region ? String(region.region).replace(/_/g, ' ') : '—',
+    region && region.explanation
+      ? region.explanation
+      : 'Regions that repeatedly produced governed value will appear here.',
+    Math.min(100, Number(region && region.weight || 0) * 100)
+  );
+  setObservatoryMetric(
+    'memoryFamily',
+    family && family.signal_type ? String(family.signal_type).replace(/_/g, ' ') : '—',
+    family && family.explanation
+      ? family.explanation
+      : 'Signal families with durable governed outcomes will appear here.',
+    Math.min(100, Number(family && family.weight || 0) * 100)
+  );
+  setObservatoryMetric(
+    'memoryStructure',
+    structure && structure.structure_type ? String(structure.structure_type).replace(/_/g, ' ') : '—',
+    structure && structure.explanation
+      ? structure.explanation
+      : 'Stable knowledge structures will appear here once memory has enough evidence.',
+    Math.min(100, Number(structure && structure.weight || 0) * 100)
+  );
+  setObservatoryMetric(
+    'memoryCollision',
+    collision && collision.cube_zone ? String(collision.cube_zone) : '—',
+    collision && collision.explanation
+      ? collision.explanation
+      : 'Recurring cross-domain collisions will appear here once they persist.',
+    Math.min(100, Number(collision && collision.weight || 0) * 100)
+  );
+}
+
+function renderCivilizationStrip(civilization) {
+  const zone = civilization && Array.isArray(civilization.durable_knowledge_zones) ? civilization.durable_knowledge_zones[0] : null;
+  const risk = civilization && Array.isArray(civilization.civic_risk_structures) ? civilization.civic_risk_structures[0] : null;
+  const template = civilization && Array.isArray(civilization.trusted_action_templates) ? civilization.trusted_action_templates[0] : null;
+  const field = civilization && Array.isArray(civilization.long_horizon_research_fields) ? civilization.long_horizon_research_fields[0] : null;
+
+  setObservatoryMetric(
+    'civilizationZone',
+    zone && zone.region ? String(zone.region).replace(/_/g, ' ') : '—',
+    zone && zone.explanation
+      ? zone.explanation
+      : 'Durable knowledge zones will appear once governed structure persists beyond the moment.',
+    Math.min(100, Number(zone && zone.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'civilizationRisk',
+    risk && risk.region ? String(risk.region).replace(/_/g, ' ') : '—',
+    risk && risk.explanation
+      ? risk.explanation
+      : 'Civic risk structures will appear here once a region repeatedly matters under governance.',
+    Math.min(100, Number(risk && risk.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'civilizationTemplate',
+    template && template.action_type ? String(template.action_type).replace(/_/g, ' ') : '—',
+    template && template.explanation
+      ? template.explanation
+      : 'Trusted bounded action templates will appear here once receipt-backed usefulness persists.',
+    Math.min(100, Number(template && template.bounded_usefulness || 0) * 100)
+  );
+  setObservatoryMetric(
+    'civilizationField',
+    field && field.domain ? String(field.domain).replace(/_/g, ' ') : '—',
+    field && field.explanation
+      ? field.explanation
+      : 'Long-horizon research fields will appear here once they persist across time and domains.',
+    Math.min(100, Number(field && field.persistence || 0) * 100)
+  );
+}
+
+function renderPlanetaryStrip(planetary) {
+  const risk = planetary && Array.isArray(planetary.planetary_risk_structures) ? planetary.planetary_risk_structures[0] : null;
+  const field = planetary && Array.isArray(planetary.cross_region_knowledge_fields) ? planetary.cross_region_knowledge_fields[0] : null;
+  const template = planetary && Array.isArray(planetary.trusted_action_templates) ? planetary.trusted_action_templates[0] : null;
+  const research = planetary && Array.isArray(planetary.long_horizon_research_fields) ? planetary.long_horizon_research_fields[0] : null;
+
+  setObservatoryMetric(
+    'planetaryRisk',
+    risk && risk.signal_family ? String(risk.signal_family).replace(/_/g, ' ') : '—',
+    risk && risk.explanation
+      ? risk.explanation
+      : 'Cross-region governed risk structures will appear here when they persist.',
+    Math.min(100, Number(risk && risk.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'planetaryField',
+    field && Array.isArray(field.regions) ? field.regions.join(', ').replace(/_/g, ' ') : '—',
+    field && field.explanation
+      ? field.explanation
+      : 'Cross-region knowledge fields will appear here when local structure begins to cohere globally.',
+    Math.min(100, Number(field && field.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'planetaryTemplate',
+    template && template.action_type ? String(template.action_type).replace(/_/g, ' ') : '—',
+    template && template.explanation
+      ? template.explanation
+      : 'Bounded templates with cross-region usefulness will appear here when they persist.',
+    Math.min(100, Number(template && template.cross_region_usefulness || 0) * 100)
+  );
+  setObservatoryMetric(
+    'planetaryResearch',
+    research && research.domain ? String(research.domain).replace(/_/g, ' ') : '—',
+    research && research.explanation
+      ? research.explanation
+      : 'Long-horizon research fields will appear here when they persist across regions and domains.',
+    Math.min(100, Number(research && research.persistence || 0) * 100)
+  );
+}
+
+function renderCosmicStrip(cosmic) {
+  const question = cosmic && Array.isArray(cosmic.enduring_human_questions) ? cosmic.enduring_human_questions[0] : null;
+  const field = cosmic && Array.isArray(cosmic.long_horizon_knowledge_fields) ? cosmic.long_horizon_knowledge_fields[0] : null;
+  const frontier = cosmic && Array.isArray(cosmic.recurring_exploration_frontiers) ? cosmic.recurring_exploration_frontiers[0] : null;
+  const stewardship = cosmic && Array.isArray(cosmic.stewardship_patterns) ? cosmic.stewardship_patterns[0] : null;
+
+  setObservatoryMetric(
+    'cosmicQuestion',
+    question && question.theme ? String(question.theme).replace(/_/g, ' ') : '—',
+    question && question.explanation
+      ? question.explanation
+      : 'Themes that remain open, central, and governed will appear here.',
+    Math.min(100, Number(question && question.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'cosmicField',
+    field && field.domain ? String(field.domain).replace(/_/g, ' ') : '—',
+    field && field.explanation
+      ? field.explanation
+      : 'Long-horizon fields will appear here once they keep reducing uncertainty across contexts.',
+    Math.min(100, Number(field && field.persistence || 0) * 100)
+  );
+  setObservatoryMetric(
+    'cosmicFrontier',
+    frontier && frontier.frontier ? String(frontier.frontier).replace(/_/g, ' ') : '—',
+    frontier && frontier.explanation
+      ? frontier.explanation
+      : 'Deep frontiers will appear here when discovery keeps returning to the same unresolved terrain.',
+    Math.min(100, Math.min(1, Number(frontier && frontier.recurrence || 0) / 8) * 100)
+  );
+  setObservatoryMetric(
+    'cosmicStewardship',
+    stewardship && stewardship.pattern_type ? String(stewardship.pattern_type).replace(/_/g, ' ') : '—',
+    stewardship && stewardship.explanation
+      ? stewardship.explanation
+      : 'Governance-safe stewardship patterns will appear here when long-horizon meaning becomes visible.',
+    Math.min(100, Number(stewardship && stewardship.persistence || 0) * 100)
+  );
+}
+
+async function loadStats() {
+  try {
+    const [state, fStats, metrics, cubeData, fabricState, residueField, collectiveMemory, civilization, planetary, cosmic, systemIntelligence, systemEntropy, emergence, knowledgeRecent] = await Promise.all([
+      fetch('/api/state').then(r => r.json()).catch(() => null),
+      fetch('/api/findings/stats').then(r => r.json()).catch(() => null),
+      fetch('/api/metrics').then(r => r.json()).catch(() => null),
+      fetch('/api/cube').then(r => r.json()).catch(() => null),
+      fetch('/api/fabric/state').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/residue-field').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/collective-memory').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/civilization').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/planetary').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/cosmic').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/intelligence').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/system/entropy').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/clashd27/emergence').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/knowledge/objects/recent?limit=12').then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    if (state) {
+      document.getElementById('stat-tick').textContent = state.tick.toLocaleString();
+      if (window._cubeSetActive) window._cubeSetActive(state.activeCell);
+      // Position agents from state
+      if (state.agents && window._cubeSetAgents) {
+        const positions = state.agents.map(a => a.currentCell);
+        window._cubeSetAgents(positions);
+      }
+    }
+
+    // v2.0: Update 3D cube with method DNA colors and paper count sizing
+    if (cubeData && cubeData.active && window._cubeSetData) {
+      window._cubeSetData(cubeData);
+    }
+
+    if (fStats) {
+      const total = fStats.total || 0;
+      const discoveries = fStats.byType?.discovery || 0;
+      document.getElementById('stat-findings').textContent = total.toLocaleString();
+      document.getElementById('stat-discoveries').textContent = discoveries.toLocaleString();
+      document.getElementById('res-total').textContent = total.toLocaleString();
+      document.getElementById('res-discoveries').textContent = discoveries.toLocaleString();
+    }
+
+    if (metrics) {
+      const hvg = metrics.total_high_value || 0;
+      const total_disc = metrics.total_discoveries || 0;
+      const rejected = metrics.total_rejected || 0;
+      const attempts = (total_disc + rejected) || 0;
+      const rejectionRate = attempts > 0 ? Math.round((rejected / attempts) * 100) : 0;
+      const verified = metrics.gpt_survived || 0;
+
+      document.getElementById('stat-highvalue').textContent = hvg.toLocaleString();
+      document.getElementById('res-highvalue').textContent = hvg.toLocaleString();
+      document.getElementById('res-rejection').textContent = rejectionRate + '%';
+
+      // Pipeline proof
+      document.getElementById('proof-rejected').textContent = rejected.toLocaleString();
+      document.getElementById('proof-passed').textContent = hvg.toLocaleString();
+
+      // Funnel
+      const maxVal = Math.max(attempts, 1);
+      setFunnel('fun-attempts', attempts, maxVal);
+      setFunnel('fun-gaps', total_disc, maxVal);
+      setFunnel('fun-highval', hvg, maxVal);
+      setFunnel('fun-verified', verified, maxVal);
+    }
+
+    renderIntelligenceFormula(
+      stageFromSystemIntelligence(systemIntelligence, systemEntropy)
+      || stageFromFabricState(fabricState)
+      || computeIntelligenceFormulaStage({ state, fStats, metrics })
+    );
+    renderResidueFieldHint(residueField);
+    renderObservatoryReadModel({
+      intelligence: systemIntelligence,
+      entropy: systemEntropy,
+      residueField,
+      collectiveMemory,
+      emergence,
+      cubeData
+    });
+    renderCollectiveMemoryStrip(collectiveMemory);
+    renderCivilizationStrip(civilization);
+    renderPlanetaryStrip(planetary);
+    renderCosmicStrip(cosmic);
+    renderEmergenceStrip({
+      entropy: systemEntropy,
+      emergence,
+      cubeData,
+      knowledgeRecent
+    });
+  } catch (e) {
+    console.error('Stats load failed:', e);
+  }
+}
+
+function setFunnel(id, value, max) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const pct = max > 0 ? Math.max((value / max) * 100, value > 0 ? 4 : 0) : 0;
+  el.style.width = pct + '%';
+  el.innerHTML = `<span class="funnel-bar-val">${value.toLocaleString()}</span>`;
+}
+
+async function loadDiscoveries() {
+  try {
+    const data = await fetch('/api/findings?type=discovery&limit=3').then(r => r.json());
+    const container = document.getElementById('discovery-list');
+    if (!data.findings || data.findings.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;">Agents are exploring. No discoveries yet.</div>';
+      return;
+    }
+    container.innerHTML = data.findings.map(d => {
+      const domains = d.cellLabels ? d.cellLabels.join(' × ') : 'Cross-domain';
+      const score = d.scores?.total || 0;
+      const verdict = d.verdict?.verdict || d.verdict || '';
+      let verdictClass = 'disc-verdict-low';
+      if (verdict.includes('HIGH')) verdictClass = 'disc-verdict-high';
+      else if (verdict.includes('CONFIRMED')) verdictClass = 'disc-verdict-confirmed';
+      const isHigh = verdict.includes('HIGH');
+      return `<div class="disc-card${isHigh ? ' high-value' : ''}">
+        <div class="disc-domains">${escapeHtml(domains)}</div>
+        <div class="disc-hypo">${escapeHtml(d.hypothesis || d.discovery || '')}</div>
+        <div class="disc-meta">
+          <span class="disc-score">SCORE ${score}/100</span>
+          <span class="${verdictClass}">${escapeHtml(verdict)}</span>
+          <span>tick ${d.tick}</span>
+          <span>${d.impact ? 'impact: ' + d.impact : ''}</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('Discoveries load failed:', e);
+  }
+}
+
+// Initial load
+renderIntelligenceFormula({
+  key: 'safety',
+  label: 'Safety',
+  summary: 'Safety remains the opening frame until live CLASHD27 signals prove a clearer phase.'
+});
+loadStats();
+loadDiscoveries();
+setInterval(loadStats, 15000);
+setInterval(loadDiscoveries, 30000);
+</script>
+</body>
+</html>

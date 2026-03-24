@@ -1,0 +1,164 @@
+{
+  "version": "1.0",
+  "defaultSources": [
+    "arxiv",
+    "semantic-scholar",
+    "openalex"
+  ],
+  "domains": [
+    {
+      "id": "ai-governance",
+      "label": "AI Governance",
+      "description": "Consent architecture, oversight, accountability",
+      "queries": [
+        "AI consent architecture",
+        "AI agent safety verification",
+        "autonomous AI oversight human control",
+        "AI governance formal methods",
+        "AI accountability transparency",
+        "multi-agent trust enforcement",
+        "AI alignment verification gap"
+      ],
+      "sources": [
+        "arxiv",
+        "semantic-scholar",
+        "openalex"
+      ],
+      "sourceWeight": 1.5,
+      "minScore": 0.55,
+      "enabled": true
+    },
+    {
+      "id": "ai-safety",
+      "label": "AI Safety",
+      "description": "Robustness, adversarial, alignment, reliability",
+      "queries": [
+        "large language model robustness gaps",
+        "AI adversarial vulnerability",
+        "foundation model failure modes",
+        "AI hallucination grounding",
+        "neural network verification",
+        "AI safety evaluation benchmark gaps",
+        "LLM reliability limitations"
+      ],
+      "sources": [
+        "arxiv",
+        "semantic-scholar",
+        "openalex"
+      ],
+      "sourceWeight": 1.4,
+      "minScore": 0.55,
+      "enabled": true
+    },
+    {
+      "id": "healthcare-ai",
+      "label": "Healthcare AI",
+      "description": "Clinical AI gaps, medical accountability, diagnosis",
+      "queries": [
+        "AI clinical decision support gaps",
+        "medical AI accountability",
+        "AI diagnosis reliability healthcare",
+        "clinical AI governance missing",
+        "AI patient safety verification",
+        "medical large language model limitations",
+        "AI radiology validation gaps"
+      ],
+      "sources": [
+        "semantic-scholar",
+        "openalex",
+        "pubmed"
+      ],
+      "sourceWeight": 1.3,
+      "minScore": 0.5,
+      "enabled": true
+    },
+    {
+      "id": "legal-ai",
+      "label": "Legal AI",
+      "description": "AI in law, compliance gaps, algorithmic accountability",
+      "queries": [
+        "AI legal compliance gaps",
+        "algorithmic accountability law",
+        "AI judicial decision support",
+        "legal AI transparency missing",
+        "AI contract analysis limitations",
+        "algorithmic bias legal framework",
+        "AI regulatory compliance verification"
+      ],
+      "sources": [
+        "arxiv",
+        "semantic-scholar",
+        "openalex"
+      ],
+      "sourceWeight": 1.2,
+      "minScore": 0.5,
+      "enabled": true
+    },
+    {
+      "id": "climate-ai",
+      "label": "Climate AI",
+      "description": "Climate modeling gaps, sustainability AI limitations",
+      "queries": [
+        "AI climate modeling limitations",
+        "machine learning weather prediction gaps",
+        "AI carbon footprint optimization missing",
+        "climate AI uncertainty quantification",
+        "AI energy grid optimization gaps",
+        "climate change prediction model failures",
+        "AI sustainability measurement gaps"
+      ],
+      "sources": [
+        "arxiv",
+        "semantic-scholar",
+        "openalex"
+      ],
+      "sourceWeight": 1.1,
+      "minScore": 0.45,
+      "enabled": true
+    },
+    {
+      "id": "education-ai",
+      "label": "Education AI",
+      "description": "Learning gaps, personalization limits, EdTech AI",
+      "queries": [
+        "AI personalized learning gaps",
+        "educational AI effectiveness missing",
+        "AI tutoring system limitations",
+        "learning analytics privacy gaps",
+        "AI assessment fairness education",
+        "adaptive learning algorithm gaps",
+        "AI student modeling limitations"
+      ],
+      "sources": [
+        "arxiv",
+        "semantic-scholar",
+        "openalex"
+      ],
+      "sourceWeight": 1,
+      "minScore": 0.45,
+      "enabled": true
+    },
+    {
+      "id": "finance-ai",
+      "label": "Finance AI",
+      "description": "Algorithmic trading gaps, financial AI oversight",
+      "queries": [
+        "algorithmic trading risk gaps",
+        "AI financial fraud detection limitations",
+        "AI credit scoring fairness gaps",
+        "financial AI explainability missing",
+        "AI systemic risk detection gaps",
+        "automated trading oversight missing",
+        "AI financial regulation gaps"
+      ],
+      "sources": [
+        "arxiv",
+        "semantic-scholar",
+        "openalex"
+      ],
+      "sourceWeight": 1.2,
+      "minScore": 0.5,
+      "enabled": true
+    }
+  ]
+}

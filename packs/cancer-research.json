@@ -1,0 +1,43 @@
+{
+  "id": "cancer-research",
+  "name": "Cancer Research",
+  "version": "0.1",
+  "description": "Multi-agent coordination across cancer research domains. Agents explore data, analysis, and hypothesis layers to discover cross-domain connections.",
+  "created_by": "greenbanaanas",
+  "cells": {
+    "0":  { "label": "Genomics",              "layer": 0, "domain": "data",       "description": "Gene mutations, sequencing data, BRCA, TP53, variant analysis" },
+    "1":  { "label": "Proteomics",            "layer": 0, "domain": "data",       "description": "Protein expression, folding, biomarker identification" },
+    "2":  { "label": "Clinical Trials",       "layer": 0, "domain": "data",       "description": "Trial results, phase data, patient outcomes, dosage records" },
+    "3":  { "label": "Imaging & Pathology",   "layer": 0, "domain": "data",       "description": "Tumor imaging, histology, radiology datasets" },
+    "4":  { "label": "Epidemiology",          "layer": 0, "domain": "data",       "description": "Population data, incidence rates, risk factors, demographics" },
+    "5":  { "label": "Pharmacology",          "layer": 0, "domain": "data",       "description": "Drug compounds, mechanisms of action, toxicity profiles" },
+    "6":  { "label": "Patient Records",       "layer": 0, "domain": "data",       "description": "Anonymized outcomes, treatment histories, survival rates" },
+    "7":  { "label": "Microbiome",            "layer": 0, "domain": "data",       "description": "Gut flora, bacterial influence on treatment response" },
+    "8":  { "label": "Environmental Factors",  "layer": 0, "domain": "data",       "description": "Carcinogens, lifestyle data, occupational exposure" },
+
+    "9":  { "label": "Drug Interactions",     "layer": 1, "domain": "analysis",   "description": "How compounds interact, synergies, contraindications" },
+    "10": { "label": "Immune Response",       "layer": 1, "domain": "analysis",   "description": "T-cell behavior, checkpoint inhibitors, immunotherapy patterns" },
+    "11": { "label": "Biomarker Correlation", "layer": 1, "domain": "analysis",   "description": "Linking markers to outcomes, predictive signatures" },
+    "12": { "label": "Resistance Mechanisms", "layer": 1, "domain": "analysis",   "description": "Why tumors stop responding, adaptation pathways" },
+    "13": { "label": "Cross-Cancer Patterns", "layer": 1, "domain": "analysis",   "description": "Similarities between cancer types, shared vulnerabilities" },
+    "14": { "label": "Treatment Sequencing",  "layer": 1, "domain": "analysis",   "description": "Optimal order of therapies, timing effects" },
+    "15": { "label": "Side Effect Analysis",  "layer": 1, "domain": "analysis",   "description": "Quality of life impact, risk-benefit trade-offs" },
+    "16": { "label": "Genetic Pathways",      "layer": 1, "domain": "analysis",   "description": "Signaling cascades, pathway disruption, network effects" },
+    "17": { "label": "AI Diagnostics",        "layer": 1, "domain": "analysis",   "description": "Machine learning on imaging, early detection models" },
+
+    "18": { "label": "Novel Combinations",    "layer": 2, "domain": "hypothesis", "description": "Untested drug combinations suggested by data patterns" },
+    "19": { "label": "Cross-Domain Links",    "layer": 2, "domain": "hypothesis", "description": "Connections between unrelated fields — the unexpected bonds" },
+    "20": { "label": "Unexplored Pathways",   "layer": 2, "domain": "hypothesis", "description": "Biological mechanisms nobody is investigating yet" },
+    "21": { "label": "Repurposed Drugs",      "layer": 2, "domain": "hypothesis", "description": "Existing drugs that might work for cancer — hidden potential" },
+    "22": { "label": "Personalized Protocols", "layer": 2, "domain": "hypothesis", "description": "Individual treatment plans based on genomic + lifestyle data" },
+    "23": { "label": "Prevention Strategies",  "layer": 2, "domain": "hypothesis", "description": "What if we could prevent it? Early intervention ideas" },
+    "24": { "label": "Microbiome Therapy",    "layer": 2, "domain": "hypothesis", "description": "Using gut bacteria to enhance treatment — frontier research" },
+    "25": { "label": "Synthetic Biology",     "layer": 2, "domain": "hypothesis", "description": "Engineered organisms targeting tumors — radical approaches" },
+    "26": { "label": "Emergent Insights",     "layer": 2, "domain": "hypothesis", "description": "The center cell. What emerges when all domains converge." }
+  },
+  "layers": {
+    "0": { "name": "The Floor — DATA",       "description": "Verifiable facts. Papers. Results. Hard evidence." },
+    "1": { "name": "No Hats Allowed — ANALYSIS", "description": "Connections. Patterns. Cross-referencing domains." },
+    "2": { "name": "Mod 27 Zone — HYPOTHESIS",   "description": "New ideas. Untested combinations. The frontier." }
+  }
+}

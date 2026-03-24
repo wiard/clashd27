@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=IBM+Plex+Mono:wght@300;400;700&amp;display=swap');
+    </style>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1a0a2e"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+    <radialGradient id="hotcell" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff4500" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#ff4500" stop-opacity="0.1"/>
+    </radialGradient>
+    <radialGradient id="warmcell" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff8c00" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#ff8c00" stop-opacity="0.05"/>
+    </radialGradient>
+    <radialGradient id="coldcell" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a3a5c" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#1a3a5c" stop-opacity="0.05"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="strongglow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#ffffff" stroke-width="0.1" opacity="0.1"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+
+  <!-- Subtle noise texture overlay -->
+  <rect width="800" height="600" fill="#ff4500" opacity="0.02"/>
+
+  <!-- 3x3x3 Cube - Isometric projection, centered -->
+  <!-- Layer 0 - THE FLOOR (bottom) - cells 0-8 -->
+  <!-- Row 0 -->
+  <g transform="translate(280, 320)">
+    <!-- Cell 0 - HOT (parcel 800) -->
+    <g filter="url(#strongglow)">
+      <rect x="-90" y="0" width="58" height="35" fill="url(#hotcell)" stroke="#ff4500" stroke-width="1.5" rx="2"/>
+      <text x="-61" y="22" font-family="monospace" font-size="9" fill="#ff6633" text-anchor="middle" font-weight="bold">800</text>
+      <text x="-61" y="32" font-family="monospace" font-size="7" fill="#ff4500" text-anchor="middle">cell 0</text>
+    </g>
+    <!-- Cell 1 -->
+    <g filter="url(#glow)">
+      <rect x="-28" y="-18" width="58" height="35" fill="url(#warmcell)" stroke="#ff8c00" stroke-width="1" rx="2"/>
+      <text x="3" y="4" font-family="monospace" font-size="9" fill="#ff8c00" text-anchor="middle">821</text>
+      <text x="3" y="14" font-family="monospace" font-size="7" fill="#ff8c00" text-anchor="middle">cell 1</text>
+    </g>
+    <!-- Cell 2 -->
+    <rect x="34" y="-36" width="58" height="35" fill="url(#coldcell)" stroke="#1a3a5c" stroke-width="0.5" rx="2"/>
+    <text x="63" y="-18" font-family="monospace" font-size="9" fill="#4a6a8c" text-anchor="middle">844</text>
+    <text x="63" y="-8" font-family="monospace" font-size="7" fill="#4a6a8c" text-anchor="middle">cell 2</text>
+
+    <!-- Cell 3 -->
+    <g filter="url(#glow)">
+      <rect x="-90" y="38" width="58" height="35" fill="url(#warmcell)" stroke="#ff8c00" stroke-width="1" rx="2"/>
+      <text x="-61" y="60" font-family="monospace" font-size="9" fill="#ff8c00" text-anchor="middle">858</text>
+      <text x="-61" y="70" font-family="monospace" font-size="7" fill="#ff8c00" text-anchor="middle">cell 3</text>
+    </g>
+    <!-- Cell 4 - CENTER HOT -->
+    <g filter="url(#strongglow)">
+      <rect x="-28" y="20" width="58" height="35" fill="url(#hotcell)" stroke="#ff4500" stroke-width="2" rx="2"/>
+      <text x="3" y="42" font-family="monospace" font-size="9" fill="#ff6633" text-anchor="middle" font-weight="bold">867</text>
+      <text x="3" y="52" font-family="monospace" font-size="7" fill="#ff4500" text-anchor="middle">cell 4</text>
+    </g>
+    <!-- Cell 5 -->
+    <rect x="34" y="2" width="58" height="35" fill="url(#coldcell)" stroke="#1a3a5c" stroke-width="0.5" rx="2"/>
+    <text x="63" y="20" font-family="monospace" font-size="9" fill="#4a6a8c" text-anchor="middle">868</text>
+    <text x="63" y="30" font-family="monospace" font-size="7" fill="#4a6a8c" text-anchor="middle">cell 5</text>
+
+    <!-- Cell 6 -->
+    <rect x="-90" y="76" width="58" height="35" fill="url(#coldcell)" stroke="#1a3a5c" stroke-width="0.5" rx="2"/>
+    <text x="-61" y="98" font-family="monospace" font-size="9" fill="#4a6a8c" text-anchor="middle">871</text>
+    <text x="-61" y="108" font-family="monospace" font-size="7" fill="#4a6a8c" text-anchor="middle">cell 6</text>
+    <!-- Cell 7 -->
+    <g filter="url(#glow)">
+      <rect x="-28" y="58" width="58" height="35" fill="url(#warmcell)" stroke="#ff8c00" stroke-width="1" rx="2"/>
+      <text x="3" y="80" font-family="monospace" font-size="9" fill="#ff8c00" text-anchor="middle">876</text>
+      <text x="3" y="90" font-family="monospace" font-size="7" fill="#ff8c00" text-anchor="middle">cell 7</text>
+    </g>
+    <!-- Cell 8 -->
+    <rect x="34" y="40" width="58" height="35" fill="url(#coldcell)" stroke="#1a3a5c" stroke-width="0.5" rx="2"/>
+    <text x="63" y="58" font-family="monospace" font-size="9" fill="#4a6a8c" text-anchor="middle">888</text>
+    <text x="63" y="68" font-family="monospace" font-size="7" fill="#4a6a8c" text-anchor="middle">cell 8</text>
+  </g>
+
+  <!-- Layer labels -->
+  <text x="155" y="445" font-family="monospace" font-size="10" fill="#ff4500" opacity="0.7">🪱 THE FLOOR</text>
+  <text x="155" y="310" font-family="monospace" font-size="10" fill="#aaaaaa" opacity="0.5">💯 NO HATS</text>
+  <text x="155" y="190" font-family="monospace" font-size="10" fill="#888888" opacity="0.4">🧠 MOD 27</text>
+
+  <!-- Ghost upper layers -->
+  <g opacity="0.25">
+    <!-- Layer 1 ghost -->
+    <rect x="190" y="210" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="252" y="192" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="314" y="174" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="190" y="248" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="252" y="230" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="314" y="212" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="190" y="286" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="252" y="268" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+    <rect x="314" y="250" width="58" height="35" fill="none" stroke="#666666" stroke-width="0.5" rx="2"/>
+  </g>
+  <g opacity="0.12">
+    <!-- Layer 2 ghost -->
+    <rect x="190" y="100" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="252" y="82" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="314" y="64" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="190" y="138" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="252" y="120" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="314" y="102" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="190" y="176" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="252" y="158" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+    <rect x="314" y="140" width="58" height="35" fill="none" stroke="#444444" stroke-width="0.5" rx="2"/>
+  </g>
+
+  <!-- Bond lines between hot cells -->
+  <g filter="url(#glow)" opacity="0.6">
+    <line x1="219" y1="342" x2="283" y2="322" stroke="#ff4500" stroke-width="1" stroke-dasharray="3,3"/>
+    <line x1="283" y1="342" x2="283" y2="322" stroke="#ff6600" stroke-width="0.8" stroke-dasharray="2,4"/>
+  </g>
+
+  <!-- Right panel - metrics -->
+  <rect x="530" y="120" width="220" height="360" fill="#0a0a1a" stroke="#ff4500" stroke-width="0.5" rx="4" opacity="0.8"/>
+
+  <text x="545" y="148" font-family="monospace" font-size="11" fill="#ff4500" font-weight="bold">MASS METRICS</text>
+  <line x1="545" y1="155" x2="735" y2="155" stroke="#ff4500" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- Metric bars -->
+  <text x="545" y="178" font-family="monospace" font-size="9" fill="#888888">RESONANCE ACCURACY</text>
+  <rect x="545" y="183" width="180" height="6" fill="#1a1a2e" rx="3"/>
+  <rect x="545" y="183" width="142" height="6" fill="#ff4500" rx="3"/>
+  <text x="732" y="190" font-family="monospace" font-size="8" fill="#ff4500" text-anchor="end">79%</text>
+
+  <text x="545" y="210" font-family="monospace" font-size="9" fill="#888888">BOND EFFICIENCY</text>
+  <rect x="545" y="215" width="180" height="6" fill="#1a1a2e" rx="3"/>
+  <rect x="545" y="215" width="108" height="6" fill="#ff8c00" rx="3"/>
+  <text x="732" y="222" font-family="monospace" font-size="8" fill="#ff8c00" text-anchor="end">60%</text>
+
+  <text x="545" y="242" font-family="monospace" font-size="9" fill="#888888">SURVIVAL INDEX</text>
+  <rect x="545" y="247" width="180" height="6" fill="#1a1a2e" rx="3"/>
+  <rect x="545" y="247" width="162" height="6" fill="#ffcc00" rx="3"/>
+  <text x="732" y="254" font-family="monospace" font-size="8" fill="#ffcc00" text-anchor="end">90%</text>
+
+  <text x="545" y="274" font-family="monospace" font-size="9" fill="#888888">CONVERGENCE SPEED</text>
+  <rect x="545" y="279" width="180" height="6" fill="#1a1a2e" rx="3"/>
+  <rect x="545" y="279" width="90" height="6" fill="#4488ff" rx="3"/>
+  <text x="732" y="286" font-family="monospace" font-size="8" fill="#4488ff" text-anchor="end">50%</text>
+
+  <line x1="545" y1="305" x2="735" y2="305" stroke="#333333" stroke-width="0.5"/>
+
+  <text x="545" y="325" font-family="monospace" font-size="9" fill="#888888">ACTIVE CELL</text>
+  <text x="545" y="340" font-family="monospace" font-size="18" fill="#ff4500" font-weight="bold" filter="url(#glow)">04</text>
+  <text x="590" y="340" font-family="monospace" font-size="9" fill="#ff6600">parcel 867</text>
+
+  <text x="545" y="365" font-family="monospace" font-size="9" fill="#888888">TICK</text>
+  <text x="545" y="380" font-family="monospace" font-size="14" fill="#ffffff">1337</text>
+
+  <text x="545" y="405" font-family="monospace" font-size="9" fill="#888888">TOTAL BONDS</text>
+  <text x="545" y="420" font-family="monospace" font-size="14" fill="#ff8c00">847</text>
+
+  <text x="545" y="448" font-family="monospace" font-size="9" fill="#444444">active_cell = tick % 27</text>
+  <text x="545" y="462" font-family="monospace" font-size="9" fill="#444444">home_cell = number % 27</text>
+
+  <!-- Title -->
+  <text x="400" y="55" font-family="monospace" font-size="28" fill="#ffffff" text-anchor="middle" font-weight="bold" filter="url(#glow)">CLASHD-27</text>
+  <text x="400" y="78" font-family="monospace" font-size="11" fill="#ff4500" text-anchor="middle" letter-spacing="3">COORDINATION BENCHMARK</text>
+
+  <!-- Bottom tagline -->
+  <line x1="50" y1="525" x2="750" y2="525" stroke="#ff4500" stroke-width="0.3" opacity="0.3"/>
+  <text x="400" y="548" font-family="monospace" font-size="10" fill="#444444" text-anchor="middle">@rodarmor gives numbers · @blockamoto gives place · interaction gives mass</text>
+  <text x="400" y="566" font-family="monospace" font-size="10" fill="#333333" text-anchor="middle">clashd27.com</text>
+
+  <!-- Tick indicator -->
+  <circle cx="55" cy="55" r="20" fill="none" stroke="#ff4500" stroke-width="1" opacity="0.5"/>
+  <text x="55" y="51" font-family="monospace" font-size="7" fill="#ff4500" text-anchor="middle">TICK</text>
+  <text x="55" y="63" font-family="monospace" font-size="9" fill="#ff4500" text-anchor="middle" font-weight="bold">60s</text>
+
+</svg>

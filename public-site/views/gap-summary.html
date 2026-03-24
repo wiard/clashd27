@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Gap Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --amber: #FFB020;
+  --text: #e0e0e0;
+  --muted: #7b7b7b;
+  --border: #1a1a1a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.header-nav a { color: var(--muted); text-decoration: none; }
+.header-nav a:hover,
+.header-nav a.active { color: var(--orange); }
+.main {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 36px 24px 80px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; }
+}
+.hero {
+  margin-bottom: 18px;
+}
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--orange);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(22px, 4vw, 34px);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.subtitle {
+  margin-top: 12px;
+  color: #b2b2b2;
+}
+.panel {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(20,20,20,0.98), rgba(16,16,16,0.98));
+  padding: 18px;
+}
+.section {
+  margin-top: 18px;
+}
+.section h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+.detail-copy { color: #c9c9c9; }
+.chain {
+  display: grid;
+  gap: 10px;
+}
+.chain-item {
+  border-left: 3px solid var(--orange);
+  background: rgba(255,255,255,0.03);
+  padding: 12px 14px;
+}
+.chain-step {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.link-list {
+  display: grid;
+  gap: 8px;
+}
+.link-list a {
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 8px;
+}
+.link-list a:hover { color: var(--orange); }
+.grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .grid-two { grid-template-columns: 1fr; }
+}
+.metric {
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+.metric strong {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.metric span {
+  display: block;
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--text);
+}
+.sidebar { display: grid; gap: 16px; align-self: start; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.badge.high { background: rgba(0,255,136,0.12); color: var(--green); }
+.badge.mid { background: rgba(255,176,32,0.12); color: #ffe8b5; }
+.badge.low { background: rgba(255,255,255,0.06); color: #d7dbe2; }
+.score-row {
+  display: grid;
+  gap: 8px;
+}
+.score-item {
+  display: grid;
+  gap: 6px;
+}
+.score-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.score-bar {
+  height: 8px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--orange), var(--green));
+}
+.button-stack {
+  display: grid;
+  gap: 10px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text);
+  text-decoration: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  background: transparent;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--orange); color: var(--orange); }
+.btn-primary {
+  background: var(--green);
+  color: #022313;
+  border-color: transparent;
+}
+.btn-primary:hover { color: #022313; border-color: transparent; opacity: 0.92; }
+.loading {
+  max-width: 920px;
+  margin: 80px auto;
+  padding: 24px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  text-align: center;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <nav class="header-nav">
+    <a href="/">Home</a>
+    <a href="/disciplines">Disciplines</a>
+    <a href="/gaps">Gaps</a>
+    <a href="/method">Methode</a>
+  </nav>
+</div>
+
+<div id="app" class="loading">Gap summary laden...</div>
+
+<script>
+(function() {
+  var parts = window.location.pathname.split('/').filter(Boolean);
+  var disciplineId = decodeURIComponent(parts[1] || '');
+  var gapId = decodeURIComponent(parts[2] || '');
+
+  function escapeHtml(value) {
+    var div = document.createElement('div');
+    div.textContent = String(value || '');
+    return div.innerHTML;
+  }
+
+  function scorePercent(value) {
+    var numeric = Number(value || 0);
+    if (!Number.isFinite(numeric)) return 0;
+    return numeric <= 1 ? Math.round(numeric * 100) : Math.round(numeric);
+  }
+
+  function opportunityLabel(score) {
+    if (score >= 80) return { label: 'Vroeg stadium', cls: 'high' };
+    if (score >= 60) return { label: 'Opkomend', cls: 'mid' };
+    return { label: 'Verzadigd', cls: 'low' };
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Onbekende datum';
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString('nl-NL', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function shareLink() {
+    navigator.clipboard.writeText(window.location.href).then(function() {
+      var btn = document.getElementById('share-btn');
+      if (!btn) return;
+      btn.textContent = 'Link gekopieerd ✓';
+      window.setTimeout(function() { btn.textContent = 'Deel link'; }, 1800);
+    });
+  }
+
+  async function downloadPDF(disciplineId, gapId) {
+    const btn = document.getElementById('pdf-btn');
+    btn.textContent = 'PDF genereren...';
+    btn.disabled = true;
+
+    const response = await fetch(
+      `/api/disciplines/${disciplineId}/gaps/${gapId}/pdf`
+    );
+
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CLASHD27-${gapId}.pdf`;
+      a.click();
+      btn.textContent = 'PDF gedownload ✓';
+    } else {
+      btn.textContent = 'Probeer opnieuw';
+      btn.disabled = false;
+    }
+  }
+  window.downloadPDF = downloadPDF;
+  window.shareLink = shareLink;
+
+  function renderGap(gap) {
+    var score = scorePercent(gap.score);
+    var opportunity = opportunityLabel(score);
+    var components = gap.componentScores || {};
+    var papers = Array.isArray(gap.sourcePapers) ? gap.sourcePapers : [];
+    var evidenceChain = [
+      {
+        step: 'A — Observation',
+        copy: (gap.supportingSources && gap.supportingSources[0]) || (gap.hypothesis || gap.claim || 'Geen observatie beschikbaar.')
+      },
+      {
+        step: 'B — Bridge claim',
+        copy: (gap.bridge && gap.bridge.claim) || 'Geen bridge claim beschikbaar.'
+      },
+      {
+        step: 'C — Consequence',
+        copy: (gap.bridge && gap.bridge.required_evidence) || (gap.cheapestValidation && gap.cheapestValidation.method) || 'Geen validatiepad beschikbaar.'
+      }
+    ];
+
+    return '' +
+      '<div class="main">' +
+        '<div>' +
+          '<div class="hero">' +
+            '<div class="eyebrow">Gap Summary</div>' +
+            '<div class="title">' + escapeHtml(gap.hypothesis || gap.claim || gap.title || '') + '</div>' +
+            '<div class="subtitle">Discipline ' + escapeHtml(gap.disciplineLabel || disciplineId) + ' · gepubliceerd ' + escapeHtml(formatDate(gap.createdAtIso || gap.date)) + '</div>' +
+          '</div>' +
+          '<div class="panel">' +
+            '<div class="section">' +
+              '<h2>Evidence chain</h2>' +
+              '<div class="chain">' +
+                evidenceChain.map(function(item) {
+                  return '<div class="chain-item"><div class="chain-step">' + escapeHtml(item.step) + '</div><div class="detail-copy">' + escapeHtml(item.copy) + '</div></div>';
+                }).join('') +
+              '</div>' +
+            '</div>' +
+            '<div class="section">' +
+              '<h2>Supporting papers</h2>' +
+              '<div class="link-list">' +
+                (papers.length ? papers.map(function(paper) {
+                  var label = [paper.title, paper.source ? '(' + paper.source + ')' : '', paper.year || ''].filter(Boolean).join(' ');
+                  return '<a href="' + escapeHtml(paper.url || '#') + '" target="_blank" rel="noreferrer">' + escapeHtml(label) + '</a>';
+                }).join('') : '<div class="detail-copy">Geen supporting papers beschikbaar.</div>') +
+              '</div>' +
+            '</div>' +
+            '<div class="section grid-two">' +
+              '<div class="metric"><strong>Falsificatietest</strong><span>' + escapeHtml((gap.limitingSources && gap.limitingSources[0]) || (gap.bridge && gap.bridge.required_evidence) || 'Nog niet gespecificeerd.') + '</span></div>' +
+              '<div class="metric"><strong>Cheapest validation path</strong><span>' + escapeHtml((gap.cheapestValidation && gap.cheapestValidation.method) || 'Nog niet beschikbaar.') + '</span></div>' +
+            '</div>' +
+            '<div class="section">' +
+              '<h2>Validatiepad</h2>' +
+              '<div class="detail-copy">' + escapeHtml((gap.cheapestValidation && gap.cheapestValidation.statistical_approach) || 'Geen statistische aanpak beschikbaar.') + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<aside class="sidebar">' +
+          '<div class="panel">' +
+            '<div class="eyebrow">Opportunity</div>' +
+            '<div class="badge ' + opportunity.cls + '">' + opportunity.label + '</div>' +
+            '<div class="section">' +
+              '<h2>Score breakdown</h2>' +
+              '<div class="score-row">' +
+                ['novelty','collision','residue','gravity','evidence','entropy','serendipity'].map(function(key) {
+                  var percent = scorePercent(components[key]);
+                  return '<div class="score-item"><div class="score-head"><span>' + key + '</span><span>' + percent + '%</span></div><div class="score-bar"><div class="score-fill" style="width:' + percent + '%"></div></div></div>';
+                }).join('') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="panel">' +
+            '<div class="eyebrow">Acties</div>' +
+            '<div class="button-stack">' +
+              '<button id="pdf-btn" class="btn btn-primary" onclick="downloadPDF(\'' + escapeHtml(disciplineId) + '\', \'" + escapeHtml(gap.id) + "\')">Download volledig PDF rapport</button>' +
+              '<button id="share-btn" class="btn" onclick="shareLink()">Deel link</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="panel">' +
+            '<div class="eyebrow">Metadata</div>' +
+            '<div class="metric"><strong>Discipline</strong><span>' + escapeHtml(gap.disciplineLabel || disciplineId) + '</span></div>' +
+            '<div class="metric"><strong>Created</strong><span>' + escapeHtml(formatDate(gap.createdAtIso || gap.date)) + '</span></div>' +
+            '<div class="metric"><strong>Published</strong><span>' + (gap.published ? 'Ja' : 'Nee') + '</span></div>' +
+          '</div>' +
+        '</aside>' +
+      '</div>';
+  }
+
+  fetch('/api/disciplines/' + encodeURIComponent(disciplineId) + '/gaps/' + encodeURIComponent(gapId))
+    .then(function(response) {
+      if (!response.ok) throw new Error('gap_not_found');
+      return response.json();
+    })
+    .then(function(gap) {
+      document.title = 'CLASHD27 — ' + (gap.title || gap.id || 'Gap Summary');
+      document.getElementById('app').className = '';
+      document.getElementById('app').innerHTML = renderGap(gap);
+    })
+    .catch(function() {
+      document.getElementById('app').innerHTML = '<div class="loading">Gap summary niet beschikbaar.</div>';
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+node_modules/
+data/
+*.log
+.DS_Store
+mnt/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.env
+.secrets/
+**/.secrets/
+
+# Backups
+*.bak*
+data/*.bak*
+
+node_modules/
+__pycache__/
+*.log
+
+.npm-cache/
+backups/
+*.json
+
+.npm-cache/
+backups/
+clashd27-load-test-report.json
+clashd27-system-test-report.json

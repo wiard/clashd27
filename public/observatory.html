@@ -1,0 +1,1543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CLASHD27 Observatory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070a11;
+      --panel: rgba(10, 15, 25, 0.9);
+      --panel-strong: rgba(8, 12, 20, 0.95);
+      --line: rgba(143, 178, 232, 0.26);
+      --line-strong: rgba(143, 178, 232, 0.44);
+      --text: #eef4ff;
+      --muted: #91a3bd;
+      --accent: #8ed6ff;
+      --warn: #ff9f70;
+      --ok: #98f0be;
+      --danger: #ff7f7f;
+      --focus: #becbff;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; }
+    body {
+      font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 12%, rgba(101, 149, 255, 0.16), transparent 45%),
+        radial-gradient(circle at 78% 6%, rgba(94, 206, 255, 0.12), transparent 40%),
+        radial-gradient(circle at 55% 100%, rgba(255, 136, 89, 0.08), transparent 44%),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    #app { position: relative; width: 100%; height: 100%; }
+    #viewport { position: absolute; inset: 0; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .hud {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .hud-card {
+      pointer-events: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      padding: 12px 14px;
+    }
+
+    .hud-top {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .hud-title {
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .badge {
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .badge.ok { color: var(--ok); border-color: rgba(152, 240, 190, 0.45); }
+    .badge.degraded { color: var(--warn); border-color: rgba(255, 159, 112, 0.48); }
+
+    .hud-sub {
+      margin-top: 5px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .stats {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .stat {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9px;
+      padding: 7px;
+      background: rgba(255, 255, 255, 0.03);
+      min-width: 76px;
+    }
+
+    .stat-k {
+      font-size: 9px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .stat-v {
+      margin-top: 4px;
+      font-size: 15px;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      color: var(--text);
+    }
+
+    .btn {
+      pointer-events: auto;
+      border: 1px solid rgba(142, 214, 255, 0.45);
+      border-radius: 10px;
+      background: rgba(16, 27, 43, 0.8);
+      color: var(--text);
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+
+    .btn:hover {
+      border-color: rgba(142, 214, 255, 0.9);
+      background: rgba(26, 43, 66, 0.92);
+    }
+
+    .legend {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 4;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-size: 10px;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      pointer-events: none;
+      max-width: 360px;
+    }
+
+    .legend-row { margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 9px currentColor;
+    }
+
+    .dot.discovery { color: #88f1c8; background: #88f1c8; }
+    .dot.proposal { color: #a9c6ff; background: #a9c6ff; }
+    .dot.approved { color: #ffd67f; background: #ffd67f; }
+    .dot.knowledge { color: #ffb48f; background: #ffb48f; }
+
+    .panel {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      bottom: 12px;
+      width: min(390px, calc(100vw - 24px));
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 20px 46px rgba(0, 0, 0, 0.45);
+      z-index: 4;
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .section {
+      border-top: 1px solid rgba(255, 255, 255, 0.09);
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+
+    .section h3 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .identity {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .identity-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .cell {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 9px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .cell-k {
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .cell-v {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .row {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 8px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      margin-top: 6px;
+      font-size: 11px;
+      color: #dfebff;
+      line-height: 1.45;
+    }
+
+    .row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .status-chip {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #d8e4ff;
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+
+    .status-chip.pending { color: #c9daff; border-color: rgba(169, 198, 255, 0.6); }
+    .status-chip.approved { color: #ffe2a0; border-color: rgba(255, 214, 127, 0.62); }
+    .status-chip.denied { color: #ffb0b0; border-color: rgba(255, 127, 127, 0.55); }
+    .status-chip.proposed { color: #b8f2d5; border-color: rgba(136, 241, 200, 0.52); }
+
+    .action-block { margin-top: 6px; }
+    .action-link {
+      display: inline-block;
+      text-decoration: none;
+      border: 1px solid rgba(142, 214, 255, 0.42);
+      border-radius: 7px;
+      padding: 3px 8px;
+      font-size: 10px;
+      color: var(--accent);
+      font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      background: rgba(18, 34, 52, 0.55);
+    }
+
+    .action-link:hover {
+      border-color: rgba(142, 214, 255, 0.86);
+      background: rgba(28, 50, 76, 0.7);
+    }
+
+    .row small { color: var(--muted); font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+    .muted { color: var(--muted); font-size: 11px; }
+
+    .timeline {
+      position: relative;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .timeline li {
+      border-left: 2px solid rgba(255, 255, 255, 0.12);
+      padding: 0 0 10px 10px;
+      margin-left: 4px;
+      font-size: 11px;
+    }
+
+    .timeline li:last-child { padding-bottom: 0; }
+    .timeline strong { display: block; color: var(--text); }
+    .timeline small { color: var(--muted); font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+    @media (max-width: 980px) {
+      .panel {
+        top: auto;
+        height: 45vh;
+      }
+      .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+  </style>
+<link rel="stylesheet" href="/calm-public.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="viewport"></div>
+
+    <div class="hud">
+      <div class="hud-card">
+        <div class="hud-top">
+          <h1 class="hud-title">CLASHD27 Observatory</h1>
+          <span id="health-badge" class="badge">Loading</span>
+        </div>
+        <div id="hud-sub" class="hud-sub">Deep analysis mode. Select a radar signal to inspect causal context.</div>
+        <div class="stats">
+          <div class="stat"><div class="stat-k">Active Cells</div><div id="stat-active" class="stat-v">0</div></div>
+          <div class="stat"><div class="stat-k">Discoveries</div><div id="stat-discovery" class="stat-v">0</div></div>
+          <div class="stat"><div class="stat-k">Proposals</div><div id="stat-proposals" class="stat-v">0</div></div>
+          <div class="stat"><div class="stat-k">Knowledge</div><div id="stat-knowledge" class="stat-v">0</div></div>
+          <div class="stat"><div class="stat-k">Collisions</div><div id="stat-collisions" class="stat-v">0</div></div>
+        </div>
+      </div>
+      <button id="refresh-btn" class="btn" type="button">Refresh</button>
+    </div>
+
+    <aside class="panel">
+      <h2 class="identity" id="node-identity">Node not selected</h2>
+      <div class="identity-sub" id="node-axes">Select a cube node to focus the radar.</div>
+      <div class="identity-sub" id="handoff-note"></div>
+
+      <div class="grid" id="identity-grid"></div>
+
+      <div class="section">
+        <h3>Activity</h3>
+        <div id="activity-list" class="muted">No activity selected.</div>
+        <div id="timeline-list" class="muted" style="margin-top:8px;">No timeline available.</div>
+      </div>
+
+      <div class="section">
+        <h3>Impact</h3>
+        <div id="impact-list" class="muted">No impact data selected.</div>
+      </div>
+
+      <div class="section">
+        <h3>Evidence</h3>
+        <div id="evidence-list" class="muted">No evidence data selected.</div>
+      </div>
+    </aside>
+
+    <div class="legend">
+      <div>Calm mode: low motion, stable 15s refresh, focus highlights relationships.</div>
+      <div class="legend-row"><span class="dot discovery"></span><span>Discovery: soft glow</span></div>
+      <div class="legend-row"><span class="dot proposal"></span><span>Proposal: thin halo</span></div>
+      <div class="legend-row"><span class="dot approved"></span><span>Knowledge created: stable ring</span></div>
+      <div class="legend-row"><span class="dot knowledge"></span><span>Focused relationships: subtle links</span></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.162.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js';
+
+    const AXIS_WHAT = ['trust-model', 'surface', 'architecture'];
+    const AXIS_WHERE = ['internal', 'external', 'engine'];
+    const AXIS_TIME = ['historical', 'current', 'emerging'];
+
+    const healthBadge = document.getElementById('health-badge');
+    const hudSub = document.getElementById('hud-sub');
+    const statActive = document.getElementById('stat-active');
+    const statDiscovery = document.getElementById('stat-discovery');
+    const statProposals = document.getElementById('stat-proposals');
+    const statKnowledge = document.getElementById('stat-knowledge');
+    const statCollisions = document.getElementById('stat-collisions');
+    const refreshBtn = document.getElementById('refresh-btn');
+
+    const nodeIdentity = document.getElementById('node-identity');
+    const nodeAxes = document.getElementById('node-axes');
+    const handoffNote = document.getElementById('handoff-note');
+    const identityGrid = document.getElementById('identity-grid');
+    const activityList = document.getElementById('activity-list');
+    const impactList = document.getElementById('impact-list');
+    const evidenceList = document.getElementById('evidence-list');
+    const timelineList = document.getElementById('timeline-list');
+
+    const state = {
+      selectedCellId: 13,
+      lastSuccessAt: null,
+      health: 'loading',
+      model: null,
+      previousModel: null,
+      jeevesApprovalUrl: 'jeeves://approval',
+      radarContext: null
+    };
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0xeef4f6, 11, 24);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('viewport').appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(6.2, 5.1, 8.8);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 4.5;
+    controls.maxDistance = 16;
+    controls.autoRotate = false;
+
+    const ambient = new THREE.AmbientLight(0xf7fbfc, 0.78);
+    scene.add(ambient);
+
+    const key = new THREE.PointLight(0x8eb7cb, 0.92, 48, 2.0);
+    key.position.set(6, 8, 9);
+    scene.add(key);
+
+    const rim = new THREE.PointLight(0xd8c29f, 0.4, 30, 2.0);
+    rim.position.set(-7, -4, -8);
+    scene.add(rim);
+
+    const cubeGroup = new THREE.Group();
+    scene.add(cubeGroup);
+
+    const gridSpacing = 1.4;
+    const nodeVisuals = [];
+    const nodeById = new Map();
+
+    const collisionsGroup = new THREE.Group();
+    const relationshipGroup = new THREE.Group();
+    cubeGroup.add(collisionsGroup);
+    cubeGroup.add(relationshipGroup);
+
+    function cellToCoords(cellId) {
+      const a = cellId % 3;
+      const b = Math.floor(cellId / 3) % 3;
+      const c = Math.floor(cellId / 9);
+      return { a, b, c };
+    }
+
+    function cellToAxes(cellId) {
+      const { a, b, c } = cellToCoords(cellId);
+      return {
+        what: AXIS_WHAT[a],
+        where: AXIS_WHERE[b],
+        time: AXIS_TIME[c]
+      };
+    }
+
+    function cellPosition(cellId) {
+      const { a, b, c } = cellToCoords(cellId);
+      return new THREE.Vector3(
+        (a - 1) * gridSpacing,
+        (b - 1) * gridSpacing,
+        (c - 1) * gridSpacing
+      );
+    }
+
+    function buildScaffold() {
+      const frameGeom = new THREE.BoxGeometry(gridSpacing * 2.2, gridSpacing * 2.2, gridSpacing * 2.2);
+      const frame = new THREE.LineSegments(
+        new THREE.EdgesGeometry(frameGeom),
+        new THREE.LineBasicMaterial({ color: 0x95b0bf, transparent: true, opacity: 0.38 })
+      );
+      cubeGroup.add(frame);
+
+      const stars = [];
+      for (let i = 0; i < 540; i += 1) {
+        const r = 22 * Math.random();
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        stars.push(
+          r * Math.sin(phi) * Math.cos(theta),
+          r * Math.sin(phi) * Math.sin(theta),
+          r * Math.cos(phi)
+        );
+      }
+      const bgGeom = new THREE.BufferGeometry();
+      bgGeom.setAttribute('position', new THREE.Float32BufferAttribute(stars, 3));
+      const bg = new THREE.Points(
+        bgGeom,
+        new THREE.PointsMaterial({ size: 0.03, color: 0x9eb4c0, transparent: true, opacity: 0.26, depthWrite: false })
+      );
+      scene.add(bg);
+    }
+
+    function buildNodes() {
+      const sphereGeom = new THREE.SphereGeometry(0.21, 24, 24);
+      const densityGeom = new THREE.SphereGeometry(0.38, 18, 18);
+      const ringGeom = new THREE.TorusGeometry(0.34, 0.011, 8, 48);
+      const stableRingGeom = new THREE.TorusGeometry(0.29, 0.014, 10, 56);
+      const coreGeom = new THREE.SphereGeometry(0.09, 16, 16);
+      const glowGeom = new THREE.SphereGeometry(0.31, 18, 18);
+
+      for (let cellId = 0; cellId < 27; cellId += 1) {
+        const p = cellPosition(cellId);
+
+        const density = new THREE.Mesh(
+          densityGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0x7ea1db,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        density.position.copy(p);
+
+        const node = new THREE.Mesh(
+          sphereGeom,
+          new THREE.MeshStandardMaterial({
+            color: 0x2f476a,
+            emissive: 0x122233,
+            emissiveIntensity: 0.2,
+            metalness: 0.45,
+            roughness: 0.35,
+            transparent: true,
+            opacity: 1
+          })
+        );
+        node.position.copy(p);
+        node.userData = { cellId };
+
+        const discoveryGlow = new THREE.Mesh(
+          glowGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0x88f1c8,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        discoveryGlow.position.copy(p);
+        discoveryGlow.visible = false;
+
+        const proposalHalo = new THREE.Mesh(
+          ringGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0xa9c6ff,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        proposalHalo.position.copy(p);
+        proposalHalo.rotation.x = Math.PI / 2;
+        proposalHalo.visible = false;
+
+        const approvedRing = new THREE.Mesh(
+          stableRingGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0xffd67f,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        approvedRing.position.copy(p);
+        approvedRing.rotation.y = Math.PI / 2;
+        approvedRing.visible = false;
+
+        const gravityRing = new THREE.Mesh(
+          ringGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0x8fdcff,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        gravityRing.position.copy(p);
+        gravityRing.rotation.x = Math.PI / 2;
+        gravityRing.visible = false;
+
+        const knowledgeCore = new THREE.Mesh(
+          coreGeom,
+          new THREE.MeshBasicMaterial({
+            color: 0xffb48f,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        knowledgeCore.position.copy(p);
+        knowledgeCore.visible = false;
+
+        cubeGroup.add(density, discoveryGlow, proposalHalo, approvedRing, gravityRing, node, knowledgeCore);
+
+        const visual = {
+          cellId,
+          node,
+          density,
+          discoveryGlow,
+          proposalHalo,
+          approvedRing,
+          gravityRing,
+          knowledgeCore,
+          pulseSeed: Math.random() * Math.PI * 2
+        };
+        nodeVisuals.push(visual);
+        nodeById.set(cellId, visual);
+      }
+    }
+
+    function colorFromHeat(heat) {
+      const t = Math.max(0, Math.min(1, heat || 0));
+      const cool = new THREE.Color(0x2f476a);
+      const warm = new THREE.Color(0xff9f70);
+      return cool.lerp(warm, t);
+    }
+
+    function parseHeatmap(emergence) {
+      const out = {};
+      if (Array.isArray(emergence.topCells)) {
+        for (const item of emergence.topCells) {
+          if (Number.isInteger(item.cellId)) out[item.cellId] = Number(item.score || 0);
+        }
+      }
+      if (Array.isArray(emergence.heatmap)) {
+        for (const layer of emergence.heatmap) {
+          for (const row of (layer.rows || [])) {
+            for (const cell of row || []) {
+              if (Number.isInteger(cell.cellId) && out[cell.cellId] === undefined) {
+                out[cell.cellId] = Number(cell.score || 0);
+              }
+            }
+          }
+        }
+      }
+      for (let i = 0; i < 27; i += 1) {
+        if (out[i] === undefined) out[i] = 0;
+      }
+      return out;
+    }
+
+    function parseDiscoveries(feed) {
+      const candidates = feed?.discovery?.candidates;
+      if (Array.isArray(candidates) && candidates.length > 0) {
+        return candidates.map(c => ({
+          id: c.id,
+          candidateId: c.id,
+          cells: Array.isArray(c.cells) ? c.cells : [],
+          score: Number(c.candidateScore || 0),
+          explanation: String(c.explanation || ''),
+          timestamp: c.timestamp || feed.timestamp || new Date().toISOString()
+        }));
+      }
+      const events = feed?.discovery?.candidateEvents;
+      if (Array.isArray(events)) {
+        return events.map(c => ({
+          id: c.candidateId,
+          candidateId: c.candidateId,
+          cells: Array.isArray(c.cells) ? c.cells : [],
+          score: Number(c.candidateScore || 0),
+          explanation: String(c.explanation || ''),
+          timestamp: c.timestamp || feed.timestamp || new Date().toISOString()
+        }));
+      }
+      return [];
+    }
+
+    function objectCandidateIds(obj) {
+      const ids = new Set();
+      if (!obj || typeof obj !== 'object') return ids;
+
+      if (obj.parentCandidateId) ids.add(String(obj.parentCandidateId));
+      for (const id of (obj.relatedCandidateIds || [])) {
+        if (id) ids.add(String(id));
+      }
+
+      const m = obj.metadata || {};
+      if (m.candidateId) ids.add(String(m.candidateId));
+      if (m.parentCandidateId) ids.add(String(m.parentCandidateId));
+
+      for (const ref of (obj.sourceRefs || [])) {
+        if (ref && ref.sourceType === 'candidate' && ref.sourceId) ids.add(String(ref.sourceId));
+      }
+
+      return ids;
+    }
+
+    function objectCellsFallback(obj) {
+      const out = [];
+      const primary = obj?.metadata?.primaryCells || obj?.primaryCells || [];
+      for (const item of primary) {
+        if (Number.isInteger(item?.cellId) && item.cellId >= 0 && item.cellId < 27) {
+          out.push(item.cellId);
+        }
+      }
+      return out;
+    }
+
+    function toShortText(value, max = 140) {
+      const text = String(value || '').replace(/\s+/g, ' ').trim();
+      if (text.length <= max) return text;
+      return `${text.slice(0, max - 1)}...`;
+    }
+
+    function hasIntersection(a, b) {
+      const set = new Set((a || []).map(v => String(v)));
+      for (const value of (b || [])) {
+        if (set.has(String(value))) return true;
+      }
+      return false;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function statusClass(status) {
+      const s = String(status || 'proposed').toLowerCase();
+      if (s === 'approved') return 'approved';
+      if (s === 'denied') return 'denied';
+      if (s === 'pending') return 'pending';
+      return 'proposed';
+    }
+
+    function statusLabel(status) {
+      const s = String(status || 'proposed').toLowerCase();
+      if (s === 'approved') return 'Approved';
+      if (s === 'denied') return 'Denied';
+      if (s === 'pending') return 'Pending';
+      return 'Proposed';
+    }
+
+    function buildJeevesReviewUrl(item, selectedCell, axes) {
+      const base = String(state.jeevesApprovalUrl || '').trim();
+      if (!base) return '';
+
+      try {
+        const url = new URL(base, window.location.origin);
+        const candidateId = (item.candidateIds && item.candidateIds[0]) || item.candidateId || '';
+        const candidateScore = Number(item.candidateScore || 0);
+
+        if (item.proposalId || item.id) {
+          url.searchParams.set('proposalId', item.proposalId || item.id);
+        }
+        if (candidateId) url.searchParams.set('candidateId', candidateId);
+        if (Number.isInteger(selectedCell)) url.searchParams.set('originCell', String(selectedCell));
+        if (axes && axes.what) url.searchParams.set('what', axes.what);
+        if (axes && axes.where) url.searchParams.set('where', axes.where);
+        if (axes && axes.time) url.searchParams.set('time', axes.time);
+        if (candidateScore > 0) url.searchParams.set('candidateScore', candidateScore.toFixed(3));
+
+        if (item.id && String(item.id).startsWith('prop-')) {
+          const contextUrl = `${window.location.origin}/api/clashd27/proposals/${encodeURIComponent(item.id)}/observatory-context`;
+          url.searchParams.set('contextUrl', contextUrl);
+        }
+
+        url.searchParams.set('source', 'clashd27-observatory');
+        return url.toString();
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function reviewActionMarkup(item, selectedCell, axes) {
+      const href = buildJeevesReviewUrl(item, selectedCell, axes);
+      if (!href) return '';
+      return `<div class=\"action-block\"><a class=\"action-link\" href=\"${escapeHtml(href)}\" target=\"_blank\" rel=\"noopener\">Review in Jeeves →</a></div>`;
+    }
+
+    function parseCellFromAny(value) {
+      const n = parseInt(value, 10);
+      if (Number.isInteger(n) && n >= 0 && n < 27) return n;
+      return null;
+    }
+
+    function consumeRadarContext(input) {
+      if (!input || typeof input !== 'object') return;
+      const context = {
+        source: String(input.source || 'jeeves-radar'),
+        proposalId: input.proposalId ? String(input.proposalId) : '',
+        candidateId: input.candidateId ? String(input.candidateId) : '',
+        candidateScore: Number(input.candidateScore || 0),
+        originCell: parseCellFromAny(input.originCell ?? input.cell ?? input.cellId),
+        what: input.what ? String(input.what) : '',
+        where: input.where ? String(input.where) : '',
+        time: input.time ? String(input.time) : ''
+      };
+      state.radarContext = context;
+      if (Number.isInteger(context.originCell)) {
+        state.selectedCellId = context.originCell;
+      }
+    }
+
+    function buildRadarModel(emergence, feed, cube, knowledgeObjects, governanceProposals) {
+      const heatByCell = parseHeatmap(emergence || {});
+      const collisions = Array.isArray(emergence?.collisions) ? emergence.collisions : [];
+      const gravity = Array.isArray(emergence?.gravityWells) ? emergence.gravityWells : [];
+      const discoveries = parseDiscoveries(feed || {});
+
+      const candidateCells = new Map();
+      const discoveriesByCandidate = new Map();
+      for (const d of discoveries) {
+        const key = String(d.candidateId || d.id || '');
+        if (!key) continue;
+        candidateCells.set(key, d.cells || []);
+        if (!discoveriesByCandidate.has(key)) discoveriesByCandidate.set(key, []);
+        discoveriesByCandidate.get(key).push(d);
+      }
+
+      const proposals = [];
+      const approved = [];
+      const knowledge = [];
+      const proposalCellsById = new Map();
+
+      for (const p of governanceProposals || []) {
+        const payload = p?.intent?.payload || {};
+        const candidateId = payload.candidateId ? String(payload.candidateId) : null;
+        const primaryCells = Array.isArray(payload.primaryCells)
+          ? payload.primaryCells.map(c => c && c.cellId).filter(v => Number.isInteger(v))
+          : [];
+        let cells = Array.isArray(payload.cells) ? payload.cells.filter(v => Number.isInteger(v)) : [];
+        if (cells.length === 0) cells = primaryCells;
+        if (cells.length === 0 && candidateId && candidateCells.has(candidateId)) {
+          cells = candidateCells.get(candidateId) || [];
+        }
+        cells = [...new Set(cells.filter(v => Number.isInteger(v) && v >= 0 && v < 27))];
+
+        const originCell = cells.length > 0 ? cells[0] : null;
+        const axes = payload.axes && payload.axes[0]
+          ? payload.axes[0]
+          : (Number.isInteger(originCell) ? cellToAxes(originCell) : null);
+
+        const item = {
+          id: p.id,
+          proposalId: p.id,
+          source: 'governance',
+          kind: 'proposal',
+          status: String(p.status || 'pending').toLowerCase(),
+          title: p.title || '',
+          summary: p.priorityExplanation || '',
+          timestamp: p.createdAtIso || new Date().toISOString(),
+          candidateIds: candidateId ? [candidateId] : [],
+          candidateScore: Number(payload.candidateScore || 0),
+          evidenceRefs: Array.isArray(payload.evidenceRefs) ? payload.evidenceRefs.slice(0, 5) : [],
+          cells,
+          originCell,
+          axes
+        };
+
+        if (item.proposalId && cells.length > 0) proposalCellsById.set(item.proposalId, cells);
+        if (item.status === 'approved') approved.push(item);
+        else proposals.push(item);
+      }
+
+      for (const obj of knowledgeObjects || []) {
+        const kind = String(obj.kind || '').toLowerCase();
+        const metadata = obj.metadata || {};
+        const candidateIds = [...objectCandidateIds(obj)];
+        const proposalRef = (obj.sourceRefs || []).find(r => r && r.sourceType === 'proposal' && r.sourceId);
+        const proposalId = metadata.proposalId || (proposalRef ? proposalRef.sourceId : null);
+
+        let cells = [];
+        for (const cid of candidateIds) {
+          const found = candidateCells.get(String(cid));
+          if (Array.isArray(found)) cells.push(...found);
+        }
+        if (cells.length === 0 && proposalId && proposalCellsById.has(proposalId)) {
+          cells.push(...(proposalCellsById.get(proposalId) || []));
+        }
+        if (cells.length === 0) cells = objectCellsFallback(obj);
+        cells = [...new Set(cells.filter(v => Number.isInteger(v) && v >= 0 && v < 27))];
+
+        const originCell = cells.length > 0 ? cells[0] : null;
+        const axes = metadata.axes && metadata.axes[0]
+          ? metadata.axes[0]
+          : (Number.isInteger(originCell) ? cellToAxes(originCell) : null);
+
+        const item = {
+          id: obj.objectId || obj.id || `${kind}-${Math.random()}`,
+          proposalId,
+          source: 'knowledge',
+          kind,
+          status: kind === 'extension_proposal' ? 'proposed' : null,
+          title: obj.title || '',
+          summary: obj.summary || '',
+          timestamp: obj.createdAtIso || obj.createdAt || new Date().toISOString(),
+          candidateIds,
+          candidateScore: Number(metadata.candidateScore || 0),
+          evidenceRefs: Array.isArray(obj.sourceRefs) ? obj.sourceRefs.slice(0, 5) : [],
+          cells,
+          originCell,
+          axes,
+          metadata
+        };
+
+        if (kind === 'extension_proposal') proposals.push(item);
+        else if (kind === 'decision' && String(metadata.decision || '').toLowerCase() === 'approved') {
+          item.status = 'approved';
+          approved.push(item);
+        } else {
+          knowledge.push(item);
+        }
+      }
+
+      const nodeSignals = [];
+      for (let i = 0; i < 27; i += 1) {
+        nodeSignals.push({
+          cellId: i,
+          discoveryCount: 0,
+          proposalCount: 0,
+          approvedCount: 0,
+          knowledgeCount: 0,
+          collisionCount: 0,
+          density: 0,
+          links: new Set(),
+          discoveries: [],
+          proposals: [],
+          approved: [],
+          knowledge: [],
+          timeline: []
+        });
+      }
+
+      for (const c of collisions) {
+        const cells = Array.isArray(c.cells) ? c.cells : [];
+        for (const cellId of cells) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].collisionCount += 1;
+          for (const other of cells) {
+            if (other !== cellId) nodeSignals[cellId].links.add(other);
+          }
+        }
+      }
+
+      for (const d of discoveries) {
+        const linked = Array.isArray(d.cells) ? d.cells : [];
+        for (const cellId of linked) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].discoveryCount += 1;
+          nodeSignals[cellId].discoveries.push(d);
+          nodeSignals[cellId].timeline.push({
+            at: d.timestamp,
+            type: 'discovery detected',
+            summary: toShortText(`${d.score.toFixed(3)} | ${d.explanation || d.candidateId}`, 120)
+          });
+          for (const other of linked) {
+            if (other !== cellId) nodeSignals[cellId].links.add(other);
+          }
+        }
+      }
+
+      for (const p of proposals) {
+        for (const cellId of p.cells || []) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].proposalCount += 1;
+          nodeSignals[cellId].proposals.push(p);
+          nodeSignals[cellId].timeline.push({
+            at: p.timestamp,
+            type: 'extension proposed',
+            summary: toShortText(`${statusLabel(p.status)} | ${p.title || p.summary || 'proposal created'}`, 120)
+          });
+        }
+      }
+
+      for (const a of approved) {
+        for (const cellId of a.cells || []) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].approvedCount += 1;
+          nodeSignals[cellId].approved.push(a);
+          nodeSignals[cellId].timeline.push({
+            at: a.timestamp,
+            type: 'extension approved',
+            summary: toShortText(a.title || a.summary || 'approved extension action', 120)
+          });
+        }
+      }
+
+      for (const k of knowledge) {
+        for (const cellId of k.cells || []) {
+          if (!nodeSignals[cellId]) continue;
+          nodeSignals[cellId].knowledgeCount += 1;
+          nodeSignals[cellId].knowledge.push(k);
+          nodeSignals[cellId].timeline.push({
+            at: k.timestamp,
+            type: 'knowledge created',
+            summary: toShortText(k.title || k.summary || 'knowledge object recorded', 120)
+          });
+        }
+      }
+
+      let maxDensity = 1;
+      for (const node of nodeSignals) {
+        const gravityNode = gravity.find(g => g.cellId === node.cellId);
+        const gravityWeight = gravityNode ? Number(gravityNode.gravityMass || 0) * 0.35 : 0;
+        node.density =
+          (node.discoveryCount * 1.0) +
+          (node.proposalCount * 1.1) +
+          (node.approvedCount * 1.4) +
+          (node.knowledgeCount * 0.8) +
+          (node.collisionCount * 0.35) +
+          gravityWeight;
+        if (node.density > maxDensity) maxDensity = node.density;
+      }
+
+      for (const node of nodeSignals) {
+        node.densityNorm = Math.max(0, Math.min(1, node.density / maxDensity));
+        node.timeline.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+      }
+
+      const gravityMap = {};
+      for (const g of gravity) {
+        if (Number.isInteger(g.cellId)) gravityMap[g.cellId] = g;
+      }
+
+      return {
+        heatByCell,
+        collisions,
+        discoveries,
+        proposals,
+        approved,
+        knowledge,
+        gravityMap,
+        strongestCell: emergence?.strongestCell || null,
+        cubeCells: cube?.cells || {},
+        nodeSignals,
+        discoveriesByCandidate
+      };
+    }
+
+    function focusSetForCell(cellId, model) {
+      const focus = new Set([cellId]);
+      const node = model.nodeSignals[cellId];
+      for (const link of node.links) focus.add(link);
+      return focus;
+    }
+
+    function clearGroup(group) {
+      for (const child of [...group.children]) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        group.remove(child);
+      }
+    }
+
+    function rebuildCollisionLines(model, selectedCell) {
+      clearGroup(collisionsGroup);
+      const seen = new Set();
+      for (const col of model.collisions.slice(0, 24)) {
+        const cells = Array.isArray(col.cells) ? col.cells : [];
+        if (cells.length < 2) continue;
+        const pair = [cells[0], cells[1]].sort((a, b) => a - b).join(':');
+        if (seen.has(pair)) continue;
+        seen.add(pair);
+
+        const a = nodeById.get(cells[0]);
+        const b = nodeById.get(cells[1]);
+        if (!a || !b) continue;
+
+        const touchesFocus = selectedCell == null ? false : cells.includes(selectedCell);
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([a.node.position, b.node.position]),
+          new THREE.LineBasicMaterial({
+            color: touchesFocus ? 0xd4deff : 0xaebee8,
+            transparent: true,
+            opacity: touchesFocus ? 0.36 : 0.12,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        collisionsGroup.add(line);
+      }
+    }
+
+    function rebuildRelationshipLines(model, selectedCell, focusSet) {
+      clearGroup(relationshipGroup);
+      if (!Number.isInteger(selectedCell)) return;
+
+      const source = nodeById.get(selectedCell);
+      if (!source) return;
+
+      for (const targetCell of focusSet) {
+        if (targetCell === selectedCell) continue;
+        const target = nodeById.get(targetCell);
+        if (!target) continue;
+
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([source.node.position, target.node.position]),
+          new THREE.LineBasicMaterial({
+            color: 0xbecbff,
+            transparent: true,
+            opacity: 0.11,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
+        relationshipGroup.add(line);
+      }
+    }
+
+    function whyItMatters(node, heat, gravityEntry) {
+      if (node.approvedCount > 0) {
+        return 'This cell already has approved actions and is producing downstream results.';
+      }
+      if (node.proposalCount > 0 && node.discoveryCount > 0) {
+        return 'Discoveries here are translating into concrete extension proposals.';
+      }
+      if (node.discoveryCount > 0 && heat >= 0.4) {
+        return 'Emerging discoveries combined with elevated heat suggest a growing research zone.';
+      }
+      if (gravityEntry && Number(gravityEntry.pullStrength || 0) > 0.003) {
+        return 'Gravity pull indicates nearby signals are converging into this coordinate.';
+      }
+      if (node.knowledgeCount > 0) {
+        return 'Knowledge artifacts are accumulating here, indicating repeatable outcomes.';
+      }
+      return 'No strong chain yet; monitor for new discovery or proposal transitions.';
+    }
+
+    function renderContextPanel(model) {
+      const id = state.selectedCellId;
+      if (!Number.isInteger(id)) {
+        nodeIdentity.textContent = 'Node not selected';
+        nodeAxes.textContent = 'Select a cube node to focus the radar.';
+        handoffNote.textContent = '';
+        identityGrid.innerHTML = '';
+        activityList.textContent = 'No activity selected.';
+        timelineList.textContent = 'No timeline available.';
+        impactList.textContent = 'No impact data selected.';
+        evidenceList.textContent = 'No evidence data selected.';
+        return;
+      }
+
+      const node = model.nodeSignals[id];
+      const axes = cellToAxes(id);
+      const heat = Number(model.heatByCell[id] || 0);
+      const gravityEntry = model.gravityMap[id] || null;
+      const cubeCell = model.cubeCells[String(id)] || null;
+
+      nodeIdentity.textContent = `Node ${id}`;
+      nodeAxes.textContent = `${axes.what} / ${axes.where} / ${axes.time}`;
+      if (state.radarContext && (state.radarContext.proposalId || state.radarContext.candidateId)) {
+        const parts = [];
+        if (state.radarContext.proposalId) parts.push(`proposal ${state.radarContext.proposalId}`);
+        if (state.radarContext.candidateId) parts.push(`candidate ${state.radarContext.candidateId}`);
+        if (state.radarContext.candidateScore > 0) parts.push(`score ${state.radarContext.candidateScore.toFixed(3)}`);
+        handoffNote.textContent = `Radar handoff: ${parts.join(' · ')}`;
+      } else {
+        handoffNote.textContent = '';
+      }
+
+      identityGrid.innerHTML = [
+        ['Heat', heat.toFixed(3)],
+        ['Density', (node.densityNorm || 0).toFixed(3)],
+        ['Gravity', gravityEntry ? Number(gravityEntry.gravityMass || 0).toFixed(3) : '0.000'],
+        ['Pull', gravityEntry ? Number(gravityEntry.pullStrength || 0).toFixed(5) : '0.00000'],
+        ['Discoveries', String(node.discoveryCount)],
+        ['Proposals', String(node.proposalCount)],
+        ['Approved', String(node.approvedCount)],
+        ['Knowledge', String(node.knowledgeCount)]
+      ].map(([k, v]) => `
+        <div class="cell">
+          <div class="cell-k">${k}</div>
+          <div class="cell-v">${v}</div>
+        </div>
+      `).join('');
+
+      const discoveryRows = node.discoveries.slice(0, 4).map(d => {
+        const row = {
+          id: null,
+          candidateId: d.candidateId,
+          candidateIds: [d.candidateId],
+          candidateScore: d.score
+        };
+        return `<div class="row">
+          <div class="row-head">
+            <small>Discovery</small>
+            <span class="status-chip proposed">Detected</span>
+          </div>
+          score ${d.score.toFixed(3)} | ${escapeHtml(toShortText(d.explanation || d.candidateId, 100))}
+          <br><small>linked cells ${(d.cells || []).join(', ') || '-'}</small>
+          ${reviewActionMarkup(row, id, axes)}
+        </div>`;
+      }).join('');
+
+      const proposalRows = node.proposals.slice(0, 4).map(p =>
+        `<div class="row">
+          <div class="row-head">
+            <small>Extension proposal</small>
+            <span class="status-chip ${statusClass(p.status)}">${escapeHtml(statusLabel(p.status))}</span>
+          </div>
+          ${escapeHtml(toShortText(p.title || p.summary || 'proposal', 100))}
+          ${p.candidateScore ? `<br><small>candidate score ${Number(p.candidateScore).toFixed(3)}</small>` : ''}
+          ${reviewActionMarkup(p, id, axes)}
+        </div>`
+      ).join('');
+
+      const approvedRows = node.approved.slice(0, 4).map(a =>
+        `<div class="row">
+          <div class="row-head">
+            <small>Approved extension</small>
+            <span class="status-chip approved">Approved</span>
+          </div>
+          ${escapeHtml(toShortText(a.title || a.summary || 'approved extension', 100))}
+          ${reviewActionMarkup(a, id, axes)}
+        </div>`
+      ).join('');
+
+      activityList.innerHTML =
+        `${discoveryRows || ''}${proposalRows || ''}${approvedRows || ''}` ||
+        '<div class="muted">No discovery/proposal activity for this node.</div>';
+
+      const chainSource = [...node.proposals, ...node.approved];
+      const seenChain = new Set();
+      const chainRows = chainSource.slice(0, 8).map(item => {
+        const key = String(item.proposalId || item.id || (item.candidateIds || [])[0] || '');
+        if (!key || seenChain.has(key)) return '';
+        seenChain.add(key);
+
+        const candidateIds = (item.candidateIds || []).map(v => String(v));
+        const linkedDiscoveries = node.discoveries.filter(d => candidateIds.includes(String(d.candidateId))).length;
+        const linkedKnowledge = node.knowledge.filter(k =>
+          (item.proposalId && k.proposalId && String(k.proposalId) === String(item.proposalId)) ||
+          hasIntersection(candidateIds, k.candidateIds || [])
+        ).length;
+
+        return `<div class="row">
+          <small>Knowledge link</small><br>
+          Discovery ${linkedDiscoveries} → Proposal ${escapeHtml(statusLabel(item.status || (node.approved.includes(item) ? 'approved' : 'proposed')))} → Knowledge ${linkedKnowledge}
+          <br><small>${escapeHtml(toShortText(item.title || item.summary || key, 96))}</small>
+        </div>`;
+      }).filter(Boolean).join('');
+
+      const impactRows = node.knowledge.slice(0, 4).map(k =>
+        `<div class="row"><small>${escapeHtml(k.kind || 'knowledge')}</small><br>${escapeHtml(toShortText(k.title || k.summary || 'knowledge object', 105))}</div>`
+      ).join('');
+
+      const whyRow = `<div class="row"><small>Why this matters</small><br>${escapeHtml(whyItMatters(node, heat, gravityEntry))}</div>`;
+      impactList.innerHTML = `${whyRow}${chainRows || ''}${impactRows || '<div class="row">No linked knowledge objects yet.</div>'}`;
+
+      if (!cubeCell) {
+        evidenceList.innerHTML = '<div class="muted">No cube paper context for this node.</div>';
+      } else {
+        const src = Object.entries(cubeCell.sourceCounts || {});
+        const sourceRow = src.length > 0
+          ? `<div class="row"><small>Source datasets</small><br>${src.map(([name, count]) => `${escapeHtml(name)}:${count}`).join(' | ')}</div>`
+          : '';
+
+        const paperRows = (cubeCell.topPapers || []).slice(0, 3).map(p =>
+          `<div class="row"><small>Top paper</small><br>${escapeHtml(toShortText(p.title || 'untitled', 100))}<br><small>${escapeHtml(p.year || 'n/a')} | cites ${p.citationCount || 0} | ${escapeHtml(p.source || 'unknown')}</small></div>`
+        ).join('');
+
+        const proposalEvidence = [...node.proposals, ...node.approved]
+          .flatMap(item => item.evidenceRefs || [])
+          .map(ref => ({
+            sourceType: ref.sourceType || 'source',
+            sourceId: ref.sourceId || '',
+            label: ref.label || ref.sourceId || ''
+          }));
+
+        const seenEvidence = new Set();
+        const evidenceRows = proposalEvidence.filter(ref => {
+          const key = `${ref.sourceType}:${ref.sourceId}:${ref.label}`;
+          if (seenEvidence.has(key)) return false;
+          seenEvidence.add(key);
+          return true;
+        }).slice(0, 4).map(ref =>
+          `<div class="row"><small>${escapeHtml(ref.sourceType)}</small><br>${escapeHtml(toShortText(ref.label || ref.sourceId || 'evidence', 100))}</div>`
+        ).join('');
+
+        evidenceList.innerHTML = `${sourceRow}${paperRows || '<div class="row">No paper snapshot for this cell.</div>'}${evidenceRows || ''}`;
+      }
+
+      if (!node.timeline.length) {
+        timelineList.innerHTML = '<div class="muted">No timeline events for this node yet.</div>';
+      } else {
+        const items = node.timeline.slice(-10).map(t => `
+          <li>
+            <strong>${escapeHtml(t.type)}</strong>
+            <small>${new Date(t.at).toLocaleString()}</small>
+            <div>${escapeHtml(toShortText(t.summary, 120))}</div>
+          </li>
+        `).join('');
+        timelineList.innerHTML = `<ul class="timeline">${items}</ul>`;
+      }
+    }
+
+    function applyVisualState(model) {
+      const selected = state.selectedCellId;
+      const focusActive = Number.isInteger(selected);
+      const focusSet = focusActive ? focusSetForCell(selected, model) : new Set();
+
+      for (const visual of nodeVisuals) {
+        const nodeSignal = model.nodeSignals[visual.cellId];
+        const heat = Number(model.heatByCell[visual.cellId] || 0);
+        const density = Number(nodeSignal.densityNorm || 0);
+        const gravity = model.gravityMap[visual.cellId];
+
+        const related = !focusActive || focusSet.has(visual.cellId);
+        const dimFactor = related ? 1 : 0.24;
+
+        const c = colorFromHeat(heat);
+        visual.node.material.color.copy(c);
+        visual.node.material.emissive.copy(c.clone().multiplyScalar(0.4));
+        visual.node.material.emissiveIntensity = (0.12 + heat * 0.78) * dimFactor;
+        visual.node.material.opacity = related ? 1 : 0.18;
+
+        const scale = 1 + (heat * 0.35) + (selected === visual.cellId ? 0.18 : 0);
+        visual.node.scale.setScalar(scale);
+
+        visual.density.material.opacity = density * 0.22 * dimFactor;
+        visual.density.visible = density > 0.03;
+
+        visual.discoveryGlow.visible = nodeSignal.discoveryCount > 0;
+        visual.discoveryGlow.material.opacity = (0.05 + Math.min(0.2, nodeSignal.discoveryCount * 0.06)) * dimFactor;
+
+        visual.proposalHalo.visible = nodeSignal.proposalCount > 0;
+        visual.proposalHalo.material.opacity = (0.08 + Math.min(0.18, nodeSignal.proposalCount * 0.05)) * dimFactor;
+
+        visual.approvedRing.visible = nodeSignal.knowledgeCount > 0;
+        visual.approvedRing.material.opacity = (0.1 + Math.min(0.2, nodeSignal.knowledgeCount * 0.05)) * dimFactor;
+
+        if (gravity) {
+          const mass = Number(gravity.gravityMass || 0);
+          const pull = Number(gravity.pullStrength || 0);
+          const s = 1 + Math.min(0.7, mass * 0.09);
+          visual.gravityRing.visible = true;
+          visual.gravityRing.scale.set(s, s, s);
+          visual.gravityRing.material.opacity = (0.1 + Math.min(0.28, pull * 8)) * dimFactor;
+        } else {
+          visual.gravityRing.visible = false;
+          visual.gravityRing.material.opacity = 0;
+        }
+
+        visual.knowledgeCore.visible = false;
+        visual.knowledgeCore.material.opacity = 0;
+      }
+
+      rebuildCollisionLines(model, selected);
+      rebuildRelationshipLines(model, selected, focusSet);
+      renderContextPanel(model);
+
+      const activeCells = Object.values(model.heatByCell).filter(v => Number(v) >= 0.08).length;
+      statActive.textContent = String(activeCells);
+      statDiscovery.textContent = String(model.discoveries.length);
+      statProposals.textContent = String(model.proposals.length);
+      statKnowledge.textContent = String(model.knowledge.length + model.approved.length);
+      statCollisions.textContent = String(model.collisions.length);
+    }
+
+    function setHealth(status, detail) {
+      state.health = status;
+      healthBadge.className = 'badge';
+      if (status === 'nominal') {
+        healthBadge.classList.add('ok');
+        healthBadge.textContent = 'Nominal';
+      } else if (status === 'degraded') {
+        healthBadge.classList.add('degraded');
+        healthBadge.textContent = 'Degraded';
+      } else {
+        healthBadge.textContent = 'Loading';
+      }
+      hudSub.textContent = detail;
+    }
+
+    async function safeFetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }
+
+    async function loadRadar() {
+      const started = performance.now();
+
+      const required = await Promise.allSettled([
+        safeFetchJson('/api/clashd27/emergence'),
+        safeFetchJson('/api/clashd27/discovery-feed?signalLimit=120'),
+        safeFetchJson('/api/cube')
+      ]);
+
+      const requiredOk = required.every(r => r.status === 'fulfilled');
+      if (!requiredOk) {
+        const failed = required
+          .filter(r => r.status === 'rejected')
+          .map(r => r.reason?.message || 'unknown')
+          .join(' | ');
+
+        if (state.model) {
+          setHealth('degraded', `Using last valid snapshot. Fetch issue: ${failed}`);
+          return;
+        }
+
+        setHealth('degraded', `Radar unavailable: ${failed}`);
+        return;
+      }
+
+      const emergence = required[0].value;
+      const feed = required[1].value;
+      const cube = required[2].value;
+
+      const optional = await Promise.allSettled([
+        safeFetchJson('/api/clashd27/knowledge/objects?limit=180'),
+        safeFetchJson('/api/agents/proposals?limit=120'),
+        safeFetchJson('/api/observatory/config')
+      ]);
+
+      const knowledgeObjects = optional[0].status === 'fulfilled'
+        ? (optional[0].value.objects || [])
+        : [];
+      const governanceProposals = optional[1].status === 'fulfilled'
+        ? (optional[1].value.proposals || [])
+        : [];
+      const config = optional[2].status === 'fulfilled'
+        ? (optional[2].value || {})
+        : {};
+      state.jeevesApprovalUrl = String(config.jeevesApprovalUrl || state.jeevesApprovalUrl || '');
+
+      state.model = buildRadarModel(emergence, feed, cube, knowledgeObjects, governanceProposals);
+      state.previousModel = state.model;
+      state.lastSuccessAt = new Date();
+
+      applyVisualState(state.model);
+
+      const ms = Math.round(performance.now() - started);
+      const strongest = state.model.strongestCell?.cellId;
+      const strongestText = Number.isInteger(strongest) ? ` | strongest cell ${strongest}` : '';
+      setHealth('nominal', `Updated ${state.lastSuccessAt.toLocaleTimeString()} (${ms} ms)${strongestText}`);
+    }
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('pointerdown', (event) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(nodeVisuals.map(v => v.node), false);
+      if (!hits.length) return;
+
+      const id = hits[0].object.userData?.cellId;
+      if (!Number.isInteger(id)) return;
+
+      state.selectedCellId = id;
+      if (state.model) {
+        applyVisualState(state.model);
+      }
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      loadRadar().catch(err => {
+        setHealth('degraded', `Refresh failed: ${err.message}`);
+      });
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      cubeGroup.rotation.y += 0.0009;
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    window.addEventListener('resize', onResize);
+
+    const query = new URLSearchParams(window.location.search);
+    consumeRadarContext({
+      source: query.get('source') || '',
+      proposalId: query.get('proposalId') || '',
+      candidateId: query.get('candidateId') || '',
+      candidateScore: query.get('candidateScore') || '',
+      originCell: query.get('originCell') || query.get('cell') || '',
+      what: query.get('what') || '',
+      where: query.get('where') || '',
+      time: query.get('time') || ''
+    });
+
+    window.addEventListener('message', (event) => {
+      const payload = event && event.data ? event.data : null;
+      if (!payload || typeof payload !== 'object') return;
+      if (payload.type !== 'jeeves-radar-context') return;
+      consumeRadarContext(payload.payload || {});
+      if (state.model) applyVisualState(state.model);
+    });
+
+    buildScaffold();
+    buildNodes();
+
+    setHealth('loading', 'Fetching observatory sources...');
+    loadRadar();
+    setInterval(loadRadar, 15000);
+    animate();
+  </script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Methode</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --text: #e0e0e0;
+  --muted: #7b7b7b;
+  --border: #1a1a1a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.header-nav a { color: var(--muted); text-decoration: none; }
+.header-nav a:hover,
+.header-nav a.active { color: var(--orange); }
+.main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 42px 24px 80px;
+}
+.hero h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.hero p {
+  color: #a8a8a8;
+  max-width: 760px;
+}
+.section {
+  margin-top: 28px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  padding: 18px;
+}
+.section h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.steps {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.step {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.step:last-child { border-bottom: none; }
+.step-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--orange);
+}
+.step-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.step-text { color: #b9b9b9; }
+.grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 760px) {
+  .header { align-items: flex-start; flex-direction: column; }
+  .step { grid-template-columns: 1fr; }
+  .grid-two { grid-template-columns: 1fr; }
+}
+.card {
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  padding: 16px;
+}
+.card strong {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.contact a { color: var(--green); text-decoration: none; }
+.contact a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <nav class="header-nav">
+    <a href="/">Home</a>
+    <a href="/disciplines">Disciplines</a>
+    <a href="/gaps">Gaps</a>
+    <a href="/method" class="active">Methode</a>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="hero">
+    <h1>How CLASHD27 works</h1>
+    <p>CLASHD27 is een dagelijkse research pipeline die papers ophaalt, ze in een 3×3×3 cube ordent, onverwachte collisions vindt en alleen de best onderbouwde onderzoeksgaten publiceert.</p>
+  </div>
+
+  <div class="section">
+    <h2>Zes stappen</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1. COLLECT</div>
+        <div>
+          <div class="step-title">Dagelijkse paper ingest</div>
+          <div class="step-text">Elke dag worden honderden papers ingezameld van arXiv, Semantic Scholar, OpenAlex en PubMed per discipline.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2. CLASSIFY</div>
+        <div>
+          <div class="step-title">3×3×3 cube classificatie</div>
+          <div class="step-text">Een 3×3×3 cube classificeert papers op drie assen: methode (hoe), domein (wat), tijdshorizon (wanneer). 27 posities. Elke paper krijgt een cel.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3. COLLIDE</div>
+        <div>
+          <div class="step-title">Verre cellen botsen</div>
+          <div class="step-text">Cellen op afstand van elkaar worden tegen elkaar gegooid. Waar papers uit verschillende domeinen onverwacht overeenkomen ontstaat een collision.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4. SCORE</div>
+        <div>
+          <div class="step-title">Zeven scorecomponenten</div>
+          <div class="step-text">Elke collision wordt gescoord op zeven componenten: novelty, collision, residue, gravity, evidence, entropy, serendipity. Alleen scores boven 80/100 worden gepubliceerd.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5. HYPOTHESIZE</div>
+        <div>
+          <div class="step-title">Falsifieerbare hypothese</div>
+          <div class="step-text">Het systeem genereert een falsifieerbare hypothese met evidence chain, bridge claim, en cheapest validation path.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6. PUBLISH</div>
+        <div>
+          <div class="step-title">Publiceerbare gaps</div>
+          <div class="step-text">Surviving gaps worden gepubliceerd met volledige onderbouwing, proposable experiment, en PDF export.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section grid-two">
+    <div class="card">
+      <strong>Bitcoin anchor</strong>
+      <div>Elke gap is verankerd op Bitcoin block 736113 als onveranderlijk bewijs. Dat blok dient als onafhankelijke tijdstempel en maakt de publicatie achteraf verifieerbaar.</div>
+    </div>
+    <div class="card">
+      <strong>OpenClaw benchmark</strong>
+      <div>Vergeleken met klassieke literature review tools legt CLASHD27 nadruk op cross-domain collisions, score-transparantie, cheap validation paths en publiceerbare report outputs in plaats van alleen paper retrieval.</div>
+    </div>
+  </div>
+
+  <div class="section contact">
+    <h2>Contact voor onderzoekers</h2>
+    <p>Werk je aan een discipline die hier thuishoort, of wil je een gap valideren in een lab of klinische setting? Neem contact op via <a href="mailto:wiard.vasen@gmail.com">wiard.vasen@gmail.com</a>.</p>
+  </div>
+</div>
+</body>
+</html>

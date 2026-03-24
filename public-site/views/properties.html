@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Knowledge Properties</title>
+<meta name="description" content="Search CLASHD27 by what knowledge does, not only by what it is about.">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --text: #e0e0e0;
+  --muted: #777;
+  --border: #1a1a1a;
+  --orange: #FF4500;
+  --blue: #4488FF;
+  --purple: #A55CFF;
+  --green: #00C77B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  line-height: 1.6;
+}
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10,10,10,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.header-nav a {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+.header-nav a:hover,
+.header-nav a.active { color: var(--orange); }
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(28px, 5vw, 44px);
+  line-height: 1.15;
+  margin-top: 12px;
+}
+.sub {
+  margin-top: 14px;
+  color: #9a9a9a;
+  max-width: 680px;
+  font-size: 18px;
+}
+.axes {
+  margin-top: 36px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.axis {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 18px;
+}
+.axis-head {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.axis-blue .axis-head { color: var(--blue); }
+.axis-purple .axis-head { color: var(--purple); }
+.axis-green .axis-head { color: var(--green); }
+.property-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: #101010;
+  color: var(--text);
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.property-card:hover { transform: translateY(-1px); }
+.axis-blue .property-card:hover,
+.axis-blue .property-card.active { border-color: var(--blue); }
+.axis-purple .property-card:hover,
+.axis-purple .property-card.active { border-color: var(--purple); }
+.axis-green .property-card:hover,
+.axis-green .property-card.active { border-color: var(--green); }
+.property-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+.property-desc {
+  font-size: 13px;
+  color: #9a9a9a;
+  margin-top: 4px;
+  min-height: 38px;
+}
+.property-count {
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.results {
+  margin-top: 42px;
+}
+.section-head {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.results-title {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+.results-sub {
+  color: #9a9a9a;
+  margin-bottom: 18px;
+}
+.gap-list {
+  display: grid;
+  gap: 12px;
+}
+.gap-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 18px;
+}
+.gap-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.gap-domain, .gap-score, .gap-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.gap-domain {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  color: var(--orange);
+}
+.gap-score {
+  padding: 4px 8px;
+  background: rgba(255,69,0,0.1);
+}
+.gap-claim {
+  font-size: 16px;
+  color: var(--text);
+}
+.gap-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+}
+.empty {
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  color: #9a9a9a;
+  padding: 18px;
+}
+footer {
+  max-width: 1100px;
+  margin: 0 auto 30px;
+  padding: 0 24px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+@media (max-width: 960px) {
+  .axes { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <nav class="header-nav">
+    <a href="/gaps">Gaps</a>
+    <a href="/disciplines">Disciplines</a>
+    <a href="/properties" class="active">Eigenschappen</a>
+    <a href="/leaderboard">Top Gaps</a>
+    <a href="/method">Method</a>
+  </nav>
+</header>
+
+<main class="shell">
+  <div class="eyebrow">Knowledge dynamics</div>
+  <h1>Knowledge Properties</h1>
+  <p class="sub">Zoek niet op onderwerp. Zoek op wat kennis doet.</p>
+
+  <section class="axes" id="axes"></section>
+
+  <section class="results" id="results">
+    <div class="section-head">Property search</div>
+    <h2 class="results-title" id="results-title">Kies een eigenschap</h2>
+    <p class="results-sub" id="results-sub">Klik op een kaart om de bijbehorende gaps te laden.</p>
+    <div id="results-body" class="empty">Het systeem genereert nieuwe gaps. Kom over enkele uren terug.</div>
+  </section>
+</main>
+
+<footer>CLASHD27 — search by what knowledge does</footer>
+
+<script>
+const AXES = [
+  {
+    key: 'movement',
+    title: 'Beweging',
+    className: 'axis-blue',
+    names: ['Collision','Gradient','Velocity','Tension','Legacy','Saturation','Stasis','Decay','Revival']
+  },
+  {
+    key: 'structure',
+    title: 'Structuur',
+    className: 'axis-purple',
+    names: ['Gravity','Orphan','Residue','Paradox','Bridge','Anchor','Scaffold','Outlier','Consensus']
+  },
+  {
+    key: 'potential',
+    title: 'Potentie',
+    className: 'axis-green',
+    names: ['Emergence','Serendipity','Seed','Catalyst','Blind Spot','Signal','Gap','Proof','Anomaly']
+  }
+];
+
+let propertiesIndex = new Map();
+let activeName = null;
+
+function truncate(text, max = 150) {
+  const value = String(text || '').trim();
+  return value.length > max ? `${value.slice(0, max - 1)}...` : value;
+}
+
+async function loadProperties() {
+  const response = await fetch('/api/properties');
+  const properties = await response.json();
+  propertiesIndex = new Map(properties.map((property) => [property.name, property]));
+  renderAxes(properties);
+  const hashName = decodeURIComponent(window.location.hash.replace('#', ''));
+  if (hashName && propertiesIndex.has(hashName)) {
+    await loadPropertyGaps(hashName);
+    setActive(hashName);
+  }
+}
+
+function renderAxes(properties) {
+  const axisHtml = AXES.map((axis) => {
+    const cards = axis.names.map((name) => {
+      const property = properties.find((entry) => entry.name === name);
+      const count = property ? property.gapCount : 0;
+      const safeId = name.replace(/\s+/g, '-');
+      return `
+        <button class="property-card" id="prop-${safeId}" data-name="${name}">
+          <div class="property-name">${name}</div>
+          <div class="property-desc">${property ? property.description : ''}</div>
+          <div class="property-count">${count} gaps</div>
+        </button>
+      `;
+    }).join('');
+    return `<div class="axis ${axis.className}"><div class="axis-head">${axis.title}</div>${cards}</div>`;
+  }).join('');
+  document.getElementById('axes').innerHTML = axisHtml;
+  document.querySelectorAll('.property-card').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const name = button.dataset.name;
+      await loadPropertyGaps(name);
+      setActive(name);
+      history.replaceState(null, '', `/properties#${encodeURIComponent(name)}`);
+    });
+  });
+}
+
+function setActive(name) {
+  activeName = name;
+  document.querySelectorAll('.property-card').forEach((button) => {
+    button.classList.toggle('active', button.dataset.name === name);
+  });
+}
+
+async function loadPropertyGaps(name) {
+  const response = await fetch(`/api/gaps/by-property/${encodeURIComponent(name)}`);
+  const gaps = await response.json();
+  const property = propertiesIndex.get(name);
+  document.getElementById('results-title').textContent = `Gaps met eigenschap ${name}`;
+  document.getElementById('results-sub').textContent = property ? property.description : '';
+
+  if (!Array.isArray(gaps) || gaps.length === 0) {
+    document.getElementById('results-body').className = 'empty';
+    document.getElementById('results-body').textContent = 'Het systeem genereert nieuwe gaps. Kom over enkele uren terug.';
+    return;
+  }
+
+  document.getElementById('results-body').className = 'gap-list';
+  document.getElementById('results-body').innerHTML = gaps.map((gap) => {
+    const score = gap.score || gap.scoring?.finalScore || 0;
+    const hypothesis = gap.hypothesis || gap.claim || '';
+    const date = gap.date || gap.discoveredAtIso || gap.publishedAt || '';
+    const domain = gap.domainLabel || gap.domainId || gap.corridor || 'unknown';
+    return `
+      <article class="gap-card">
+        <div class="gap-top">
+          <div class="gap-domain">${domain}</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div class="gap-score">Score ${score}</div>
+            <div class="gap-date">${String(date).slice(0, 10)}</div>
+          </div>
+        </div>
+        <div class="gap-claim">${truncate(hypothesis, 150)}</div>
+        <div class="gap-actions">
+          <a class="btn" href="/gaps/${gap.id}">Bekijk rapport</a>
+          <a class="btn" href="/api/gaps/${gap.id}/pdf">Download PDF</a>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+loadProperties().catch(() => {
+  document.getElementById('results-body').className = 'empty';
+  document.getElementById('results-body').textContent = 'Het systeem genereert nieuwe gaps. Kom over enkele uren terug.';
+});
+</script>
+</body>
+</html>

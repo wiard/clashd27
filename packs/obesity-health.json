@@ -1,0 +1,43 @@
+{
+  "id": "obesity-health",
+  "name": "Obesity & Health",
+  "version": "0.1",
+  "description": "Multi-agent coordination across obesity and metabolic health domains. Agents explore data, analysis, and hypothesis layers to discover personalized interventions.",
+  "created_by": "greenbanaanas",
+  "cells": {
+    "0":  { "label": "Nutrition Data",        "layer": 0, "domain": "data",       "description": "Dietary intake records, macros, micros, food composition" },
+    "1":  { "label": "Metabolic Markers",     "layer": 0, "domain": "data",       "description": "Blood glucose, insulin, lipids, HbA1c, metabolic panels" },
+    "2":  { "label": "Gut Microbiome",        "layer": 0, "domain": "data",       "description": "Bacterial composition, diversity indices, species counts" },
+    "3":  { "label": "Physical Activity",     "layer": 0, "domain": "data",       "description": "Step counts, exercise logs, NEAT, fitness metrics" },
+    "4":  { "label": "Sleep Patterns",        "layer": 0, "domain": "data",       "description": "Duration, quality, circadian rhythms, sleep disorders" },
+    "5":  { "label": "Genetic Predisposition", "layer": 0, "domain": "data",       "description": "FTO gene, polygenic risk scores, hereditary factors" },
+    "6":  { "label": "Hormonal Profiles",     "layer": 0, "domain": "data",       "description": "Leptin, ghrelin, cortisol, thyroid, insulin sensitivity" },
+    "7":  { "label": "Medication Records",    "layer": 0, "domain": "data",       "description": "Prescriptions affecting weight, GLP-1s, side effects" },
+    "8":  { "label": "Population Statistics", "layer": 0, "domain": "data",       "description": "Prevalence rates, demographics, trends, disparities" },
+
+    "9":  { "label": "Food-Mood Correlation", "layer": 1, "domain": "analysis",   "description": "Emotional eating patterns, stress-food connections" },
+    "10": { "label": "Addiction Patterns",    "layer": 1, "domain": "analysis",   "description": "Food reward systems, dopamine, habit formation" },
+    "11": { "label": "Socioeconomic Factors", "layer": 1, "domain": "analysis",   "description": "Food deserts, income effects, education levels" },
+    "12": { "label": "Marketing Influence",   "layer": 1, "domain": "analysis",   "description": "Advertising impact, portion sizing, ultra-processed foods" },
+    "13": { "label": "Childhood Development", "layer": 1, "domain": "analysis",   "description": "Early life factors, school meals, activity patterns" },
+    "14": { "label": "Metabolic Syndrome",    "layer": 1, "domain": "analysis",   "description": "Cluster of conditions, insulin resistance, visceral fat" },
+    "15": { "label": "Inflammation Pathways", "layer": 1, "domain": "analysis",   "description": "Chronic inflammation, cytokines, immune dysfunction" },
+    "16": { "label": "Behavioral Triggers",   "layer": 1, "domain": "analysis",   "description": "Environmental cues, habit loops, decision fatigue" },
+    "17": { "label": "Treatment Outcomes",    "layer": 1, "domain": "analysis",   "description": "Intervention success rates, long-term maintenance, relapse" },
+
+    "18": { "label": "Personalized Nutrition", "layer": 2, "domain": "hypothesis", "description": "Individual response to foods, genetic-based diets" },
+    "19": { "label": "Microbiome Therapy",    "layer": 2, "domain": "hypothesis", "description": "FMT, targeted probiotics, bacterial engineering" },
+    "20": { "label": "Environmental Redesign", "layer": 2, "domain": "hypothesis", "description": "Restructuring environments to promote healthy choices" },
+    "21": { "label": "Prevention Protocols",  "layer": 2, "domain": "hypothesis", "description": "Early intervention before obesity develops" },
+    "22": { "label": "Appetite Regulation",   "layer": 2, "domain": "hypothesis", "description": "Novel mechanisms for hunger and satiety control" },
+    "23": { "label": "Cross-Condition Links", "layer": 2, "domain": "hypothesis", "description": "Connections to depression, ADHD, autoimmune conditions" },
+    "24": { "label": "Digital Interventions", "layer": 2, "domain": "hypothesis", "description": "AI coaching, apps, gamification, real-time feedback" },
+    "25": { "label": "Community Models",      "layer": 2, "domain": "hypothesis", "description": "Social support systems, group dynamics, collective change" },
+    "26": { "label": "Emergent Insights",     "layer": 2, "domain": "hypothesis", "description": "The center cell. What emerges when all domains converge." }
+  },
+  "layers": {
+    "0": { "name": "The Floor — DATA",       "description": "Biomarkers. Records. Measurements. Hard evidence." },
+    "1": { "name": "No Hats Allowed — ANALYSIS", "description": "Correlations. Patterns. Cross-referencing factors." },
+    "2": { "name": "Mod 27 Zone — HYPOTHESIS",   "description": "New ideas. Untested interventions. The frontier." }
+  }
+}

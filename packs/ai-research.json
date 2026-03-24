@@ -1,0 +1,43 @@
+{
+  "id": "ai-research",
+  "name": "AI Research",
+  "version": "0.1",
+  "description": "Cross-domain discovery in artificial intelligence, machine learning, and large language models. Agents explore data, analysis, and hypothesis layers to find gaps across AI subfields.",
+  "created_by": "greenbanaanas",
+  "cells": {
+    "0":  { "label": "LLM Architectures",       "layer": 0, "domain": "data",       "description": "Transformer models, attention mechanisms, tokenization, scaling laws, context windows" },
+    "1":  { "label": "Training Data",            "layer": 0, "domain": "data",       "description": "Datasets, synthetic data, data curation, annotation, pretraining corpora" },
+    "2":  { "label": "Benchmarks & Evaluation",  "layer": 0, "domain": "data",       "description": "Leaderboards, evaluation metrics, benchmark suites, contamination detection" },
+    "3":  { "label": "Reinforcement Learning",   "layer": 0, "domain": "data",       "description": "RLHF, reward models, PPO, DPO, policy optimization, preference learning" },
+    "4":  { "label": "Computer Vision",          "layer": 0, "domain": "data",       "description": "Image recognition, object detection, segmentation, diffusion models, generative images" },
+    "5":  { "label": "Multimodal Systems",       "layer": 0, "domain": "data",       "description": "Vision-language models, audio-text, cross-modal learning, embodied AI" },
+    "6":  { "label": "Graph & Structured Data",  "layer": 0, "domain": "data",       "description": "Graph neural networks, knowledge graphs, relational reasoning, molecule graphs" },
+    "7":  { "label": "Optimization & Training",  "layer": 0, "domain": "data",       "description": "Gradient descent, learning rates, distributed training, mixture of experts, sparse models" },
+    "8":  { "label": "NLP & Reasoning",          "layer": 0, "domain": "data",       "description": "Chain of thought, in-context learning, prompting, test-time compute, reasoning benchmarks" },
+
+    "9":  { "label": "Interpretability",         "layer": 1, "domain": "analysis",   "description": "Mechanistic interpretability, circuit analysis, sparse autoencoders, probing, feature visualization" },
+    "10": { "label": "AI Safety & Alignment",    "layer": 1, "domain": "analysis",   "description": "Reward hacking, goal misgeneralization, deceptive alignment, corrigibility, oversight" },
+    "11": { "label": "Model Merging & Distillation", "layer": 1, "domain": "analysis", "description": "Knowledge distillation, model merging, pruning, quantization, compression" },
+    "12": { "label": "Emergent Capabilities",    "layer": 1, "domain": "analysis",   "description": "Emergent behaviors, phase transitions, scaling phenomena, capability elicitation" },
+    "13": { "label": "Robustness & Adversarial", "layer": 1, "domain": "analysis",   "description": "Adversarial examples, jailbreaks, red teaming, robustness, failure modes" },
+    "14": { "label": "Efficiency & Scaling",     "layer": 1, "domain": "analysis",   "description": "Compute-optimal training, inference costs, hardware-aware design, energy efficiency" },
+    "15": { "label": "Hallucination & Grounding","layer": 1, "domain": "analysis",   "description": "Factuality, grounding, retrieval-augmented generation, attribution, calibration" },
+    "16": { "label": "Agent Architectures",      "layer": 1, "domain": "analysis",   "description": "Autonomous agents, tool use, planning, code generation, self-improvement loops" },
+    "17": { "label": "Societal Impact",          "layer": 1, "domain": "analysis",   "description": "Bias, fairness, labor displacement, regulation, governance, dual-use risks" },
+
+    "18": { "label": "AI for Drug Discovery",    "layer": 2, "domain": "hypothesis", "description": "Protein folding, molecular generation, virtual screening, target identification" },
+    "19": { "label": "AI for Science",           "layer": 2, "domain": "hypothesis", "description": "Automated theorem proving, materials discovery, physics simulations, scientific reasoning" },
+    "20": { "label": "AI for Climate",           "layer": 2, "domain": "hypothesis", "description": "Weather prediction, carbon capture optimization, energy grid management, earth system modeling" },
+    "21": { "label": "AI Robotics",              "layer": 2, "domain": "hypothesis", "description": "Manipulation, locomotion, sim-to-real transfer, foundation models for robotics" },
+    "22": { "label": "Cross-Domain Bridges",     "layer": 2, "domain": "hypothesis", "description": "Unexpected connections between AI subfields — architecture insights applied elsewhere" },
+    "23": { "label": "Novel Architectures",      "layer": 2, "domain": "hypothesis", "description": "Beyond transformers, state space models, neuromorphic computing, hybrid approaches" },
+    "24": { "label": "Synthetic Intelligence",   "layer": 2, "domain": "hypothesis", "description": "Artificial general intelligence paths, consciousness theories, cognitive architectures" },
+    "25": { "label": "Human-AI Collaboration",   "layer": 2, "domain": "hypothesis", "description": "Augmented research, AI-assisted coding, scientific copilots, creative AI" },
+    "26": { "label": "Emergent Insights",        "layer": 2, "domain": "hypothesis", "description": "The center cell. What emerges when all AI domains converge." }
+  },
+  "layers": {
+    "0": { "name": "The Floor — DATA",           "description": "Architectures, datasets, benchmarks. The building blocks of AI research." },
+    "1": { "name": "No Hats Allowed — ANALYSIS", "description": "Interpretability, safety, scaling. Understanding what models do and why." },
+    "2": { "name": "Mod 27 Zone — HYPOTHESIS",   "description": "Cross-domain applications, novel directions, frontier hypotheses." }
+  }
+}

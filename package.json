@@ -1,0 +1,28 @@
+{
+  "name": "clashd-27",
+  "version": "1.0.0",
+  "description": "27 cells. One clock. Agents clash.",
+  "type": "module",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "start:discord": "node bot.js",
+    "start:headless": "node engine.js",
+    "start:dashboard": "node dashboard/server.js",
+    "start:public-site": "node public-site/server.js",
+    "register": "node register-commands.js",
+    "doctor": "node tools/doctor.js",
+    "library:run": "node bin/nightly-reader.js",
+    "library:run:domain": "node bin/nightly-reader.js --domain",
+    "library:stats": "node bin/library-stats.js",
+    "library:export": "node bin/library-export.js",
+    "library:backup": "bash bin/backup-library.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "puppeteer": "^24.40.0",
+    "xml2js": "^0.6.2"
+  }
+}

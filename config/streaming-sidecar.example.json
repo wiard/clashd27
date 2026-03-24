@@ -1,0 +1,32 @@
+{
+  "mode": "hybrid",
+  "libraryRoot": "data",
+  "libraryBoundary": {
+    "storeFullLibraryLocally": true,
+    "storePerDomainViewsLocally": true,
+    "storeRunReportsLocally": true,
+    "uploadFullLibraryToVps": false
+  },
+  "broker": {
+    "enabled": false,
+    "transport": "kafka",
+    "role": "vps-sidecar",
+    "bootstrapServers": [
+      "127.0.0.1:19092"
+    ],
+    "topics": {
+      "rawSignals": "raw-signals",
+      "normalizedSignals": "normalized-signals",
+      "gapHandoffs": "gap-proposal-handoffs"
+    }
+  },
+  "flink": {
+    "enabled": false,
+    "note": "Reserved for a future normalization layer between raw-signals and normalized-signals. CLASHD27 remains the discovery engine and OpenClashd remains governance."
+  },
+  "governanceHandoff": {
+    "transport": "http",
+    "endpoint": "/api/gaps/propose",
+    "publishGovernedHandoffsOnly": true
+  }
+}

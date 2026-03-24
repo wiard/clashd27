@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLASHD27 — Gap Catalogus</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-light: #111111;
+  --bg-card: #141414;
+  --orange: #FF4500;
+  --green: #00FF88;
+  --blue: #4488FF;
+  --text: #e0e0e0;
+  --muted: #666;
+  --dim: #333;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ── HEADER ── */
+.header {
+  border-bottom: 1px solid #1a1a1a;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--orange);
+  text-decoration: none;
+  letter-spacing: 3px;
+}
+.header-nav {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+/* ── CONTROLS ── */
+.controls {
+  padding: 20px 24px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid #1a1a1a;
+}
+.search-input {
+  background: var(--bg-card);
+  border: 1px solid #222;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 8px 14px;
+  width: 250px;
+  outline: none;
+}
+.search-input:focus { border-color: var(--orange); }
+.filter-btn {
+  background: var(--bg-card);
+  border: 1px solid #222;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 8px 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.filter-btn:hover, .filter-btn.active {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.sort-select {
+  background: var(--bg-card);
+  border: 1px solid #222;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 8px 14px;
+  outline: none;
+  cursor: pointer;
+}
+.total-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* ── GAP LIST ── */
+.gap-list {
+  padding: 0 24px 24px;
+}
+.gap-card {
+  display: block;
+  background: var(--bg-card);
+  border-left: 3px solid var(--dim);
+  padding: 20px 24px;
+  margin-top: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.3s, background 0.3s;
+}
+.gap-card:hover { border-left-color: var(--orange); background: #1a1a1a; }
+.gap-card.high-quality { border-left-color: var(--orange); }
+.gap-card.research-ready { border-left-color: #ffd700; }
+.gap-domains {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.gap-hypo {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+.gap-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.gap-score { color: var(--orange); }
+.gap-badge {
+  background: var(--orange);
+  color: #000;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.gap-badge.gold { background: #ffd700; }
+
+/* Score bars */
+.score-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.score-bar-track {
+  width: 50px;
+  height: 4px;
+  background: #222;
+  display: inline-block;
+  vertical-align: middle;
+}
+.score-bar-fill {
+  height: 100%;
+  background: var(--orange);
+}
+
+/* ── PAGINATION ── */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 24px;
+}
+.page-btn {
+  background: var(--bg-card);
+  border: 1px solid #222;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.page-btn:hover, .page-btn.active {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .controls { flex-direction: column; }
+  .search-input { width: 100%; }
+  .gap-meta { flex-direction: column; gap: 4px; }
+  .total-badge { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/" class="header-logo">CLASHD27</a>
+  <span class="header-nav">/ GAP CATALOGUS</span>
+</div>
+
+<div class="controls">
+  <input type="text" class="search-input" id="search" placeholder="Zoek gaps...">
+  <button class="filter-btn active" data-domain="">ALLE</button>
+  <select class="sort-select" id="filter-method">
+    <option value="">Method Axis</option>
+  </select>
+  <select class="sort-select" id="filter-surprise">
+    <option value="">Surprise Bucket</option>
+  </select>
+  <select class="sort-select" id="filter-source">
+    <option value="">Source</option>
+  </select>
+  <select class="sort-select" id="sort">
+    <option value="score">Score (hoog-laag)</option>
+    <option value="date">Datum (nieuw-oud)</option>
+    <option value="domain">Domein (A-Z)</option>
+  </select>
+  <span class="total-badge" id="total-badge">-- gaps</span>
+</div>
+
+<div class="gap-list" id="gap-list">
+  <div style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;padding:24px;">Laden...</div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+
+<script>
+let currentPage = 1;
+let currentDomain = '';
+let currentMethod = '';
+let currentSurprise = '';
+let currentSource = '';
+let currentSort = 'score';
+let currentSearch = '';
+let domainSlug = null;
+
+// Check if we're on /gaps/domain/:slug
+const pathParts = window.location.pathname.split('/');
+if (pathParts[2] === 'domain' && pathParts[3]) {
+  domainSlug = decodeURIComponent(pathParts[3]);
+  currentDomain = domainSlug;
+}
+
+function escapeHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+async function loadGaps() {
+  const params = new URLSearchParams({
+    page: currentPage,
+    limit: 20,
+    sort: currentSort
+  });
+  if (currentDomain) params.set('domain', currentDomain);
+  if (currentMethod) params.set('method', currentMethod);
+  if (currentSurprise) params.set('surprise', currentSurprise);
+  if (currentSource) params.set('source', currentSource);
+  if (currentSearch) params.set('search', currentSearch);
+
+  try {
+    const data = await fetch('/api/gaps?' + params).then(r => r.json());
+    const container = document.getElementById('gap-list');
+    document.getElementById('total-badge').textContent = data.total + ' gaps';
+
+    if (!data.gaps || data.gaps.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:24px;">Geen gaps gevonden.</div>';
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = data.gaps.map(g => {
+      const domains = g.corridor || 'Cross-domain';
+      const score = g.score || 0;
+      const highQ = score >= 75;
+      const seeded = (g.sources || []).includes('seeded') || (g.id || '').startsWith('seed-');
+
+      return `<a href="/gaps/${encodeURIComponent(g.id)}" class="gap-card${highQ ? ' high-quality' : ''}">
+        <div class="gap-domains">${escapeHtml(domains)}</div>
+        <div class="gap-hypo">${escapeHtml(g.claim || '')}</div>
+        <div class="gap-meta">
+          <span class="score-bar">
+            <span class="gap-score">S ${score}%</span>
+            <span class="score-bar-track"><span class="score-bar-fill" style="width:${score}%"></span></span>
+          </span>
+          ${seeded ? '<span class="gap-badge gold">SEEDED</span>' : ''}
+          <span>${g.date || ''}</span>
+        </div>
+      </a>`;
+    }).join('');
+
+    // Pagination
+    const pagEl = document.getElementById('pagination');
+    if (data.totalPages > 1) {
+      let html = '';
+      html += `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>&laquo;</button>`;
+      for (let p = 1; p <= Math.min(data.totalPages, 10); p++) {
+        html += `<button class="page-btn${p === currentPage ? ' active' : ''}" onclick="goPage(${p})">${p}</button>`;
+      }
+      html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage >= data.totalPages ? 'disabled' : ''}>&raquo;</button>`;
+      pagEl.innerHTML = html;
+    } else {
+      pagEl.innerHTML = '';
+    }
+  } catch (e) {
+    console.error('Load failed:', e);
+  }
+}
+
+function goPage(p) {
+  currentPage = p;
+  loadGaps();
+  window.scrollTo(0, 0);
+}
+
+// Load domain filter buttons dynamically
+async function loadFilters() {
+  try {
+    const stats = await fetch('/api/stats').then(r => r.json());
+    const all = await fetch('/api/gaps?limit=5000').then(r => r.json()).catch(() => ({ gaps: [] }));
+    const container = document.querySelector('.controls');
+    const existingBtns = container.querySelectorAll('.filter-btn[data-domain]');
+    const allBtn = existingBtns[0];
+
+    if (stats.byDomain) {
+      for (const [domain, count] of Object.entries(stats.byDomain)) {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn' + (currentDomain === domain ? ' active' : '');
+        btn.dataset.domain = domain;
+        btn.textContent = domain.toUpperCase().replace(/-/g, ' ') + ' (' + count + ')';
+        btn.onclick = () => filterDomain(domain);
+        allBtn.parentNode.insertBefore(btn, document.getElementById('sort'));
+      }
+      if (currentDomain) {
+        allBtn.classList.remove('active');
+      }
+    }
+
+    const methodSet = new Set();
+    const surpriseSet = new Set();
+    const sourceSet = new Set();
+    (all.gaps || []).forEach(g => {
+      if (g.methodAxis) methodSet.add(g.methodAxis);
+      if (g.surpriseBucket) surpriseSet.add(g.surpriseBucket);
+      if (Array.isArray(g.sources)) g.sources.forEach(s => sourceSet.add(s));
+    });
+
+    document.getElementById('filter-method').innerHTML =
+      '<option value=\"\">Method Axis</option>' + [...methodSet].map(m => `<option value=\"${m}\">${m}</option>`).join('');
+    document.getElementById('filter-surprise').innerHTML =
+      '<option value=\"\">Surprise Bucket</option>' + [...surpriseSet].map(s => `<option value=\"${s}\">${s}</option>`).join('');
+    document.getElementById('filter-source').innerHTML =
+      '<option value=\"\">Source</option>' + [...sourceSet].map(s => `<option value=\"${s}\">${s}</option>`).join('');
+  } catch (e) {}
+}
+
+function filterDomain(domain) {
+  currentDomain = domain;
+  currentPage = 1;
+  document.querySelectorAll('.filter-btn[data-domain]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.domain === domain);
+  });
+  loadGaps();
+}
+
+document.getElementById('filter-method').addEventListener('change', (e) => {
+  currentMethod = e.target.value || '';
+  currentPage = 1;
+  loadGaps();
+});
+
+document.getElementById('filter-surprise').addEventListener('change', (e) => {
+  currentSurprise = e.target.value || '';
+  currentPage = 1;
+  loadGaps();
+});
+
+document.getElementById('filter-source').addEventListener('change', (e) => {
+  currentSource = e.target.value || '';
+  currentPage = 1;
+  loadGaps();
+});
+
+// Event listeners
+document.getElementById('search').addEventListener('input', (e) => {
+  currentSearch = e.target.value;
+  currentPage = 1;
+  loadGaps();
+});
+
+document.getElementById('sort').addEventListener('change', (e) => {
+  currentSort = e.target.value;
+  currentPage = 1;
+  loadGaps();
+});
+
+document.querySelector('.filter-btn[data-domain=""]').addEventListener('click', () => {
+  filterDomain('');
+});
+
+loadFilters();
+loadGaps();
+</script>
+</body>
+</html>
