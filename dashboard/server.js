@@ -2,12 +2,34 @@
  * CLASHD27 — Dashboard Server
  * Reads state.json, serves packs, and runs the live dashboard on port 3027
  */
-const { bootstrapClashd27ServerEntrypoint, startClashd27SupportServer } = require('../lib/runtime-entrypoints');
-bootstrapClashd27ServerEntrypoint('dashboard');
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const express = require('express');
 const fs = require('fs');
-const path = require('path');
+const Module = require('module');
+const LEGACY_JS_LOADER = Module._extensions['.js'];
+const LEGACY_MODULE_ROOTS = [
+  path.join(__dirname, '..', 'src'),
+  path.join(__dirname, '..', 'lib')
+];
+Module._extensions['.js'] = function clashd27LegacyLoader(moduleRef, filename) {
+  if (LEGACY_MODULE_ROOTS.some((rootDir) => filename.startsWith(rootDir))) {
+    const content = fs.readFileSync(filename, 'utf8');
+    moduleRef._compile(content, filename);
+    return;
+  }
+  return LEGACY_JS_LOADER(moduleRef, filename);
+};
+
+const { bootstrapClashd27ServerEntrypoint, startClashd27SupportServer } = require('../lib/runtime-entrypoints');
+bootstrapClashd27ServerEntrypoint('dashboard');
+
 const { Clashd27CubeEngine, cellToCoords, AXIS_WHAT, AXIS_WHERE, AXIS_TIME } = require('../lib/clashd27-cube-engine');
 const { scoreSignalSources, suggestWeightAdjustments } = require('../lib/source-scorer');
 const { buildPaperDiscoveryFeed } = require('../lib/paper-discovery-feed');
